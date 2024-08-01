@@ -1,5 +1,9 @@
 <div align="center"><img src=asset/LLM-IE.png width=500 ></div>
 
+![Python Version](https://img.shields.io/pypi/pyversions/llm-ie)
+![PyPI](https://img.shields.io/pypi/v/llm-ie)
+
+
 An LLM-powered tool that transforms everyday language into robust information extraction pipelines. 
 
 ## Table of Contents
