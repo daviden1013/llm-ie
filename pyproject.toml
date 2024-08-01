@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "llm-ie"
+version = "0.1.0"
+description = "An LLM-powered tool that transforms everyday language into robust information extraction pipelines."
+authors = ["Enshuo (David) Hsu"]
+license = "MIT"
+readme = "README.md"
+
+exclude = [
+    "test/**",
+    "*.png"
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

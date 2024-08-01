@@ -1,0 +1,7 @@
+This is a text analysis task. Analyze the draft prompt based on the prompt guideline below. 
+
+# Prompt guideline
+{{prompt_guideline}}
+
+# Draft prompt
+{{draft}}

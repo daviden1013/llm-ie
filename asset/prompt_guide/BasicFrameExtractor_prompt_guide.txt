@@ -1,0 +1,35 @@
+Prompt template design:
+    1. Task description
+    2. Schema definition
+    3. Output format definition
+    4. Additional hints
+    5. Input placeholder
+
+Example:
+
+    # Task description
+    The paragraph below is from the Food and Drug Administration (FDA) Clinical Pharmacology Section of Labeling for Human Prescription Drug and Biological Products, Adverse reactions section. Please carefully review it and extract the adverse reactions and percentages. Note that each adverse reaction is nested under a clinical trial and potentially an arm. Your output should take that into consideration.
+
+    # Schema definition
+    Your output should contain: 
+        "ClinicalTrial" which is the name of the trial, 
+        If applicable, "Arm" which is the arm within the clinical trial, 
+        "AdverseReaction" which is the name of the adverse reaction,
+        If applicable, "Percentage" which is the occurance of the adverse reaction within the trial and arm,
+        "Evidence" which is the EXACT sentence in the text where you found the AdverseReaction from
+
+    # Output format definition
+    Your output should follow JSON format, for example:
+    [
+        {"ClinicalTrial": "<Clinical trial name or number>", "Arm": "<name of arm>", "AdverseReaction": "<Adverse reaction text>", "Percentage": "<a percent>", "Evidence": "<exact sentence from the text>"},
+        {"ClinicalTrial": "<Clinical trial name or number>", "Arm": "<name of arm>", "AdverseReaction": "<Adverse reaction text>", "Percentage": "<a percent>", "Evidence": "<exact sentence from the text>"} 
+    ]
+
+    # Additional hints
+    Your output should be 100% based on the provided content. DO NOT output fake numbers. 
+    If there is no specific arm, just omit the "Arm" key. If the percentage is not reported, just omit the "Percentage" key. The "Evidence" should always be provided.
+
+    # Input placeholder
+    Below is the Adverse reactions section:
+    {{input}}
+

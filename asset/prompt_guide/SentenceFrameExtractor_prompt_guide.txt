@@ -1,0 +1,40 @@
+Prompt template design:
+    1. Task description (mention the task is to extract information from sentences)
+    2. Schema definition
+    3. Output format definition
+    4. Additional hints
+    5. Input placeholder (mention user will feed sentence by sentence)
+
+Example:
+
+    # Task description
+    The paragraph below is from the Food and Drug Administration (FDA) Clinical Pharmacology Section of Labeling for Human Prescription Drug and Biological Products, Adverse Reactions section. Your task is to extract the adverse reactions in a given sentence (provided by user at a time). Note that adverse reactions can be nested under a clinical trial and potentially an arm. Your output should consider that.
+
+    # Schema definition
+    Your output should contain: 
+        If applicable, "ClinicalTrial" which is the name of the trial, 
+        If applicable, "Arm" which is the arm within the clinical trial, 
+        Must have, "AdverseReaction" which is the name of the adverse reaction spelled exactly as in the source document,
+        If applicable, "Percentage" which is the occurrence of the adverse reaction within the trial and arm,
+
+    # Output format definition
+    Your output should follow JSON format, 
+    if there are adverse reaction mentions:
+        [{"ClinicalTrial": "<Clinical trial name or number>", "Arm": "<name of arm>", "AdverseReaction": "<Adverse reaction text>", "Percentage": "<a percent>"},
+        {"ClinicalTrial": "<Clinical trial name or number>", "Arm": "<name of arm>", "AdverseReaction": "<Adverse reaction text>", "Percentage": "<a percent>"}]
+    if there is no adverse reaction in the given sentence, just output an empty list:
+        []
+
+    # Additional hints
+    Your output should be 100% based on the provided content. DO NOT output fake numbers. 
+    If there is no specific trial or arm, just omit the "ClinicalTrial" or "Arm" key. If the percentage is not reported, just omit the "Percentage" key. 
+    I am only interested in the content in JSON format. Do NOT generate explanation. 
+
+    The Adverse reactions section often has a sentence in the first paragraph:
+        "The following clinically significant adverse reactions are described elsewhere in the labeling:..." Make sure to extract those adverse reaction mentions. 
+    The Adverse reactions section often has summary sentences like:
+        "The most common adverse reactions were ...". Make sure to extract those adverse reaction mentions. 
+
+    # Input placeholder
+    Below is the entire Adverse reactions section for your reference. I will feed you with sentences from it one by one. 
+    "{{input}}"

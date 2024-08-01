@@ -1,0 +1,74 @@
+### Discharge Summary Note
+
+**Patient Name:** John Doe  
+**Medical Record Number:** 12345678  
+**Date of Birth:** January 15, 1975  
+**Date of Admission:** July 20, 2024  
+**Date of Discharge:** July 27, 2024  
+
+**Attending Physician:** Dr. Jane Smith, MD  
+**Consulting Physicians:** Dr. Emily Brown, MD (Cardiology), Dr. Michael Green, MD (Pulmonology)
+
+#### Reason for Admission
+John Doe, a 49-year-old male, was admitted to the hospital with complaints of chest pain, shortness of breath, and dizziness. The patient has a history of hypertension, hyperlipidemia, and Type 2 diabetes mellitus.
+
+#### History of Present Illness
+The patient reported that the chest pain started two days prior to admission. The pain was described as a pressure-like sensation in the central chest, radiating to the left arm and jaw. He also experienced dyspnea on exertion and occasional palpitations. The patient denied any recent upper respiratory infection, cough, or fever.
+
+#### Past Medical History
+- Hypertension (diagnosed in 2010)
+- Hyperlipidemia (diagnosed in 2015)
+- Type 2 Diabetes Mellitus (diagnosed in 2018)
+
+#### Social History
+- Former smoker (quit in 2010)
+- Occasional alcohol consumption
+- Works as an accountant
+- Married with two children
+
+#### Family History
+- Father: myocardial infarction at age 55
+- Mother: Type 2 diabetes mellitus
+
+#### Physical Examination
+- **Vital Signs:** Blood pressure 160/95 mmHg, heart rate 88 bpm, respiratory rate 20 breaths/min, temperature 98.6°F, oxygen saturation 96% on room air.
+- **General:** Alert and oriented, in mild distress.
+- **Cardiovascular:** Regular rhythm, no murmurs, rubs, or gallops. Jugular venous pressure not elevated.
+- **Respiratory:** Clear to auscultation bilaterally, no wheezes, rales, or rhonchi.
+- **Abdomen:** Soft, non-tender, no hepatosplenomegaly.
+- **Extremities:** No edema, pulses 2+ bilaterally.
+
+#### Laboratory and Diagnostic Tests
+- **EKG:** ST-segment depression in leads V4-V6.
+- **Troponin I:** Elevated at 0.15 ng/mL (normal <0.04 ng/mL).
+- **Chest X-ray:** No acute infiltrates, normal cardiac silhouette.
+- **Echocardiogram:** Mild left ventricular hypertrophy, ejection fraction 55%.
+- **CBC:** WBC 8.5 x 10^3/uL, Hgb 13.5 g/dL, Platelets 250 x 10^3/uL.
+- **CMP:** Na 138 mmol/L, K 4.0 mmol/L, BUN 15 mg/dL, Creatinine 0.9 mg/dL, Glucose 180 mg/dL, HbA1c 7.8%.
+
+#### Hospital Course
+John Doe was diagnosed with acute coronary syndrome (ACS). He was started on dual antiplatelet therapy with aspirin and clopidogrel, along with high-dose atorvastatin, and a beta-blocker. A cardiology consultation was obtained, and the patient underwent coronary angiography, which revealed a 70% stenosis in the left anterior descending artery. A drug-eluting stent was placed successfully.
+
+Post-procedure, the patient was monitored in the coronary care unit. He remained hemodynamically stable, with no recurrent chest pain. He was gradually advanced to a regular cardiac diet and was ambulating without difficulty by day three of hospitalization. Diabetes management was optimized with the addition of metformin, and his blood pressure was controlled with the continuation of his antihypertensive regimen.
+
+#### Discharge Medications
+- Aspirin 81 mg daily
+- Clopidogrel 75 mg daily
+- Atorvastatin 40 mg daily
+- Metoprolol 50 mg twice daily
+- Lisinopril 20 mg daily
+- Metformin 1000 mg twice daily
+
+#### Discharge Instructions
+John Doe was advised to follow a heart-healthy diet, engage in regular physical activity, and monitor his blood glucose levels. He was instructed to avoid smoking and limit alcohol intake. Follow-up appointments were scheduled with his primary care physician, cardiologist, and endocrinologist.
+
+The patient was educated on the signs and symptoms of recurrent chest pain and instructed to seek immediate medical attention if they occur. He was provided with a prescription for a nitroglycerin tablet to use as needed for chest pain.
+
+#### Follow-Up Appointments
+- Primary Care Physician: August 3, 2024
+- Cardiology: August 10, 2024
+- Endocrinology: August 17, 2024
+
+**Discharge Summary Prepared by:**  
+Dr. Jane Smith, MD  
+July 27, 2024

@@ -1,0 +1,10 @@
+# compiled files
+*.pyc
+
+# internal
+dist/
+test/
+.vscode/
+
+# image
+*.png
