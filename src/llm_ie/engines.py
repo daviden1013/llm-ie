@@ -31,7 +31,6 @@ class InferenceEngine:
 
 
 class LlamaCppInferenceEngine(InferenceEngine):
-    from llama_cpp import Llama
     def __init__(self, repo_id:str, gguf_filename:str, n_ctx:int=4096, n_gpu_layers:int=-1, **kwrs):
         """
         The Llama.cpp inference engine.
@@ -48,13 +47,13 @@ class LlamaCppInferenceEngine(InferenceEngine):
         n_gpu_layers : int, Optional
             number of layers to offload to GPU. Default is all layers (-1).
         """
-        super().__init__()
+        from llama_cpp import Llama
         self.repo_id = repo_id
         self.gguf_filename = gguf_filename
         self.n_ctx = n_ctx
         self.n_gpu_layers = n_gpu_layers
 
-        self.model = self.Llama.from_pretrained(
+        self.model = Llama.from_pretrained(
             repo_id=self.repo_id,
             filename=self.gguf_filename,
             n_gpu_layers=n_gpu_layers,
@@ -106,7 +105,6 @@ class LlamaCppInferenceEngine(InferenceEngine):
 
 
 class OllamaInferenceEngine(InferenceEngine):
-    import ollama
     def __init__(self, model_name:str, num_ctx:int=4096, keep_alive:int=300, **kwrs):
         """
         The Ollama inference engine.
@@ -120,6 +118,8 @@ class OllamaInferenceEngine(InferenceEngine):
         keep_alive : int, Optional
             seconds to hold the LLM after the last API call.
         """
+        import ollama
+        self.ollama = ollama
         self.model_name = model_name
         self.num_ctx = num_ctx
         self.keep_alive = keep_alive
@@ -158,13 +158,13 @@ class OllamaInferenceEngine(InferenceEngine):
 
 
 class HuggingFaceHubInferenceEngine(InferenceEngine):
-    from huggingface_hub import InferenceClient
     def __init__(self, **kwrs):
         """
         The Huggingface_hub InferenceClient inference engine.
         For parameters and documentation, refer to https://huggingface.co/docs/huggingface_hub/en/package_reference/inference_client
         """
-        self.client = self.InferenceClient(**kwrs)
+        from huggingface_hub import InferenceClient
+        self.client = InferenceClient(**kwrs)
 
     def chat(self, messages:List[Dict[str,str]], max_new_tokens:int=2048, temperature:float=0.0, stream:bool=False, **kwrs) -> str:
         """
@@ -200,7 +200,6 @@ class HuggingFaceHubInferenceEngine(InferenceEngine):
         
 
 class OpenAIInferenceEngine(InferenceEngine):
-    from openai import OpenAI
     def __init__(self, model:str, **kwrs):
         """
         The OpenAI API inference engine.
@@ -211,7 +210,8 @@ class OpenAIInferenceEngine(InferenceEngine):
         model_name : str
             model name as described in https://platform.openai.com/docs/models
         """
-        self.client = self.OpenAI(**kwrs)
+        from openai import OpenAI
+        self.client = OpenAI(**kwrs)
         self.model = model
 
     def chat(self, messages:List[Dict[str,str]], max_new_tokens:int=2048, temperature:float=0.0, stream:bool=False, **kwrs) -> str:
