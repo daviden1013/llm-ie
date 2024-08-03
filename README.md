@@ -1,4 +1,4 @@
-<div align="center"><img src=asset/LLM-IE.png width=500 ></div>
+<div align="center"><img src=asset/readme_img/LLM-IE.png width=500 ></div>
 
 ![Python Version](https://img.shields.io/pypi/pyversions/llm-ie)
 ![PyPI](https://img.shields.io/pypi/v/llm-ie)
@@ -20,10 +20,10 @@ An LLM-powered tool that transforms everyday language into robust information ex
 ## Overview
 LLM-IE is a toolkit that provides robust information extraction utilities for frame-based information extraction. Since prompt design has a significant impact on generative information extraction with LLMs, it also provides a built-in LLM editor to help with prompt writing. The flowchart below demonstrates the workflow starting from a casual language request.
 
-<div align="center"><img src="asset/LLM-IE flowchart.png" width=800 ></div>
+<div align="center"><img src="asset/readme_img/LLM-IE flowchart.png" width=800 ></div>
 
 ## Prerequisite
-At least one LLM inference engine is required. We provide built-in support for 🦙 [Llama-cpp-python](https://github.com/abetlen/llama-cpp-python) and <img src="https://avatars.githubusercontent.com/u/151674099?s=48&v=4" alt="Icon" width="20"/> [Ollama](https://github.com/ollama/ollama). For installation guides, please refer to those projects. Other inference engines can be configured through the [InferenceEngine](src/llm_ie/engines.py) abstract class. See [LLM Inference Engine](#llm-inference-engine) section below.
+At least one LLM inference engine is required. There are built-in supports for 🦙 [Llama-cpp-python](https://github.com/abetlen/llama-cpp-python), <img src="https://avatars.githubusercontent.com/u/151674099?s=48&v=4" alt="Icon" width="20"/> [Ollama](https://github.com/ollama/ollama), 🤗 [Huggingface_hub](https://github.com/huggingface/huggingface_hub), and <img src=asset/readme_img/openai-logomark.png width=16 /> [OpenAI API](https://platform.openai.com/docs/api-reference/introduction). For installation guides, please refer to those projects. Other inference engines can be configured through the [InferenceEngine](src/llm_ie/engines.py) abstract class. See [LLM Inference Engine](#llm-inference-engine) section below.
 
 ## Installation
 The Python package is available on PyPI. 
@@ -36,7 +36,7 @@ Note that this package does not check LLM inference engine installation nor inst
 We use a [synthesized medical note](demo/document/synthesized_note.txt) by ChatGPT to demo the information extraction process. Our task is to extract diagnosis names, spans, and corresponding attributes (i.e., diagnosis datetime, status).
 
 #### Choose an LLM inference engine
-We use one of the built-in engines.
+Choose one of the built-in engines below.
 
 <details>
 <summary><img src="https://avatars.githubusercontent.com/u/151674099?s=48&v=4" alt="Icon" width="20"/> Ollama</summary>
@@ -53,11 +53,35 @@ llm = OllamaInferenceEngine(model_name="llama3.1:8b-instruct-q8_0")
 ```python
 from llm_ie.engines import LlamaCppInferenceEngine
 
-llama_cpp = LlamaCppInferenceEngine(repo_id="bullerwins/Meta-Llama-3.1-8B-Instruct-GGUF",
+llm = LlamaCppInferenceEngine(repo_id="bullerwins/Meta-Llama-3.1-8B-Instruct-GGUF",
                                     gguf_filename="Meta-Llama-3.1-8B-Instruct-Q8_0.gguf")
 ```
 </details>
 
+<details>
+<summary>🤗 Huggingface_hub</summary>
+
+```python
+from llm_ie.engines import HuggingFaceHubInferenceEngine
+
+llm = HuggingFaceHubInferenceEngine(model="meta-llama/Meta-Llama-3-8B-Instruct")
+```
+</details>
+
+<details>
+<summary><img src=asset/readme_img/openai-logomark.png width=16 /> OpenAI API</summary>
+
+Follow the [Best Practices for API Key Safety](https://help.openai.com/en/articles/5112595-best-practices-for-api-key-safety) to set up API key.
+```python
+from llm_ie.engines import OpenAIInferenceEngine
+
+llm = OpenAIInferenceEngine(model="gpt-4o-mini")
+```
+
+</details>
+
+In this quick start demo, we use Llama-cpp-python to run Llama-3.1-8B with int8 quantization ([bullerwins/Meta-Llama-3.1-8B-Instruct-GGUF](https://huggingface.co/bullerwins/Meta-Llama-3.1-8B-Instruct-GGUF)). 
+The outputs might be slightly different with other inference engines, LLMs, or quantization. 
 
 #### Casual language as prompt 
 We start with a casual description: 
@@ -156,7 +180,7 @@ This package is comprised of some key classes:
 - Extractors
 
 ### LLM Inference Engine
-Provides an interface for different LLM inference engines to work in the information extraction workflow. The built-in engines are ```LlamaCppInferenceEngine``` and ```OllamaInferenceEngine```. 
+Provides an interface for different LLM inference engines to work in the information extraction workflow. The built-in engines are ```LlamaCppInferenceEngine```, ```OllamaInferenceEngine```, and ```HuggingFaceHubInferenceEngine```. 
 
 #### 🦙 Llama-cpp-python
 The ```repo_id``` and ```gguf_filename``` must match the ones on the Huggingface repo to ensure the correct model is loaded. ```n_ctx``` determines the context length LLM will consider during text generation. Empirically, longer context length gives better performance, while consuming more memory and increases computation. Note that when ```n_ctx``` is less than the prompt length, Llama.cpp throws exceptions. ```n_gpu_layers``` indicates a number of model layers to offload to GPU. Default is -1 for all layers (entire LLM). Flash attention ```flash_attn``` is supported by Llama.cpp. The ```verbose``` indicates whether model information should be displayed. For more input parameters, see 🦙 [Llama-cpp-python](https://github.com/abetlen/llama-cpp-python). 
@@ -181,6 +205,31 @@ ollama = OllamaInferenceEngine(model_name="llama3.1:8b-instruct-q8_0",
                                num_ctx=4096,
                                keep_alive=300)
 ```
+
+#### 🤗 huggingface_hub
+The ```model``` can be a model id hosted on the Hugging Face Hub or a URL to a deployed Inference Endpoint. Refer to the [Inference Client](https://huggingface.co/docs/huggingface_hub/en/package_reference/inference_client) documentation for more details. 
+
+```python
+from llm_ie.engines import HuggingFaceHubInferenceEngine
+
+hf = HuggingFaceHubInferenceEngine(model="meta-llama/Meta-Llama-3-8B-Instruct")
+```
+
+#### <img src=asset/readme_img/openai-logomark.png width=16 /> OpenAI API
+In bash, save API key to the environmental variable ```OPENAI_API_KEY```.
+```
+export OPENAI_API_KEY=<your_API_key>
+```
+
+In Python, create inference engine and specify model name. For the available models, refer to [OpenAI webpage](https://platform.openai.com/docs/models). 
+For more parameters, see [OpenAI API reference](https://platform.openai.com/docs/api-reference/introduction).
+
+```python
+from llm_ie.engines import OpenAIInferenceEngine
+
+openai_engine = OpenAIInferenceEngine(model="gpt-4o-mini")
+```
+
 
 #### Test inference engine configuration
 To test the inference engine, use the ```chat()``` method. 

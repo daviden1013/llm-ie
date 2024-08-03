@@ -155,12 +155,95 @@ class OllamaInferenceEngine(InferenceEngine):
             return res
         
         return response['message']['content']
-    
-    def release_model_memory(self):
+
+
+class HuggingFaceHubInferenceEngine(InferenceEngine):
+    from huggingface_hub import InferenceClient
+    def __init__(self, **kwrs):
         """
-        Call API again with keep_alive=0 to release memory for the model
+        The Huggingface_hub InferenceClient inference engine.
+        For parameters and documentation, refer to https://huggingface.co/docs/huggingface_hub/en/package_reference/inference_client
         """
-        self.ollama.chat(model=self.model_name, 
-                        messages=[{'role': 'user', 'content': ''}], 
-                        options={'num_predict': 0},
-                        keep_alive=0)
+        self.client = self.InferenceClient(**kwrs)
+
+    def chat(self, messages:List[Dict[str,str]], max_new_tokens:int=2048, temperature:float=0.0, stream:bool=False, **kwrs) -> str:
+        """
+        This method inputs chat messages and outputs LLM generated text.
+
+        Parameters:
+        ----------
+        messages : List[Dict[str,str]]
+            a list of dict with role and content. role must be one of {"system", "user", "assistant"}
+        max_new_tokens : str, Optional
+            the max number of new tokens LLM can generate. 
+        temperature : float, Optional
+            the temperature for token sampling. 
+        stream : bool, Optional
+            if True, LLM generated text will be printed in terminal in real-time. 
+        """
+        response = self.client.chat.completions.create(
+                    messages=messages,
+                    max_tokens=max_new_tokens,
+                    temperature=temperature,
+                    stream=stream,
+                    **kwrs
+                )
+        
+        if stream:
+            res = ''
+            for chunk in response:
+                res += chunk.choices[0].delta.content
+                print(chunk.choices[0].delta.content, end='', flush=True)
+            return res
+        
+        return response.choices[0].message.content
+        
+
+class OpenAIInferenceEngine(InferenceEngine):
+    from openai import OpenAI
+    def __init__(self, model:str, **kwrs):
+        """
+        The OpenAI API inference engine.
+        For parameters and documentation, refer to https://platform.openai.com/docs/api-reference/introduction
+
+        Parameters:
+        ----------
+        model_name : str
+            model name as described in https://platform.openai.com/docs/models
+        """
+        self.client = self.OpenAI(**kwrs)
+        self.model = model
+
+    def chat(self, messages:List[Dict[str,str]], max_new_tokens:int=2048, temperature:float=0.0, stream:bool=False, **kwrs) -> str:
+        """
+        This method inputs chat messages and outputs LLM generated text.
+
+        Parameters:
+        ----------
+        messages : List[Dict[str,str]]
+            a list of dict with role and content. role must be one of {"system", "user", "assistant"}
+        max_new_tokens : str, Optional
+            the max number of new tokens LLM can generate. 
+        temperature : float, Optional
+            the temperature for token sampling. 
+        stream : bool, Optional
+            if True, LLM generated text will be printed in terminal in real-time. 
+        """
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            max_tokens=max_new_tokens,
+            temperature=temperature,
+            stream=stream,
+            **kwrs
+        )
+
+        if stream:
+            res = ''
+            for chunk in response:
+                if chunk.choices[0].delta.content is not None:
+                    res += chunk.choices[0].delta.content
+                    print(chunk.choices[0].delta.content, end="")
+            return res
+        
+        return response.choices[0].delta.content
