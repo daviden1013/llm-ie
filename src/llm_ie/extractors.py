@@ -1,6 +1,7 @@
 import os
 import abc
 import re
+import importlib.resources
 from typing import List, Dict, Tuple, Union
 from llm_ie.data_types import LLMInformationExtractionFrame
 from llm_ie.engines import InferenceEngine
@@ -27,7 +28,8 @@ class FrameExtractor:
 
     @classmethod
     def get_prompt_guide(cls) -> str:
-        with open(os.path.join('/home/daviden1013/David_projects/llm-ie', 'asset', 'prompt_guide', f"{cls.__name__}_prompt_guide.txt"), 'r') as f:
+        file_path = importlib.resources.files('llm_ie.asset.prompt_guide').joinpath(f"{cls.__name__}_prompt_guide.txt")
+        with open(file_path, 'r') as f:
             return f.read()
 
     def _get_user_prompt(self, text_content:Union[str, Dict[str,str]]) -> str:

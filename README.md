@@ -1,4 +1,4 @@
-<div align="center"><img src=asset/readme_img/LLM-IE.png width=500 ></div>
+<div align="center"><img src=doc_asset/readme_img/LLM-IE.png width=500 ></div>
 
 ![Python Version](https://img.shields.io/pypi/pyversions/llm-ie)
 ![PyPI](https://img.shields.io/pypi/v/llm-ie)
@@ -20,10 +20,10 @@ An LLM-powered tool that transforms everyday language into robust information ex
 ## Overview
 LLM-IE is a toolkit that provides robust information extraction utilities for frame-based information extraction. Since prompt design has a significant impact on generative information extraction with LLMs, it also provides a built-in LLM editor to help with prompt writing. The flowchart below demonstrates the workflow starting from a casual language request.
 
-<div align="center"><img src="asset/readme_img/LLM-IE flowchart.png" width=800 ></div>
+<div align="center"><img src="doc_asset/readme_img/LLM-IE flowchart.png" width=800 ></div>
 
 ## Prerequisite
-At least one LLM inference engine is required. There are built-in supports for 🦙 [Llama-cpp-python](https://github.com/abetlen/llama-cpp-python), <img src="https://avatars.githubusercontent.com/u/151674099?s=48&v=4" alt="Icon" width="20"/> [Ollama](https://github.com/ollama/ollama), 🤗 [Huggingface_hub](https://github.com/huggingface/huggingface_hub), and <img src=asset/readme_img/openai-logomark.png width=16 /> [OpenAI API](https://platform.openai.com/docs/api-reference/introduction). For installation guides, please refer to those projects. Other inference engines can be configured through the [InferenceEngine](src/llm_ie/engines.py) abstract class. See [LLM Inference Engine](#llm-inference-engine) section below.
+At least one LLM inference engine is required. There are built-in supports for 🦙 [Llama-cpp-python](https://github.com/abetlen/llama-cpp-python), <img src="https://avatars.githubusercontent.com/u/151674099?s=48&v=4" alt="Icon" width="20"/> [Ollama](https://github.com/ollama/ollama), 🤗 [Huggingface_hub](https://github.com/huggingface/huggingface_hub), and <img src=doc_asset/readme_img/openai-logomark.png width=16 /> [OpenAI API](https://platform.openai.com/docs/api-reference/introduction). For installation guides, please refer to those projects. Other inference engines can be configured through the [InferenceEngine](src/llm_ie/engines.py) abstract class. See [LLM Inference Engine](#llm-inference-engine) section below.
 
 ## Installation
 The Python package is available on PyPI. 
@@ -69,7 +69,7 @@ llm = HuggingFaceHubInferenceEngine(model="meta-llama/Meta-Llama-3-8B-Instruct")
 </details>
 
 <details>
-<summary><img src=asset/readme_img/openai-logomark.png width=16 /> OpenAI API</summary>
+<summary><img src=doc_asset/readme_img/openai-logomark.png width=16 /> OpenAI API</summary>
 
 Follow the [Best Practices for API Key Safety](https://help.openai.com/en/articles/5112595-best-practices-for-api-key-safety) to set up API key.
 ```python
@@ -215,7 +215,7 @@ from llm_ie.engines import HuggingFaceHubInferenceEngine
 hf = HuggingFaceHubInferenceEngine(model="meta-llama/Meta-Llama-3-8B-Instruct")
 ```
 
-#### <img src=asset/readme_img/openai-logomark.png width=16 /> OpenAI API
+#### <img src=doc_asset/readme_img/openai-logomark.png width=16 /> OpenAI API
 In bash, save API key to the environmental variable ```OPENAI_API_KEY```.
 ```
 export OPENAI_API_KEY=<your_API_key>
