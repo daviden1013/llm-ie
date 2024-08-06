@@ -1,6 +1,6 @@
-import os
 import abc
 import re
+import json
 import importlib.resources
 from typing import List, Dict, Tuple, Union
 from llm_ie.data_types import LLMInformationExtractionFrame
@@ -70,12 +70,12 @@ class FrameExtractor:
         """
         pattern = r'\{.*?\}'
         out = []
-        for tup in re.findall(pattern, gen_text):
+        for match in re.findall(pattern, gen_text, re.DOTALL):
             try:
-                tup_dict = eval(tup)
+                tup_dict = json.loads(match)
                 out.append(tup_dict)
-            except:
-                print(f'Post-processing failed at:\n{tup}')
+            except json.JSONDecodeError:
+                print(f'Post-processing failed at:\n{match}')
         return out
     
 
