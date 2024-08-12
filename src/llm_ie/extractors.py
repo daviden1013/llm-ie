@@ -197,9 +197,13 @@ class BasicFrameExtractor(FrameExtractor):
         Return : str
             the output from LLM. Need post-processing.
         """
+        messages = []
+        if self.system_prompt:
+            messages.append({'role': 'system', 'content': self.system_prompt})
+
+        messages.append({'role': 'user', 'content': self._get_user_prompt(text_content)})
         response = self.inference_engine.chat(
-                    messages=[{'role': 'system', 'content': self.system_prompt},
-                              {'role': 'user', 'content': self._get_user_prompt(text_content)}],
+                    messages=messages,
                     max_new_tokens=max_new_tokens, 
                     temperature=temperature,
                     stream=stream,
@@ -312,9 +316,11 @@ class ReviewFrameExtractor(BasicFrameExtractor):
             the output from LLM. Need post-processing.
         """
         # Pormpt extraction
-        messages=[{'role': 'system', 'content': self.system_prompt},
-                  {'role': 'user', 'content': self._get_user_prompt(text_content)}]
-        
+        messages = []
+        if self.system_prompt:
+            messages.append({'role': 'system', 'content': self.system_prompt})
+
+        messages.append({'role': 'user', 'content': self._get_user_prompt(text_content)})
         initial = self.inference_engine.chat(
                         messages=messages,
                         max_new_tokens=max_new_tokens, 

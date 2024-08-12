@@ -3,7 +3,7 @@ import yaml
 
 
 class LLMInformationExtractionFrame:
-    def __init__(self, frame_id:str, start:int, end:int, entity_text:str, attr:Dict[str,str]):
+    def __init__(self, frame_id:str, start:int, end:int, entity_text:str, attr:Dict[str,str]=None):
         """
         This class holds a frame (entity) extracted by LLM. 
         A frame contains the span (start and end character positions), a entity text, and 
@@ -19,7 +19,7 @@ class LLMInformationExtractionFrame:
             entity end character position
         entity_text : str
             entity string. Should be the exact string by [start:end]
-        attr : Dict[str,str]
+        attr : Dict[str,str], Optional
             dict of attributes
         """
         assert isinstance(frame_id, str), "frame_id must be a string."
@@ -27,7 +27,10 @@ class LLMInformationExtractionFrame:
         self.start = start
         self.end = end
         self.entity_text = entity_text
-        self.attr = attr.copy()
+        if attr:
+            self.attr = attr.copy()
+        else:
+            self.attr = None
 
     def is_equal(self, frame:"LLMInformationExtractionFrame") -> bool:
         """ 

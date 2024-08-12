@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "llm-ie"
-version = "0.1.3"
+version = "0.1.5"
 description = "An LLM-powered tool that transforms everyday language into robust information extraction pipelines."
 authors = ["Enshuo (David) Hsu"]
 license = "MIT"
