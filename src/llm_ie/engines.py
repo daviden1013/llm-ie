@@ -246,4 +246,4 @@ class OpenAIInferenceEngine(InferenceEngine):
                     print(chunk.choices[0].delta.content, end="")
             return res
         
-        return response.choices[0].delta.content
+        return response.choices[0].message.content

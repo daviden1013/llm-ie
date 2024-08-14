@@ -23,7 +23,7 @@ LLM-IE is a toolkit that provides robust information extraction utilities for fr
 <div align="center"><img src="doc_asset/readme_img/LLM-IE flowchart.png" width=800 ></div>
 
 ## Prerequisite
-At least one LLM inference engine is required. There are built-in supports for 🦙 [Llama-cpp-python](https://github.com/abetlen/llama-cpp-python), <img src="https://avatars.githubusercontent.com/u/151674099?s=48&v=4" alt="Icon" width="20"/> [Ollama](https://github.com/ollama/ollama), 🤗 [Huggingface_hub](https://github.com/huggingface/huggingface_hub), and <img src=doc_asset/readme_img/openai-logomark.png width=16 /> [OpenAI API](https://platform.openai.com/docs/api-reference/introduction). For installation guides, please refer to those projects. Other inference engines can be configured through the [InferenceEngine](src/llm_ie/engines.py) abstract class. See [LLM Inference Engine](#llm-inference-engine) section below.
+At least one LLM inference engine is required. There are built-in supports for 🦙 [Llama-cpp-python](https://github.com/abetlen/llama-cpp-python), <img src="https://avatars.githubusercontent.com/u/151674099?s=48&v=4" alt="Icon" width="20"/> [Ollama](https://github.com/ollama/ollama), 🤗 [Huggingface_hub](https://github.com/huggingface/huggingface_hub), <img src=doc_asset/readme_img/openai-logomark.png width=16 /> [OpenAI API](https://platform.openai.com/docs/api-reference/introduction), and <img src=doc_asset/readme_img/vllm-logo.png width=20 /> vLLM. For installation guides, please refer to those projects. Other inference engines can be configured through the [InferenceEngine](src/llm_ie/engines.py) abstract class. See [LLM Inference Engine](#llm-inference-engine) section below.
 
 ## Installation
 The Python package is available on PyPI. 
@@ -77,6 +77,26 @@ from llm_ie.engines import OpenAIInferenceEngine
 
 llm = OpenAIInferenceEngine(model="gpt-4o-mini")
 ```
+
+</details>
+
+<details>
+<summary><img src=doc_asset/readme_img/vllm-logo.png width=20 /> vLLM</summary>
+
+The vLLM support follows the [OpenAI Compatible Server](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html). For more parameters, please refer to the documentation.
+
+Start the server
+```cmd
+vllm serve meta-llama/Meta-Llama-3.1-8B-Instruct
+```
+Define inference engine
+```python
+from llm_ie.engines import OpenAIInferenceEngine
+engine = OpenAIInferenceEngine(base_url="http://localhost:8000/v1",
+                               api_key="EMPTY",
+                               model="meta-llama/Meta-Llama-3.1-8B-Instruct")
+```
+
 
 </details>
 
@@ -230,6 +250,24 @@ from llm_ie.engines import OpenAIInferenceEngine
 openai_engine = OpenAIInferenceEngine(model="gpt-4o-mini")
 ```
 
+#### <img src=doc_asset/readme_img/vllm-logo.png width=20 /> vLLM
+The vLLM support follows the [OpenAI Compatible Server](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html). For more parameters, please refer to the documentation.
+
+Start the server
+```cmd
+CUDA_VISIBLE_DEVICES=<GPU#> vllm serve meta-llama/Meta-Llama-3.1-8B-Instruct --api-key MY_API_KEY --tensor-parallel-size <# of GPUs to use>
+```
+Use ```CUDA_VISIBLE_DEVICES``` to specify GPUs to use. The ```--tensor-parallel-size``` should be set accordingly. The ```--api-key``` is optional. 
+the default port is 8000. ```--port``` sets the port. 
+
+Define inference engine
+```python
+from llm_ie.engines import OpenAIInferenceEngine
+engine = OpenAIInferenceEngine(base_url="http://localhost:8000/v1",
+                               api_key="MY_API_KEY",
+                               model="meta-llama/Meta-Llama-3.1-8B-Instruct")
+```
+The ```model``` must match the repo name specified in the server.
 
 #### Test inference engine configuration
 To test the inference engine, use the ```chat()``` method. 
