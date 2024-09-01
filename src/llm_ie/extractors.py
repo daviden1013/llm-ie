@@ -397,7 +397,7 @@ class SentenceFrameExtractor(FrameExtractor):
     
     
     def extract(self, text_content:Union[str, Dict[str,str]], max_new_tokens:int=512, 
-                document_key:str=None, temperature:float=0.0, stream:bool=False, **kwrs) -> List[Dict[str,str]]:
+                document_key:str=None, multi_turn:bool=True, temperature:float=0.0, stream:bool=False, **kwrs) -> List[Dict[str,str]]:
         """
         This method inputs a text and outputs a list of outputs per sentence. 
 
@@ -412,6 +412,12 @@ class SentenceFrameExtractor(FrameExtractor):
         document_key : str, Optional
             specify the key in text_content where document text is. 
             If text_content is str, this parameter will be ignored.
+        multi_turn : bool, Optional
+            multi-turn conversation prompting. 
+            If True, sentences and LLM outputs will be appended to the input message and carry-over. 
+            If False, only the current sentence is prompted. 
+            For LLM inference engines that supports prompt cache (e.g., Llama.Cpp, Ollama), use multi-turn conversation prompting
+            can better utilize the KV caching. 
         temperature : float, Optional
             the temperature for token sampling.
         stream : bool, Optional
@@ -449,9 +455,14 @@ class SentenceFrameExtractor(FrameExtractor):
                             stream=stream,
                             **kwrs
                         )
-                
-            # update chat messages
-            messages.append({'role': 'assistant', 'content': gen_text})
+            
+            if multi_turn:
+                # update chat messages with LLM outputs
+                messages.append({'role': 'assistant', 'content': gen_text})
+            else:
+                # delete sentence so that message is reset
+                del messages[-1]
+
             # add to output
             output.append({'sentence_start': sent['start'],
                             'sentence_end': sent['end'],
@@ -460,8 +471,8 @@ class SentenceFrameExtractor(FrameExtractor):
         return output
     
 
-    def extract_frames(self, text_content:Union[str, Dict[str,str]], entity_key:str, 
-                       max_new_tokens:int=512, document_key:str=None, **kwrs) -> List[LLMInformationExtractionFrame]:
+    def extract_frames(self, text_content:Union[str, Dict[str,str]], entity_key:str, max_new_tokens:int=512, 
+                       document_key:str=None, multi_turn:bool=True, temperature:float=0.0, stream:bool=False, **kwrs) -> List[LLMInformationExtractionFrame]:
         """
         This method inputs a text and outputs a list of LLMInformationExtractionFrame
         It use the extract() method and post-process outputs into frames.
@@ -479,12 +490,27 @@ class SentenceFrameExtractor(FrameExtractor):
         document_key : str, Optional
             specify the key in text_content where document text is. 
             If text_content is str, this parameter will be ignored.
+        multi_turn : bool, Optional
+            multi-turn conversation prompting. 
+            If True, sentences and LLM outputs will be appended to the input message and carry-over. 
+            If False, only the current sentence is prompted. 
+            For LLM inference engines that supports prompt cache (e.g., Llama.Cpp, Ollama), use multi-turn conversation prompting
+            can better utilize the KV caching. 
+        temperature : float, Optional
+            the temperature for token sampling.
+        stream : bool, Optional
+            if True, LLM generated text will be printed in terminal in real-time. 
 
         Return : str
             a list of frames.
         """
         llm_output_sentence = self.extract(text_content=text_content, 
-                                           max_new_tokens=max_new_tokens, document_key=document_key, **kwrs)
+                                           max_new_tokens=max_new_tokens, 
+                                           document_key=document_key,
+                                           multi_turn=multi_turn, 
+                                           temperature=temperature, 
+                                           stream=stream,
+                                           **kwrs)
         frame_list = []
         for sent in llm_output_sentence:
             entity_json = self._extract_json(gen_text=sent['gen_text'])
