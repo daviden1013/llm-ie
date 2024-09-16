@@ -51,7 +51,8 @@ class FrameExtractor:
             matches = pattern.findall(self.prompt_template)
             assert len(matches) == 1, \
                 "When text_content is str, the prompt template must has only 1 placeholder {{<placeholder name>}}."
-            prompt = pattern.sub(text_content, self.prompt_template)
+            text = re.sub(r'\\', r'\\\\', text_content)
+            prompt = pattern.sub(text, self.prompt_template)
 
         elif isinstance(text_content, dict):
             placeholders = pattern.findall(self.prompt_template)
@@ -60,7 +61,7 @@ class FrameExtractor:
             assert all([k in placeholders for k, _ in text_content.items()]), \
                 f"All keys in text_content ({text_content.keys()}) must match placeholders in prompt template ({placeholders})."
 
-            prompt = pattern.sub(lambda match: text_content[match.group(1)], self.prompt_template)
+            prompt = pattern.sub(lambda match: re.sub(r'\\', r'\\\\', text_content[match.group(1)]), self.prompt_template)
 
         return prompt
     
