@@ -1,0 +1,46 @@
+Prompt template design:
+    1. Task description (mention multi-class relation extraction and ROI)
+    2. Schema definition (defines relation types)
+    3. Output format definition (must use the key "RelationType")
+    4. Input placeholders (must include "roi_text", "frame_1", and "frame_2" placeholders)
+
+
+Example:
+
+    # Task description
+    This is a multi-class relation extraction task. Given a region of interest (ROI) text and two frames from a medical note, classify the relation types between the two frames. 
+
+    # Schema definition
+        Strength-Drug: this is a relationship between the drug strength and its name. 
+        Dosage-Drug: this is a relationship between the drug dosage and its name.
+        Duration-Drug: this is a relationship between a drug duration and its name.
+        Frequency-Drug: this is a relationship between a drug frequency and its name.
+        Form-Drug: this is a relationship between a drug form and its name.
+        Route-Drug: this is a relationship between the route of administration for a drug and its name.
+        Reason-Drug: this is a relationship between the reason for which a drug was administered (e.g., symptoms, diseases, etc.) and a drug name.
+        ADE-Drug: this is a relationship between an adverse drug event (ADE) and a drug name.
+
+    # Output format definition
+    Choose one of the relation types listed below or choose "No Relation":
+    {{pos_rel_types}}
+
+    Your output should follow the JSON format:
+    {"RelationType": "<relation type or No Relation>"}
+
+    I am only interested in the content between []. Do not explain your answer. 
+
+    # Hints
+        1. Your input always contains one medication entity and 1) one strength entity or 2) one frequency entity.
+        2. Pay attention to the medication entity and see if the strength or frequency is for it.
+        3. If the strength or frequency is for another medication, output "No Relation". 
+        4. If the strength or frequency is for the same medication but at a different location (span), output "No Relation".
+
+    # Input placeholders
+    ROI Text with the two entities annotated with <entity_1> and <entity_2>:
+    "{{roi_text}}"
+
+    Entity 1 full information:
+    {{frame_1}}
+
+    Entity 2 full information:
+    {{frame_2}}

@@ -1,0 +1,38 @@
+Prompt template design:
+    1. Task description (mention binary relation extraction and ROI)
+    2. Schema definition (defines relation)
+    3. Output format definition (must use the key "Relation")
+    4. Hints
+    5. Input placeholders (must include "roi_text", "frame_1", and "frame_2" placeholders)
+
+
+Example:
+
+    # Task description
+    This is a binary relation extraction task. Given a region of interest (ROI) text and two entities from a medical note, indicate the relation existence between the two entities.
+
+    # Schema definition
+        True: if there is a relationship between a medication name (one of the entities) and its strength or frequency (the other entity).
+        False: Otherwise.
+
+    # Output format definition
+    Your output should follow the JSON format:
+    {"Relation": "<True or False>"}
+
+    I am only interested in the content between []. Do not explain your answer. 
+
+    # Hints
+        1. Your input always contains one medication entity and 1) one strength entity or 2) one frequency entity.
+        2. Pay attention to the medication entity and see if the strength or frequency is for it.
+        3. If the strength or frequency is for another medication, output False. 
+        4. If the strength or frequency is for the same medication but at a different location (span), output False.
+
+    # Input placeholders
+    ROI Text with the two entities annotated with <entity_1> and <entity_2>:
+    "{{roi_text}}"
+
+    Entity 1 full information:
+    {{frame_1}}
+
+    Entity 2 full information:
+    {{frame_2}}

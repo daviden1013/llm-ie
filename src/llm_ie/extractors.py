@@ -1,16 +1,19 @@
 import abc
 import re
 import json
+import inspect
 import importlib.resources
-from typing import List, Dict, Tuple, Union
-from llm_ie.data_types import LLMInformationExtractionFrame
+import warnings
+import itertools
+from typing import List, Dict, Tuple, Union, Callable
+from llm_ie.data_types import LLMInformationExtractionFrame, LLMInformationExtractionDocument
 from llm_ie.engines import InferenceEngine
 
 
-class FrameExtractor:
+class Extractor:
     def __init__(self, inference_engine:InferenceEngine, prompt_template:str, system_prompt:str=None, **kwrs):
         """
-        This is the abstract class for frame extraction.
+        This is the abstract class for (frame and relation) extractors.
         Input LLM inference engine, system prompt (optional), prompt template (with instruction, few-shot examples).
 
         Parameters
@@ -26,11 +29,16 @@ class FrameExtractor:
         self.prompt_template = prompt_template
         self.system_prompt = system_prompt
 
+
     @classmethod
     def get_prompt_guide(cls) -> str:
+        """
+        This method returns the pre-defined prompt guideline for the extractor from the package asset.
+        """
         file_path = importlib.resources.files('llm_ie.asset.prompt_guide').joinpath(f"{cls.__name__}_prompt_guide.txt")
         with open(file_path, 'r') as f:
             return f.read()
+
 
     def _get_user_prompt(self, text_content:Union[str, Dict[str,str]]) -> str:
         """
@@ -49,17 +57,17 @@ class FrameExtractor:
         pattern = re.compile(r'{{(.*?)}}')
         if isinstance(text_content, str):
             matches = pattern.findall(self.prompt_template)
-            assert len(matches) == 1, \
-                "When text_content is str, the prompt template must has only 1 placeholder {{<placeholder name>}}."
+            if len(matches) != 1:
+                raise ValueError("When text_content is str, the prompt template must has exactly 1 placeholder {{<placeholder name>}}.")
             text = re.sub(r'\\', r'\\\\', text_content)
             prompt = pattern.sub(text, self.prompt_template)
 
         elif isinstance(text_content, dict):
             placeholders = pattern.findall(self.prompt_template)
-            assert len(placeholders) == len(text_content), \
-                f"Expect text_content ({len(text_content)}) and prompt template placeholder ({len(placeholders)}) to have equal size."
-            assert all([k in placeholders for k, _ in text_content.items()]), \
-                f"All keys in text_content ({text_content.keys()}) must match placeholders in prompt template ({placeholders})."
+            if len(placeholders) != len(text_content):
+                raise ValueError(f"Expect text_content ({len(text_content)}) and prompt template placeholder ({len(placeholders)}) to have equal size.")
+            if not all([k in placeholders for k, _ in text_content.items()]):
+                raise ValueError(f"All keys in text_content ({text_content.keys()}) must match placeholders in prompt template ({placeholders}).")
 
             prompt = pattern.sub(lambda match: re.sub(r'\\', r'\\\\', text_content[match.group(1)]), self.prompt_template)
 
@@ -78,6 +86,27 @@ class FrameExtractor:
             except json.JSONDecodeError:
                 print(f'Post-processing failed at:\n{match}')
         return out
+    
+
+class FrameExtractor(Extractor):
+    def __init__(self, inference_engine:InferenceEngine, prompt_template:str, system_prompt:str=None, **kwrs):
+        """
+        This is the abstract class for frame extraction.
+        Input LLM inference engine, system prompt (optional), prompt template (with instruction, few-shot examples).
+
+        Parameters
+        ----------
+        inference_engine : InferenceEngine
+            the LLM inferencing engine object. Must implements the chat() method.
+        prompt_template : str
+            prompt template with "{{<placeholder name>}}" placeholder.
+        system_prompt : str, Optional
+            system prompt.
+        """
+        super().__init__(inference_engine=inference_engine,
+                         prompt_template=prompt_template,
+                         system_prompt=system_prompt,
+                         **kwrs)
     
 
     def _find_entity_spans(self, text: str, entities: List[str], case_sensitive:bool=False) -> List[Tuple[int]]:
@@ -291,7 +320,8 @@ class ReviewFrameExtractor(BasicFrameExtractor):
         super().__init__(inference_engine=inference_engine, prompt_template=prompt_template, 
                          system_prompt=system_prompt, **kwrs)
         self.review_prompt = review_prompt
-        assert review_mode in {"addition", "revision"}, 'review_mode must be one of {"addition", "revision"}.'
+        if review_mode not in {"addition", "revision"}: 
+            raise ValueError('review_mode must be one of {"addition", "revision"}.')
         self.review_mode = review_mode
 
 
@@ -529,3 +559,395 @@ class SentenceFrameExtractor(FrameExtractor):
                                 attr={k: v for k, v in ent.items() if k != entity_key and v != ""})
                     frame_list.append(frame)
         return frame_list
+
+
+class RelationExtractor(Extractor):
+    def __init__(self, inference_engine:InferenceEngine, prompt_template:str, system_prompt:str=None, **kwrs):
+        """
+        This is the abstract class for relation extraction.
+        Input LLM inference engine, system prompt (optional), prompt template (with instruction, few-shot examples).
+
+        Parameters
+        ----------
+        inference_engine : InferenceEngine
+            the LLM inferencing engine object. Must implements the chat() method.
+        prompt_template : str
+            prompt template with "{{<placeholder name>}}" placeholder.
+        system_prompt : str, Optional
+            system prompt.
+        """
+        super().__init__(inference_engine=inference_engine,
+                         prompt_template=prompt_template,
+                         system_prompt=system_prompt,
+                         **kwrs)
+        
+    def _get_ROI(self, frame_1:LLMInformationExtractionFrame, frame_2:LLMInformationExtractionFrame, 
+                 text:str, buffer_size:int=100) -> str:
+        """
+        This method returns the Region of Interest (ROI) that covers the two frames. Leaves a buffer_size of characters before and after.
+        The returned text has the two frames inline annotated with <entity_1>, <entity_2>.
+
+        Parameters:
+        -----------
+        frame_1 : LLMInformationExtractionFrame
+            a frame
+        frame_2 : LLMInformationExtractionFrame
+            the other frame
+        text : str
+            the entire document text
+        buffer_size : int, Optional
+            the number of characters before and after the two frames in the ROI text.
+
+        Return : str
+            the ROI text with the two frames inline annotated with <entity_1>, <entity_2>.
+        """
+        left_frame, right_frame = sorted([frame_1, frame_2], key=lambda f: f.start)
+        left_frame_name = "entity_1" if left_frame == frame_1 else "entity_2"
+        right_frame_name = "entity_1" if right_frame == frame_1 else "entity_2"
+
+        start = max(left_frame.start - buffer_size, 0)
+        end = min(right_frame.end + buffer_size, len(text))
+        roi = text[start:end]
+
+        roi_annotated = roi[0:left_frame.start - start] + \
+                f'<{left_frame_name}>' + \
+                roi[left_frame.start - start:left_frame.end - start] + \
+                f"</{left_frame_name}>" + \
+                roi[left_frame.end - start:right_frame.start - start] + \
+                f'<{right_frame_name}>' + \
+                roi[right_frame.start - start:right_frame.end - start] + \
+                f"</{right_frame_name}>" + \
+                roi[right_frame.end - start:end - start]
+
+        if start > 0:
+            roi_annotated = "..." + roi_annotated
+        if end < len(text):
+            roi_annotated = roi_annotated + "..."
+        return roi_annotated
+    
+
+    @abc.abstractmethod
+    def extract_document(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, max_new_tokens:int=128, 
+                         temperature:float=0.0, stream:bool=False, **kwrs) -> List[Dict]:
+        """
+        This method considers all combinations of two frames. 
+
+        Parameters:
+        -----------
+        doc : LLMInformationExtractionDocument
+            a document with frames.
+        buffer_size : int, Optional
+            the number of characters before and after the two frames in the ROI text.
+        max_new_tokens : str, Optional
+            the max number of new tokens LLM should generate. 
+        temperature : float, Optional
+            the temperature for token sampling.
+        stream : bool, Optional
+            if True, LLM generated text will be printed in terminal in real-time. 
+
+        Return : List[Dict]
+            a list of dict with {"frame_1", "frame_2"} for all relations.
+        """
+        return NotImplemented
+    
+
+class BinaryRelationExtractor(RelationExtractor):
+    def __init__(self, inference_engine:InferenceEngine, prompt_template:str, possible_relation_func: Callable, 
+                 system_prompt:str=None, **kwrs):
+        """
+        This class extracts binary (yes/no) relations between two entities.
+        Input LLM inference engine, system prompt (optional), prompt template (with instruction, few-shot examples).
+
+        Parameters
+        ----------
+        inference_engine : InferenceEngine
+            the LLM inferencing engine object. Must implements the chat() method.
+        prompt_template : str
+            prompt template with "{{<placeholder name>}}" placeholder.
+        possible_relation_func : Callable, Optional
+            a function that inputs 2 frames and returns a bool indicating possible relations between them.
+        system_prompt : str, Optional
+            system prompt.
+        """
+        super().__init__(inference_engine=inference_engine,
+                         prompt_template=prompt_template,
+                         system_prompt=system_prompt,
+                         **kwrs)
+        
+        if possible_relation_func:
+            # Check if possible_relation_func is a function
+            if not callable(possible_relation_func):
+                raise TypeError(f"Expect possible_relation_func as a function, received {type(possible_relation_func)} instead.")
+            
+            sig = inspect.signature(possible_relation_func)
+            # Check if frame_1, frame_2 are in input parameters
+            if len(sig.parameters) != 2:
+                raise ValueError("The possible_relation_func must have exactly frame_1 and frame_2 as parameters.")
+            if "frame_1" not in sig.parameters.keys():
+                raise ValueError("The possible_relation_func is missing frame_1 as a parameter.")
+            if "frame_2" not in sig.parameters.keys():
+                raise ValueError("The possible_relation_func is missing frame_2 as a parameter.")
+            # Check if output is a bool
+            if sig.return_annotation != bool:
+                raise ValueError(f"Expect possible_relation_func to output a bool, current type hint suggests {sig.return_annotation} instead.")
+
+            self.possible_relation_func = possible_relation_func
+
+
+    def _extract_pair(self, frame_1:LLMInformationExtractionFrame, frame_2:LLMInformationExtractionFrame, 
+                      text:str, buffer_size:int=100, max_new_tokens:int=128, temperature:float=0.0, stream:bool=False, **kwrs) -> bool:
+        """
+        This method inputs two frames and a ROI text, extracts the binary relation.
+
+        Parameters:
+        -----------
+        frame_1 : LLMInformationExtractionFrame
+            a frame
+        frame_2 : LLMInformationExtractionFrame
+            the other frame
+        text : str
+            the entire document text
+        buffer_size : int, Optional
+            the number of characters before and after the two frames in the ROI text.
+        max_new_tokens : str, Optional
+            the max number of new tokens LLM should generate. 
+        temperature : float, Optional
+            the temperature for token sampling.
+        stream : bool, Optional
+            if True, LLM generated text will be printed in terminal in real-time. 
+
+        Return : bool
+            a relation indicator
+        """
+        roi_text = self._get_ROI(frame_1, frame_2, text, buffer_size=buffer_size)
+        if stream:
+            print(f"\n\nROI text: \n{roi_text}\n")
+            print("Extraction:")
+
+        messages = []
+        if self.system_prompt:
+            messages.append({'role': 'system', 'content': self.system_prompt})
+
+        messages.append({'role': 'user', 'content': self._get_user_prompt(text_content={"roi_text":roi_text, 
+                                                                                        "frame_1": str(frame_1.to_dict()),
+                                                                                        "frame_2": str(frame_2.to_dict())}
+                                                                                        )})
+        response = self.inference_engine.chat(
+                    messages=messages,
+                    max_new_tokens=max_new_tokens,
+                    temperature=temperature,
+                    stream=stream,
+                    **kwrs
+                )
+        
+        rel_json = self._extract_json(response)
+        if len(rel_json) > 0:
+            if "Relation" in rel_json[0]:
+                rel = rel_json[0]["Relation"]
+                if isinstance(rel, bool):
+                    return rel
+                elif isinstance(rel, str) and rel in {"True", "False"}:
+                    return eval(rel)
+                else:
+                    warnings.warn('Extractor output JSON "Relation" key does not have bool or {"True", "False"} as value.' + \
+                                  'Following default, relation = False.', RuntimeWarning)
+            else:
+                warnings.warn('Extractor output JSON without "Relation" key. Following default, relation = False.', RuntimeWarning)
+        else:
+            warnings.warn("Extractor did not output a JSON. Following default, relation = False.", RuntimeWarning)
+
+        return False
+    
+    
+    def extract_document(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, max_new_tokens:int=128, 
+                         temperature:float=0.0, stream:bool=False, **kwrs) -> List[Dict]:
+        """
+        This method considers all combinations of two frames. Use the possible_relation_func to filter impossible pairs.
+
+        Parameters:
+        -----------
+        doc : LLMInformationExtractionDocument
+            a document with frames.
+        buffer_size : int, Optional
+            the number of characters before and after the two frames in the ROI text.
+        max_new_tokens : str, Optional
+            the max number of new tokens LLM should generate. 
+        temperature : float, Optional
+            the temperature for token sampling.
+        stream : bool, Optional
+            if True, LLM generated text will be printed in terminal in real-time. 
+
+        Return : List[Dict]
+            a list of dict with {"frame_1", "frame_2"} for all relations.
+        """
+        if not doc.has_frame():
+            raise ValueError("Input document must have frames.")
+
+        if doc.has_duplicate_frame_ids():
+            raise ValueError("All frame_ids in the input document must be unique.")
+
+        pairs = itertools.combinations(doc.frames, 2)
+        rel_pair_list = []
+        for frame_1, frame_2 in pairs:
+            pos_rel = self.possible_relation_func(frame_1, frame_2)
+            if pos_rel:
+                rel = self._extract_pair(frame_1=frame_1, frame_2=frame_2, text=doc.text, buffer_size=buffer_size, 
+                                         max_new_tokens=max_new_tokens, temperature=temperature, stream=stream, **kwrs)
+                if rel:
+                    rel_pair_list.append({'frame_1':frame_1.frame_id, 'frame_2':frame_2.frame_id})
+
+        return rel_pair_list
+
+
+
+class MultiClassRelationExtractor(RelationExtractor):
+    def __init__(self, inference_engine:InferenceEngine, prompt_template:str, possible_relation_types_func: Callable, 
+                 system_prompt:str=None, **kwrs):
+        """
+        This class extracts relations with relation types.
+        Input LLM inference engine, system prompt (optional), prompt template (with instruction, few-shot examples).
+
+        Parameters
+        ----------
+        inference_engine : InferenceEngine
+            the LLM inferencing engine object. Must implements the chat() method.
+        prompt_template : str
+            prompt template with "{{<placeholder name>}}" placeholder.
+        possible_relation_types_func : Callable
+            a function that inputs 2 frames and returns a List of possible relation types between them. 
+            If the two frames must not have relations, this function should return an empty list [].
+        system_prompt : str, Optional
+            system prompt.
+        """
+        super().__init__(inference_engine=inference_engine,
+                         prompt_template=prompt_template,
+                         system_prompt=system_prompt,
+                         **kwrs)
+        
+        if possible_relation_types_func:
+            # Check if possible_relation_types_func is a function
+            if not callable(possible_relation_types_func):
+                raise TypeError(f"Expect possible_relation_types_func as a function, received {type(possible_relation_types_func)} instead.")
+            
+            sig = inspect.signature(possible_relation_types_func)
+            # Check if frame_1, frame_2 are in input parameters
+            if len(sig.parameters) != 2:
+                raise ValueError("The possible_relation_types_func must have exactly frame_1 and frame_2 as parameters.")
+            if "frame_1" not in sig.parameters.keys():
+                raise ValueError("The possible_relation_types_func is missing frame_1 as a parameter.")
+            if "frame_2" not in sig.parameters.keys():
+                raise ValueError("The possible_relation_types_func is missing frame_2 as a parameter.")
+            # Check if output is a List
+            if sig.return_annotation not in {inspect._empty, List, List[str]}:
+                raise ValueError(f"Expect possible_relation_types_func to output a List of string, current type hint suggests {sig.return_annotation} instead.")
+
+            self.possible_relation_types_func = possible_relation_types_func
+
+        
+    def _extract_pair(self, frame_1:LLMInformationExtractionFrame, frame_2:LLMInformationExtractionFrame, 
+                      pos_rel_types:List[str], text:str, buffer_size:int=100, max_new_tokens:int=128, temperature:float=0.0, stream:bool=False, **kwrs) -> str:
+        """
+        This method inputs two frames and a ROI text, extracts the relation.
+
+        Parameters:
+        -----------
+        frame_1 : LLMInformationExtractionFrame
+            a frame
+        frame_2 : LLMInformationExtractionFrame
+            the other frame
+        pos_rel_types : List[str]
+            possible relation types.
+        text : str
+            the entire document text
+        buffer_size : int, Optional
+            the number of characters before and after the two frames in the ROI text.
+        max_new_tokens : str, Optional
+            the max number of new tokens LLM should generate. 
+        temperature : float, Optional
+            the temperature for token sampling.
+        stream : bool, Optional
+            if True, LLM generated text will be printed in terminal in real-time. 
+
+        Return : str
+            a relation type 
+        """
+        roi_text = self._get_ROI(frame_1, frame_2, text, buffer_size=buffer_size)
+        if stream:
+            print(f"\n\nROI text: \n{roi_text}\n")
+            print("Extraction:")
+
+        messages = []
+        if self.system_prompt:
+            messages.append({'role': 'system', 'content': self.system_prompt})
+
+        messages.append({'role': 'user', 'content': self._get_user_prompt(text_content={"roi_text":roi_text, 
+                                                                                        "frame_1": str(frame_1.to_dict()),
+                                                                                        "frame_2": str(frame_2.to_dict()),
+                                                                                        "pos_rel_types":str(pos_rel_types)})})
+        response = self.inference_engine.chat(
+                    messages=messages,
+                    max_new_tokens=max_new_tokens,
+                    temperature=temperature,
+                    stream=stream,
+                    **kwrs
+                )
+        
+        rel_json = self._extract_json(response)
+        if len(rel_json) > 0:
+            if "RelationType" in rel_json[0]:
+                rel = rel_json[0]["RelationType"]
+                if rel in pos_rel_types:
+                    return rel_json[0]["RelationType"]
+                else:
+                    warnings.warn(f'Extracted relation type "{rel}", which is not in the return of possible_relation_types_func: {pos_rel_types}.'+ \
+                                  'Following default, relation = "No Relation".', RuntimeWarning)
+            
+            else:
+                warnings.warn('Extractor output JSON without "RelationType" key. Following default, relation = "No Relation".', RuntimeWarning)
+        
+        else:
+            warnings.warn('Extractor did not output a JSON. Following default, relation = "No Relation".', RuntimeWarning)
+
+        return "No Relation"
+
+
+    def extract_document(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, max_new_tokens:int=128, 
+                         temperature:float=0.0, stream:bool=False, **kwrs) -> List[Dict]:
+        """
+        This method considers all combinations of two frames. Use the possible_relation_types_func to filter impossible pairs 
+        and to provide possible relation types between two frames. 
+
+        Parameters:
+        -----------
+        doc : LLMInformationExtractionDocument
+            a document with frames.
+        buffer_size : int, Optional
+            the number of characters before and after the two frames in the ROI text.
+        max_new_tokens : str, Optional
+            the max number of new tokens LLM should generate. 
+        temperature : float, Optional
+            the temperature for token sampling.
+        stream : bool, Optional
+            if True, LLM generated text will be printed in terminal in real-time. 
+
+        Return : List[Dict]
+            a list of dict with {"frame_1", "frame_2", "relation"} for all relations.
+        """
+        if not doc.has_frame():
+            raise ValueError("Input document must have frames.")
+
+        if doc.has_duplicate_frame_ids():
+            raise ValueError("All frame_ids in the input document must be unique.")
+
+        pairs = itertools.combinations(doc.frames, 2)
+        rel_pair_list = []
+        for frame_1, frame_2 in pairs:
+            pos_rel_types = self.possible_relation_types_func(frame_1, frame_2)
+            if pos_rel_types:
+                rel = self._extract_pair(frame_1=frame_1, frame_2=frame_2, pos_rel_types=pos_rel_types, text=doc.text, 
+                                         buffer_size=buffer_size, max_new_tokens=max_new_tokens, temperature=temperature, stream=stream, **kwrs)
+            
+                if rel != "No Relation":
+                    rel_pair_list.append({'frame_1':frame_1.frame_id, 'frame_2':frame_2.frame_id, "relation":rel})
+
+        return rel_pair_list

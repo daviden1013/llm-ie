@@ -1,5 +1,5 @@
 from typing import List, Dict
-import yaml
+import json
 
 
 class LLMInformationExtractionFrame:
@@ -22,7 +22,8 @@ class LLMInformationExtractionFrame:
         attr : Dict[str,str], Optional
             dict of attributes
         """
-        assert isinstance(frame_id, str), "frame_id must be a string."
+        if not isinstance(frame_id, str):
+            raise TypeError("frame_id must be a string.")
         self.frame_id = frame_id
         self.start = start
         self.end = end
@@ -93,11 +94,12 @@ class LLMInformationExtractionDocument:
         frames : List[LLMInformationExtractionFrame], Optional
             a list of LLMInformationExtractionFrame
         """
-        assert doc_id or filename, "Either doc_id (create from raw inputs) or filename (create from file) must be provided."
+        if doc_id is None and filename is None:
+            raise ValueError("Either doc_id (create from raw inputs) or filename (create from file) must be provided.")
         # if create object from file
         if filename:
-            with open(filename) as yaml_file:
-                llm_ie = yaml.safe_load(yaml_file)
+            with open(filename) as json_file:
+                llm_ie = json.load(json_file)
             if 'doc_id' in llm_ie.keys():
                 self.doc_id = llm_ie['doc_id']
             if 'text' in llm_ie.keys():
@@ -107,14 +109,50 @@ class LLMInformationExtractionDocument:
 
         # create object from raw inputs
         else:
-            assert isinstance(doc_id, str), "doc_id must be a string."
+            if not isinstance(doc_id, str):
+                raise TypeError("doc_id must be a string.")
             self.doc_id = doc_id
             self.text = text
             self.frames = frames.copy() if frames is not None else []
 
 
     def has_frame(self) -> bool:
+        """
+        This method checks if there is any frames.
+        """
         return bool(self.frames)
+    
+    def has_duplicate_frame_ids(self) -> bool:
+        """
+        This method checks for duplicate frame ids.
+        """
+        frame_id_set = set()
+        for frame in self.frames:
+            if frame.frame_id in frame_id_set:
+                return True
+            frame_id_set.add(frame.frame_id)
+
+        return False
+    
+    def get_frame_by_id(self, frame_id:str) -> LLMInformationExtractionFrame:
+        """
+        This method use frame_id to search for a frame. 
+        If there are redundent frame_ids, the first will be returned
+
+        Parameters:
+        -----------
+        frame_id : str
+            frame id to retrieve
+
+        Returns : LLMInformationExtractionFrame
+            a frame (if found) or None (not found).
+        """
+        for frame in self.frames:
+            if frame.frame_id == frame_id:
+                return frame
+
+        return None
+
     
     def add_frame(self, frame:LLMInformationExtractionFrame, valid_mode:str=None, create_id:bool=False) -> bool:
         """
@@ -132,7 +170,8 @@ class LLMInformationExtractionDocument:
         create_id : bool, Optional
             Assign a sequential frame ID.
         """
-        assert valid_mode in {None, "span", "attr"}, 'valid_mode must be one of {None, "span", "attr"}'
+        if valid_mode not in {None, "span", "attr"}:
+            raise ValueError(f'Expect valid_mode to be one of {{None, "span", "attr"}}, received {valid_mode}')
 
         if valid_mode == "span":
             for exist_frame in self.frames:
@@ -161,10 +200,10 @@ class LLMInformationExtractionDocument:
                         f'frames={frame_count}'))
 
     def save(self, filename:str):
-        with open(filename, 'w') as yaml_file:
-            yaml.safe_dump({'doc_id':self.doc_id, 
-                            'text':self.text, 
-                            'frames':[frame.to_dict() for frame in self.frames]}, 
-                            yaml_file, sort_keys=False)
-            yaml_file.flush()
+        with open(filename, 'w') as json_file:
+            json.dump({'doc_id': self.doc_id, 
+                        'text': self.text, 
+                        'frames': [frame.to_dict() for frame in self.frames]}, 
+                        json_file, indent=4)
+            json_file.flush()
             
