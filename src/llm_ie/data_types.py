@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Iterable
 import json
 
 
@@ -79,7 +79,8 @@ class LLMInformationExtractionFrame:
 
 
 class LLMInformationExtractionDocument:
-    def __init__(self, doc_id:str=None, filename:str=None, text:str=None, frames:List[LLMInformationExtractionFrame]=None):
+    def __init__(self, doc_id:str=None, filename:str=None, text:str=None, 
+                 frames:List[LLMInformationExtractionFrame]=None, relations:List[Dict[str,str]]=None):
         """
         This class holds LLM-extracted frames, handles save/ load.
 
@@ -93,6 +94,9 @@ class LLMInformationExtractionDocument:
             document text
         frames : List[LLMInformationExtractionFrame], Optional
             a list of LLMInformationExtractionFrame
+        relations : List[Dict[str,str]], Optional
+            a list of dictionary of {"frame_1", "frame_2", "relation"}. 
+            If binary relation (no relation type), there is no "relation" key. 
         """
         if doc_id is None and filename is None:
             raise ValueError("Either doc_id (create from raw inputs) or filename (create from file) must be provided.")
@@ -106,6 +110,8 @@ class LLMInformationExtractionDocument:
                 self.text = llm_ie['text']
             if 'frames' in llm_ie.keys():
                 self.frames = [LLMInformationExtractionFrame.from_dict(d) for d in llm_ie['frames']]
+            if 'relations' in llm_ie.keys():
+                self.relations = llm_ie['relations']
 
         # create object from raw inputs
         else:
@@ -114,6 +120,7 @@ class LLMInformationExtractionDocument:
             self.doc_id = doc_id
             self.text = text
             self.frames = frames.copy() if frames is not None else []
+            self.relations = relations.copy() if relations is not None else []
 
 
     def has_frame(self) -> bool:
@@ -121,6 +128,12 @@ class LLMInformationExtractionDocument:
         This method checks if there is any frames.
         """
         return bool(self.frames)
+    
+    def has_relation(self) -> bool:
+        """
+        This method checks if there is any relations.
+        """
+        return bool(self.relations)
     
     def has_duplicate_frame_ids(self) -> bool:
         """
@@ -170,6 +183,9 @@ class LLMInformationExtractionDocument:
         create_id : bool, Optional
             Assign a sequential frame ID.
         """
+        if not isinstance(frame, LLMInformationExtractionFrame):
+            raise TypeError(f"Expect frame to be LLMInformationExtractionFrame, received {type(frame)} instead.")
+
         if valid_mode not in {None, "span", "attr"}:
             raise ValueError(f'Expect valid_mode to be one of {{None, "span", "attr"}}, received {valid_mode}')
 
@@ -192,18 +208,76 @@ class LLMInformationExtractionDocument:
         return True
 
 
+    def add_frames(self, frames:List[LLMInformationExtractionFrame], valid_mode:str=None, create_id:bool=False):
+        """
+        This method adds a list of frames.
+        """
+        if not isinstance(frames, Iterable):
+            raise TypeError("frames must be a list or Interable.")
+        
+        for frame in frames:
+            self.add_frame(frame=frame, valid_mode=valid_mode, create_id=create_id)
+
+
+    def add_relation(self, relation:Dict[str,str]) -> bool:
+        """
+        This method add a relation to the relations (list).
+
+        Parameters:
+        -----------
+        relation : Dict[str,str]
+            the relation to add. Must be a dict with {"frame_1", "frame_2", ("relation")}. 
+            Could have an optional "relation" key for relation type. 
+
+        Returns : bool
+            sucess addition.
+        """
+        if not isinstance(relation, Dict):
+            raise TypeError(f"Expect relation to be a Dict, received {type(relation)} instead.")
+
+        required_keys = {"frame_1", "frame_2"}
+        if not required_keys.issubset(relation.keys()):
+            raise ValueError('relation missing "frame_1" or "frame_2" keys.')
+        
+        allowed_keys = {"frame_1", "frame_2", "relation"}
+        if not set(relation.keys()).issubset(allowed_keys):
+            raise ValueError('Only keys {"frame_1", "frame_2", "relation"} are allowed.')
+        
+        if not self.get_frame_by_id(relation["frame_1"]):
+            raise ValueError(f'frame_id: {relation["frame_1"]} not found in frames.')
+        
+        if not self.get_frame_by_id(relation["frame_2"]):
+            raise ValueError(f'frame_id: {relation["frame_2"]} not found in frames.')
+
+        self.relations.append(relation)
+        return True
+
+    def add_relations(self, relations:List[Dict[str,str]]):
+        """
+        This method adds a list of relations.
+        """
+        if not isinstance(relations, Iterable):
+            raise TypeError("relations must be a list or Interable.")
+        for relation in relations:
+            self.add_relation(relation)
+
+
     def __repr__(self, N_top_chars:int=100) -> str:
         text_to_print = self.text[0:N_top_chars]
         frame_count = len(self.frames)
-        return ''.join((f'LLMInformationExtractionDocument(doc_id="{self.doc_id}...")\n',
-                        f'text="{text_to_print}...",\n',
-                        f'frames={frame_count}'))
+        relation_count = len(self.relations)
+        return ''.join((f'LLMInformationExtractionDocument(doc_id: "{self.doc_id}"\n',
+                        f'text: "{text_to_print}...",\n',
+                        f'frames: {frame_count}\n',
+                        f'relations: {relation_count}'))
+
 
     def save(self, filename:str):
         with open(filename, 'w') as json_file:
             json.dump({'doc_id': self.doc_id, 
                         'text': self.text, 
-                        'frames': [frame.to_dict() for frame in self.frames]}, 
+                        'frames': [frame.to_dict() for frame in self.frames],
+                        'relations': self.relations}, 
                         json_file, indent=4)
             json_file.flush()
             

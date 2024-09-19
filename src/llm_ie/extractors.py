@@ -627,7 +627,7 @@ class RelationExtractor(Extractor):
     
 
     @abc.abstractmethod
-    def extract_document(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, max_new_tokens:int=128, 
+    def extract_relations(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, max_new_tokens:int=128, 
                          temperature:float=0.0, stream:bool=False, **kwrs) -> List[Dict]:
         """
         This method considers all combinations of two frames. 
@@ -694,7 +694,7 @@ class BinaryRelationExtractor(RelationExtractor):
             self.possible_relation_func = possible_relation_func
 
 
-    def _extract_pair(self, frame_1:LLMInformationExtractionFrame, frame_2:LLMInformationExtractionFrame, 
+    def _extract_relation(self, frame_1:LLMInformationExtractionFrame, frame_2:LLMInformationExtractionFrame, 
                       text:str, buffer_size:int=100, max_new_tokens:int=128, temperature:float=0.0, stream:bool=False, **kwrs) -> bool:
         """
         This method inputs two frames and a ROI text, extracts the binary relation.
@@ -759,7 +759,7 @@ class BinaryRelationExtractor(RelationExtractor):
         return False
     
     
-    def extract_document(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, max_new_tokens:int=128, 
+    def extract_relations(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, max_new_tokens:int=128, 
                          temperature:float=0.0, stream:bool=False, **kwrs) -> List[Dict]:
         """
         This method considers all combinations of two frames. Use the possible_relation_func to filter impossible pairs.
@@ -791,7 +791,7 @@ class BinaryRelationExtractor(RelationExtractor):
         for frame_1, frame_2 in pairs:
             pos_rel = self.possible_relation_func(frame_1, frame_2)
             if pos_rel:
-                rel = self._extract_pair(frame_1=frame_1, frame_2=frame_2, text=doc.text, buffer_size=buffer_size, 
+                rel = self._extract_relation(frame_1=frame_1, frame_2=frame_2, text=doc.text, buffer_size=buffer_size, 
                                          max_new_tokens=max_new_tokens, temperature=temperature, stream=stream, **kwrs)
                 if rel:
                     rel_pair_list.append({'frame_1':frame_1.frame_id, 'frame_2':frame_2.frame_id})
@@ -844,7 +844,7 @@ class MultiClassRelationExtractor(RelationExtractor):
             self.possible_relation_types_func = possible_relation_types_func
 
         
-    def _extract_pair(self, frame_1:LLMInformationExtractionFrame, frame_2:LLMInformationExtractionFrame, 
+    def _extract_relation(self, frame_1:LLMInformationExtractionFrame, frame_2:LLMInformationExtractionFrame, 
                       pos_rel_types:List[str], text:str, buffer_size:int=100, max_new_tokens:int=128, temperature:float=0.0, stream:bool=False, **kwrs) -> str:
         """
         This method inputs two frames and a ROI text, extracts the relation.
@@ -911,7 +911,7 @@ class MultiClassRelationExtractor(RelationExtractor):
         return "No Relation"
 
 
-    def extract_document(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, max_new_tokens:int=128, 
+    def extract_relations(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, max_new_tokens:int=128, 
                          temperature:float=0.0, stream:bool=False, **kwrs) -> List[Dict]:
         """
         This method considers all combinations of two frames. Use the possible_relation_types_func to filter impossible pairs 
@@ -944,7 +944,7 @@ class MultiClassRelationExtractor(RelationExtractor):
         for frame_1, frame_2 in pairs:
             pos_rel_types = self.possible_relation_types_func(frame_1, frame_2)
             if pos_rel_types:
-                rel = self._extract_pair(frame_1=frame_1, frame_2=frame_2, pos_rel_types=pos_rel_types, text=doc.text, 
+                rel = self._extract_relation(frame_1=frame_1, frame_2=frame_2, pos_rel_types=pos_rel_types, text=doc.text, 
                                          buffer_size=buffer_size, max_new_tokens=max_new_tokens, temperature=temperature, stream=stream, **kwrs)
             
                 if rel != "No Relation":

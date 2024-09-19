@@ -11,11 +11,14 @@ An LLM-powered tool that transforms everyday language into robust information ex
 - [Prerequisite](#prerequisite)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
+- [Examples](#examples)
 - [User Guide](#user-guide)
     - [LLM Inference Engine](#llm-inference-engine)
     - [Prompt Template](#prompt-template)
     - [Prompt Editor](#prompt-editor)
     - [Extractor](#extractor)
+        - [FrameExtractor](#frameextractor)
+        - [RelationExtractor](#relationextractor)
 
 ## Overview
 LLM-IE is a toolkit that provides robust information extraction utilities for frame-based information extraction. Since prompt design has a significant impact on generative information extraction with LLMs, it also provides a built-in LLM editor to help with prompt writing. The flowchart below demonstrates the workflow starting from a casual language request.
@@ -191,6 +194,10 @@ for frame in frames:
 # Save document to file (.llmie)
 doc.save("<your filename>.llmie")
 ```
+
+## Examples
+  - [Write prompt templates with AI editors](demo/prompt_template_writing.ipynb)
+  - [NER + RE for Drug, Strength, Frequency](demo/medication_relation_extraction.ipynb)
 
 ## User Guide
 This package is comprised of some key classes:
@@ -533,12 +540,25 @@ Recommendations:
 After a few iterations of revision, we will have a high-quality prompt template for the information extraction pipeline. 
 
 ### Extractor
-An extractor implements a prompting method for information extraction. The ```BasicFrameExtractor``` directly prompts LLM to generate a list of dictionaries. Each dictionary is then post-processed into a frame. The ```ReviewFrameExtractor``` is based on the ```BasicFrameExtractor``` but adds a review step after the initial extraction to boost sensitivity and improve performance. ```SentenceFrameExtractor``` gives LLM the entire document upfront as a reference, then prompts LLM sentence by sentence and collects per-sentence outputs. To learn about an extractor, use the class method ```get_prompt_guide()``` to print out the prompt guide. 
+An extractor implements a prompting method for information extraction. There are two extractor families: ```FrameExtractor``` and ```RelationExtractor```. 
+The ```FrameExtractor``` extracts named entities and entity attributes ("frame"). The ```RelationExtractor``` extracts the relation (and relation types) between frames. 
+
+#### FrameExtractor
+The ```BasicFrameExtractor``` directly prompts LLM to generate a list of dictionaries. Each dictionary is then post-processed into a frame. The ```ReviewFrameExtractor``` is based on the ```BasicFrameExtractor``` but adds a review step after the initial extraction to boost sensitivity and improve performance. ```SentenceFrameExtractor``` gives LLM the entire document upfront as a reference, then prompts LLM sentence by sentence and collects per-sentence outputs. To learn about an extractor, use the class method ```get_prompt_guide()``` to print out the prompt guide. 
 
 <details>
 <summary>BasicFrameExtractor</summary>
 
-The ```BasicFrameExtractor``` directly prompts LLM to generate a list of dictionaries. Each dictionary is then post-processed into a frame.
+The ```BasicFrameExtractor``` directly prompts LLM to generate a list of dictionaries. Each dictionary is then post-processed into a frame. The ```text_content``` holds the input text as a string, or as a dictionary (if prompt template has multiple input placeholders). The ```entity_key``` defines which JSON key should be used as entity text. It must be consistent with the prompt template. 
+
+```python
+from llm_ie.extractors import BasicFrameExtractor
+
+extractor = BasicFrameExtractor(llm, prompt_temp)
+frames = extractor.extract_frames(text_content=text, entity_key="Diagnosis", stream=True)
+```
+
+Use the ```get_prompt_guide()``` method to inspect the prompt template guideline for ```BasicFrameExtractor```. 
 
 ```python
 from llm_ie.extractors import BasicFrameExtractor
@@ -616,14 +636,202 @@ frames = extractor.extract_frames(text_content=text, entity_key="Diagnosis", str
 <details>
 <summary>SentenceFrameExtractor</summary>
 
-The ```SentenceFrameExtractor``` instructs the LLM to extract sentence by sentence. The reason is to ensure the accuracy of frame spans. It also prevents LLMs from overseeing sections/ sentences. Empirically, this extractor results in better sensitivity than the ```BasicFrameExtractor``` in complex tasks. 
+The ```SentenceFrameExtractor``` instructs the LLM to extract sentence by sentence. The reason is to ensure the accuracy of frame spans. It also prevents LLMs from overseeing sections/ sentences. Empirically, this extractor results in better recall than the ```BasicFrameExtractor``` in complex tasks. 
+
+The ```multi_turn``` parameter specifies multi-turn conversation for prompting. If True, sentences and LLM outputs will be appended to the input message and carry-over. If False, only the current sentence is prompted. For LLM inference engines that supports prompt cache (e.g., Llama.Cpp, Ollama), use multi-turn conversation prompting can better utilize the KV caching and results in faster inferencing. But for vLLM with [Automatic Prefix Caching (APC)](https://docs.vllm.ai/en/latest/automatic_prefix_caching/apc.html), multi-turn conversation is not necessary.
 
 ```python
 from llm_ie.extractors import SentenceFrameExtractor
 
 extractor = SentenceFrameExtractor(llm, prompt_temp)
-frames = extractor.extract_frames(text_content=text, entity_key="Diagnosis", stream=True)
+frames = extractor.extract_frames(text_content=text, entity_key="Diagnosis", multi_turn=True, stream=True)
 ```
 </details>
 
+#### RelationExtractor
+Relation extractors prompt LLM with combinations of two frames from a document (```LLMInformationExtractionDocument```) and extract relations.
+The ```BinaryRelationExtractor``` extracts binary relations (yes/no) between two frames. The ```MultiClassRelationExtractor``` extracts relations and assign relation types ("multi-class"). 
 
+An important feature of the relation extractors is that users are required to define a ```possible_relation_func``` or ```possible_relation_types_func``` function for the extractors. The reason is, there are too many possible combinations of two frames (N choose 2 combinations). The ```possible_relation_func``` helps rule out impossible combinations and therefore, reduce the LLM inferencing burden.
+
+<details>
+<summary>BinaryRelationExtractor</summary>
+
+Use the get_prompt_guide() method to inspect the prompt template guideline for BinaryRelationExtractor.
+```python
+from llm_ie.extractors import BinaryRelationExtractor
+
+print(BinaryRelationExtractor.get_prompt_guide())
+```
+
+```
+Prompt template design:
+    1. Task description (mention binary relation extraction and ROI)
+    2. Schema definition (defines relation)
+    3. Output format definition (must use the key "Relation")
+    4. Hints
+    5. Input placeholders (must include "roi_text", "frame_1", and "frame_2" placeholders)
+
+
+Example:
+
+    # Task description
+    This is a binary relation extraction task. Given a region of interest (ROI) text and two entities from a medical note, indicate the relation existence between the two entities.
+
+    # Schema definition
+        True: if there is a relationship between a medication name (one of the entities) and its strength or frequency (the other entity).
+        False: Otherwise.
+
+    # Output format definition
+    Your output should follow the JSON format:
+    {"Relation": "<True or False>"}
+
+    I am only interested in the content between []. Do not explain your answer. 
+
+    # Hints
+        1. Your input always contains one medication entity and 1) one strength entity or 2) one frequency entity.
+        2. Pay attention to the medication entity and see if the strength or frequency is for it.
+        3. If the strength or frequency is for another medication, output False. 
+        4. If the strength or frequency is for the same medication but at a different location (span), output False.
+
+    # Input placeholders
+    ROI Text with the two entities annotated with <entity_1> and <entity_2>:
+    "{{roi_text}}"
+
+    Entity 1 full information:
+    {{frame_1}}
+
+    Entity 2 full information:
+    {{frame_2}}
+```
+
+As an example, we define the ```possible_relation_func``` function:
+  - if the two frames are > 500 characters apart, we assume no relation (False)
+  - if the two frames are "Medication" and "Strength", or "Medication" and "Frequency", there could be relations (True)
+
+```python
+def possible_relation_func(frame_1, frame_2) -> bool:
+    """
+    This function pre-process two frames and outputs a bool indicating whether the two frames could be related.
+    """
+    # if the distance between the two frames are > 500 characters, assume no relation.
+    if abs(frame_1.start - frame_2.start) > 500:
+        return False
+    
+    # if the entity types are "Medication" and "Strength", there could be relations.
+    if (frame_1.attr["entity_type"] == "Medication" and frame_2.attr["entity_type"] == "Strength") or \
+        (frame_2.attr["entity_type"] == "Medication" and frame_1.attr["entity_type"] == "Strength"):
+        return True
+    
+    # if the entity types are "Medication" and "Frequency", there could be relations.
+    if (frame_1.attr["entity_type"] == "Medication" and frame_2.attr["entity_type"] == "Frequency") or \
+        (frame_2.attr["entity_type"] == "Medication" and frame_1.attr["entity_type"] == "Frequency"):
+        return True
+
+    # Otherwise, no relation.
+    return False
+```
+
+In the ```BinaryRelationExtractor``` constructor, we pass in the prompt template and ```possible_relation_func```.
+
+```python
+from llm_ie.extractors import BinaryRelationExtractor
+
+extractor = BinaryRelationExtractor(llm, prompt_template=prompt_template, possible_relation_func=possible_relation_func)
+relations = extractor.extract_relations(doc, stream=True)
+```
+
+</details>
+
+
+<details>
+<summary>MultiClassRelationExtractor</summary>
+
+The main difference from ```BinaryRelationExtractor``` is that the ```MultiClassRelationExtractor``` allows specifying relation types. The prompt template guideline has an additional placeholder for possible relation types ```{{pos_rel_types}}```. 
+
+```python
+print(MultiClassRelationExtractor.get_prompt_guide())
+```
+
+```
+Prompt template design:
+    1. Task description (mention multi-class relation extraction and ROI)
+    2. Schema definition (defines relation types)
+    3. Output format definition (must use the key "RelationType")
+    4. Input placeholders (must include "roi_text", "frame_1", and "frame_2" placeholders)
+
+
+Example:
+
+    # Task description
+    This is a multi-class relation extraction task. Given a region of interest (ROI) text and two frames from a medical note, classify the relation types between the two frames. 
+
+    # Schema definition
+        Strength-Drug: this is a relationship between the drug strength and its name. 
+        Dosage-Drug: this is a relationship between the drug dosage and its name.
+        Duration-Drug: this is a relationship between a drug duration and its name.
+        Frequency-Drug: this is a relationship between a drug frequency and its name.
+        Form-Drug: this is a relationship between a drug form and its name.
+        Route-Drug: this is a relationship between the route of administration for a drug and its name.
+        Reason-Drug: this is a relationship between the reason for which a drug was administered (e.g., symptoms, diseases, etc.) and a drug name.
+        ADE-Drug: this is a relationship between an adverse drug event (ADE) and a drug name.
+
+    # Output format definition
+    Choose one of the relation types listed below or choose "No Relation":
+    {{pos_rel_types}}
+
+    Your output should follow the JSON format:
+    {"RelationType": "<relation type or No Relation>"}
+
+    I am only interested in the content between []. Do not explain your answer. 
+
+    # Hints
+        1. Your input always contains one medication entity and 1) one strength entity or 2) one frequency entity.
+        2. Pay attention to the medication entity and see if the strength or frequency is for it.
+        3. If the strength or frequency is for another medication, output "No Relation". 
+        4. If the strength or frequency is for the same medication but at a different location (span), output "No Relation".
+
+    # Input placeholders
+    ROI Text with the two entities annotated with <entity_1> and <entity_2>:
+    "{{roi_text}}"
+
+    Entity 1 full information:
+    {{frame_1}}
+
+    Entity 2 full information:
+    {{frame_2}}
+```
+
+As an example, we define the ```possible_relation_types_func``` :
+  - if the two frames are > 500 characters apart, we assume "No Relation" (output [])
+  - if the two frames are "Medication" and "Strength", the only possible relation types are "Strength-Drug" or "No Relation"
+  - if the two frames are "Medication" and "Frequency", the only possible relation types are "Frequency-Drug" or "No Relation"
+
+```python 
+def possible_relation_types_func(frame_1, frame_2) -> List[str]:
+    # If the two frames are > 500 characters apart, we assume "No Relation"
+    if abs(frame_1.start - frame_2.start) > 500:
+        return []
+    
+    # If the two frames are "Medication" and "Strength", the only possible relation types are "Strength-Drug" or "No Relation"
+    if (frame_1.attr["entity_type"] == "Medication" and frame_2.attr["entity_type"] == "Strength") or \
+        (frame_2.attr["entity_type"] == "Medication" and frame_1.attr["entity_type"] == "Strength"):
+        return ['Strength-Drug']
+    
+    # If the two frames are "Medication" and "Frequency", the only possible relation types are "Frequency-Drug" or "No Relation"
+    if (frame_1.attr["entity_type"] == "Medication" and frame_2.attr["entity_type"] == "Frequency") or \
+        (frame_2.attr["entity_type"] == "Medication" and frame_1.attr["entity_type"] == "Frequency"):
+        return ['Frequency-Drug']
+
+    return []
+```
+
+
+```python
+from llm_ie.extractors import MultiClassRelationExtractor
+
+extractor = MultiClassRelationExtractor(llm, prompt_template=re_prompt_template, possible_relation_types_func=possible_relation_types_func)
+relations = extractor.extract_relations(doc, stream=True)
+```
+
+</details>
