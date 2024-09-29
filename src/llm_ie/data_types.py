@@ -1,4 +1,5 @@
-from typing import List, Dict, Iterable
+from typing import List, Dict, Iterable, Callable
+import importlib.util
 import json
 
 
@@ -281,3 +282,36 @@ class LLMInformationExtractionDocument:
                         json_file, indent=4)
             json_file.flush()
             
+
+    def serve_viz(self, host: str = '0.0.0.0', port: int = 3000, theme:str = "light", 
+                  color_attr_key:str=None, color_map_func:Callable=None):
+        """
+        This method serves a visualization of the document.
+        """
+        if importlib.util.find_spec("ie_viz") is None:
+            raise ImportError("ie_viz not found. Please install ie_viz (```pip install ie-viz```).")
+        
+        from ie_viz import serve
+
+        if self.has_frame():
+            entities = [{"entity_id": frame.frame_id, "start": frame.start, "end": frame.end, "attr": frame.attr} for frame in self.frames]
+        else:
+            raise ValueError("No frames in the document.")
+        
+        if self.has_relation():
+            relations = []
+            for relation in self.relations:
+                rel = {"entity_1_id": relation['frame_1'], "entity_2_id": relation['frame_2']}
+                relations.append(rel)        
+        else:
+            relations = None
+
+        serve(text=self.text,
+              entities=entities,
+              relations=relations,
+              host=host,
+              port=port,
+              theme=theme,
+              color_attr_key=color_attr_key,
+              color_map_func=color_map_func)
+        

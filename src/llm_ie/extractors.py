@@ -896,7 +896,7 @@ class MultiClassRelationExtractor(RelationExtractor):
         if len(rel_json) > 0:
             if "RelationType" in rel_json[0]:
                 rel = rel_json[0]["RelationType"]
-                if rel in pos_rel_types:
+                if rel in pos_rel_types or rel == "No Relation":
                     return rel_json[0]["RelationType"]
                 else:
                     warnings.warn(f'Extracted relation type "{rel}", which is not in the return of possible_relation_types_func: {pos_rel_types}.'+ \
