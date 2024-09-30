@@ -1,4 +1,4 @@
-from typing import List, Dict, Iterable, Callable
+from typing import List, Dict, Tuple, Iterable, Callable
 import importlib.util
 import json
 
@@ -283,15 +283,12 @@ class LLMInformationExtractionDocument:
             json_file.flush()
             
 
-    def serve_viz(self, host: str = '0.0.0.0', port: int = 3000, theme:str = "light", 
-                  color_attr_key:str=None, color_map_func:Callable=None):
+    def _viz_preprocess(self) -> Tuple:
         """
-        This method serves a visualization of the document.
+        This method preprocesses the entities and relations for visualization.
         """
         if importlib.util.find_spec("ie_viz") is None:
             raise ImportError("ie_viz not found. Please install ie_viz (```pip install ie-viz```).")
-        
-        from ie_viz import serve
 
         if self.has_frame():
             entities = [{"entity_id": frame.frame_id, "start": frame.start, "end": frame.end, "attr": frame.attr} for frame in self.frames]
@@ -306,6 +303,31 @@ class LLMInformationExtractionDocument:
         else:
             relations = None
 
+        return entities, relations
+
+
+    def viz_serve(self, host: str = '0.0.0.0', port: int = 5000, theme:str = "light", 
+                  color_attr_key:str=None, color_map_func:Callable=None):
+        """
+        This method serves a visualization App of the document.
+
+        Parameters:
+        -----------
+        host : str, Optional
+            The host address to run the server on.
+        port : int, Optional
+            The port number to run the server on.
+        theme : str, Optional
+            The theme of the visualization. Must be either "light" or "dark".
+        color_attr_key : str, Optional
+            The attribute key to be used for coloring the entities.
+        color_map_func : Callable, Optional
+            The function to be used for mapping the entity attributes to colors. When provided, the color_attr_key and 
+            theme will be overwritten. The function must take an entity dictionary as input and return a color string (hex).
+        """
+        entities, relations = self._viz_preprocess()
+        from ie_viz import serve
+
         serve(text=self.text,
               entities=entities,
               relations=relations,
@@ -315,3 +337,27 @@ class LLMInformationExtractionDocument:
               color_attr_key=color_attr_key,
               color_map_func=color_map_func)
         
+    
+    def viz_render(self, theme:str = "light", color_attr_key:str=None, color_map_func:Callable=None) -> str:
+        """
+        This method renders visualization html of the document.
+
+        Parameters:
+        -----------
+        theme : str, Optional
+            The theme of the visualization. Must be either "light" or "dark".
+        color_attr_key : str, Optional
+            The attribute key to be used for coloring the entities.
+        color_map_func : Callable, Optional
+            The function to be used for mapping the entity attributes to colors. When provided, the color_attr_key and 
+            theme will be overwritten. The function must take an entity dictionary as input and return a color string (hex).
+        """
+        entities, relations = self._viz_preprocess()
+        from ie_viz import render
+
+        return render(text=self.text,
+                      entities=entities,
+                      relations=relations,
+                      theme=theme,
+                      color_attr_key=color_attr_key,
+                      color_map_func=color_map_func)
