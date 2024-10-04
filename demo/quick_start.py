@@ -40,11 +40,11 @@ doc = LLMInformationExtractionDocument(doc_id="Meidcal note",
                                        text=note_text)
 
 # Add frames to document
-for frame in frames:
-    doc.add_frame(frame, valid_mode="span", create_id=True)
+doc.add_frames(frames, create_id=True)
 
 # Save document to file (.llmie)
 doc.save("<your filename>.llmie")
 
-
+# Visualize the document
+doc.viz_serve()
 

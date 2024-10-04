@@ -6,6 +6,12 @@
 
 An LLM-powered tool that transforms everyday language into robust information extraction pipelines. 
 
+| Features | Support |
+|----------|----------|
+| **Named Entity Recognition (NER)** | :white_check_mark: Document-level, Sentence-level |
+| **Entity Attributes Extraction** | :white_check_mark: Flexible formats |
+| **Relation Extraction (RE)** | :white_check_mark: Binary & Multiclass relations |
+
 ## Table of Contents
 - [Overview](#overview)
 - [Prerequisite](#prerequisite)
@@ -21,12 +27,12 @@ An LLM-powered tool that transforms everyday language into robust information ex
         - [RelationExtractor](#relationextractor)
 
 ## Overview
-LLM-IE is a toolkit that provides robust information extraction utilities for frame-based information extraction. Since prompt design has a significant impact on generative information extraction with LLMs, it also provides a built-in LLM editor to help with prompt writing. The flowchart below demonstrates the workflow starting from a casual language request.
+LLM-IE is a toolkit that provides robust information extraction utilities for named entity, entity attributes, and entity relation extraction. Since prompt design has a significant impact on generative information extraction with LLMs, it has a built-in LLM agent ("editor") to help with prompt writing. The flowchart below demonstrates the workflow starting from a casual language request to output visualization.
 
 <div align="center"><img src="doc_asset/readme_img/LLM-IE flowchart.png" width=800 ></div>
 
 ## Prerequisite
-At least one LLM inference engine is required. There are built-in supports for 🦙 [Llama-cpp-python](https://github.com/abetlen/llama-cpp-python), <img src="https://avatars.githubusercontent.com/u/151674099?s=48&v=4" alt="Icon" width="20"/> [Ollama](https://github.com/ollama/ollama), 🤗 [Huggingface_hub](https://github.com/huggingface/huggingface_hub), <img src=doc_asset/readme_img/openai-logomark.png width=16 /> [OpenAI API](https://platform.openai.com/docs/api-reference/introduction), and <img src=doc_asset/readme_img/vllm-logo.png width=20 /> vLLM. For installation guides, please refer to those projects. Other inference engines can be configured through the [InferenceEngine](src/llm_ie/engines.py) abstract class. See [LLM Inference Engine](#llm-inference-engine) section below.
+At least one LLM inference engine is required. There are built-in supports for 🦙 [Llama-cpp-python](https://github.com/abetlen/llama-cpp-python), <img src="https://avatars.githubusercontent.com/u/151674099?s=48&v=4" alt="Icon" width="20"/> [Ollama](https://github.com/ollama/ollama), 🤗 [Huggingface_hub](https://github.com/huggingface/huggingface_hub), <img src=doc_asset/readme_img/openai-logomark.png width=16 /> [OpenAI API](https://platform.openai.com/docs/api-reference/introduction), and <img src=doc_asset/readme_img/vllm-logo.png width=20 /> [vLLM](https://github.com/vllm-project/vllm). For installation guides, please refer to those projects. Other inference engines can be configured through the [InferenceEngine](src/llm_ie/engines.py) abstract class. See [LLM Inference Engine](#llm-inference-engine) section below.
 
 ## Installation
 The Python package is available on PyPI. 
@@ -188,12 +194,29 @@ from llm_ie.data_types import LLMInformationExtractionDocument
 doc = LLMInformationExtractionDocument(doc_id="Synthesized medical note",
                                        text=note_text)
 # Add frames to a document
-for frame in frames:
-    doc.add_frame(frame, valid_mode="span", create_id=True)
+doc.add_frames(frames, create_id=True)
 
 # Save document to file (.llmie)
 doc.save("<your filename>.llmie")
 ```
+
+To visualize the extracted frames, we use the ```viz_serve()``` method. 
+```python
+doc.viz_serve()
+```
+A Flask APP starts at port 5000 (default).
+```
+* Serving Flask app 'ie_viz.utilities'
+* Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+Press CTRL+C to quit
+127.0.0.1 - - [03/Oct/2024 23:36:22] "GET / HTTP/1.1" 200 -
+```
+
+<div align="left"><img src="doc_asset/readme_img/llm-ie_demo.PNG" width=1000 ></div>
+
 
 ## Examples
   - [Write prompt templates with AI editors](demo/prompt_template_writing.ipynb)
