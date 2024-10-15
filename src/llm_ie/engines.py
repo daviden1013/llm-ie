@@ -243,7 +243,7 @@ class OpenAIInferenceEngine(InferenceEngine):
             for chunk in response:
                 if chunk.choices[0].delta.content is not None:
                     res += chunk.choices[0].delta.content
-                    print(chunk.choices[0].delta.content, end="", flash=True)
+                    print(chunk.choices[0].delta.content, end="", flush=True)
             return res
         
         return response.choices[0].message.content
