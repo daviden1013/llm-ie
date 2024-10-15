@@ -1,8 +1,12 @@
 Prompt template design:
     1. Task description (mention multi-class relation extraction and ROI)
     2. Schema definition (defines relation types)
-    3. Output format definition (must use the key "RelationType")
-    4. Input placeholders (must include "roi_text", "frame_1", and "frame_2" placeholders)
+    3. Output format definition (with "pos_rel_types" placeholder. Must use the key "RelationType")
+    4. (optional) Hints
+    5. (optional) Examples
+    6. Entity 1 full information (with "frame_1" placeholder)
+    7. Entity 2 full information (with "frame_2" placeholder)
+    8. Input placeholders (with "roi_text" placeholder)
 
 
 Example:
@@ -35,12 +39,12 @@ Example:
         3. If the strength or frequency is for another medication, output "No Relation". 
         4. If the strength or frequency is for the same medication but at a different location (span), output "No Relation".
 
+    # Entity 1 full information:
+    {{frame_1}}
+
+    # Entity 2 full information:
+    {{frame_2}}
+
     # Input placeholders
     ROI Text with the two entities annotated with <entity_1> and <entity_2>:
     "{{roi_text}}"
-
-    Entity 1 full information:
-    {{frame_1}}
-
-    Entity 2 full information:
-    {{frame_2}}
