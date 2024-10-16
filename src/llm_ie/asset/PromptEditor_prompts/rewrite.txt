@@ -1,4 +1,6 @@
-This is a prompt rewriting task. Rewrite the draft prompt following the prompt guideline below. DO NOT explain your answer. 
+# Task description
+Rewrite the draft prompt following the prompt guideline below. 
+DO NOT explain your answer. 
 
 # Prompt guideline
 {{prompt_guideline}}

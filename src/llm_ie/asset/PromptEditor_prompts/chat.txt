@@ -1,0 +1,5 @@
+# Task description
+Chat with the user following the prompt guideline below. 
+
+# Prompt guideline
+{{prompt_guideline}}
