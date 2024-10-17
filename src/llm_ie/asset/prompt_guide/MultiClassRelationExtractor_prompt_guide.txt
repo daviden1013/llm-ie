@@ -1,12 +1,31 @@
-Prompt template design:
-    1. Task description (mention multi-class relation extraction and ROI)
-    2. Schema definition (defines relation types)
-    3. Output format definition (with "pos_rel_types" placeholder. Must use the key "RelationType")
-    4. (optional) Hints
-    5. (optional) Examples
-    6. Entity 1 full information (with "frame_1" placeholder)
-    7. Entity 2 full information (with "frame_2" placeholder)
-    8. Input placeholders (with "roi_text" placeholder)
+Prompt Template Design:
+
+1. Task description:
+   Provide a detailed description of the task, including the background and the type of task (e.g., binary relation extraction). Mention the region of interest (ROI) text. 
+2. Schema definition: 
+   List the criterion for relation (True) and for no relation (False).
+
+3. Output format definition:
+   This section must include a placeholder "{{pos_rel_types}}" for the possible relation types.
+   The ouptut must be a dictionary with a key "RelationType" (i.e., {"RelationType": "<relation type or No Relation>"}).
+
+4. (optional) Hints:
+   Provide itemized hints for the information extractors to guide the extraction process.
+
+5. (optional) Examples:
+   Include examples in the format:  
+    Input: ...  
+    Output: ...
+
+6. Entity 1 full information:
+   Include a placeholder in the format {{<frame_1>}}
+
+7. Entity 2 full information:
+   Include a placeholder in the format {{<frame_2>}}
+
+8. Input placeholders:
+   The template must include a placeholder "{{roi_text}}" for the ROI text.
+
 
 
 Example:

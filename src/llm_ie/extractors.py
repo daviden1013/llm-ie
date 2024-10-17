@@ -73,18 +73,49 @@ class Extractor:
 
         return prompt
     
+    def _find_dict_strings(self, text: str) -> List[str]:
+        """
+        Extracts balanced JSON-like dictionaries from a string, even if nested.
+
+        Parameters:
+        -----------
+        text : str
+            the input text containing JSON-like structures.
+
+        Returns : List[str]
+            A list of valid JSON-like strings representing dictionaries.
+        """
+        open_brace = 0
+        start = -1
+        json_objects = []
+
+        for i, char in enumerate(text):
+            if char == '{':
+                if open_brace == 0:
+                    # start of a new JSON object
+                    start = i 
+                open_brace += 1
+            elif char == '}':
+                open_brace -= 1
+                if open_brace == 0 and start != -1:
+                    json_objects.append(text[start:i + 1])
+                    start = -1
+
+        return json_objects
+    
+    
     def _extract_json(self, gen_text:str) -> List[Dict[str, str]]:
         """ 
         This method inputs a generated text and output a JSON of information tuples
         """
-        pattern = r'\{.*?\}'
         out = []
-        for match in re.findall(pattern, gen_text, re.DOTALL):
+        dict_str_list = self._find_dict_strings(gen_text)
+        for dict_str in dict_str_list:
             try:
-                tup_dict = json.loads(match)
-                out.append(tup_dict)
+                dict_obj = json.loads(dict_str)
+                out.append(dict_obj)
             except json.JSONDecodeError:
-                print(f'Post-processing failed at:\n{match}')
+                print(f'Post-processing failed at:\n{dict_str}')
         return out
     
 

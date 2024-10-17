@@ -1,3 +1,4 @@
+import sys
 from typing import Dict, Union
 import importlib.resources
 from llm_ie.engines import InferenceEngine
@@ -5,6 +6,8 @@ from llm_ie.extractors import FrameExtractor
 import re
 import colorama
 from colorama import Fore, Style
+import ipywidgets as widgets
+from IPython.display import display, HTML
 
     
 class PromptEditor:
@@ -83,7 +86,7 @@ class PromptEditor:
         return res
     
 
-    def chat(self):
+    def _terminal_chat(self):
         """
         This method runs an interactive chat session in the terminal to help users write prompt templates.
         """
@@ -106,7 +109,7 @@ class PromptEditor:
             
             # Exit condition
             if user_input.lower() == 'exit':
-                print("Goodbye!")
+                print(f"{Fore.YELLOW}Interactive chat ended. Goodbye!{Style.RESET_ALL}")
                 break
             
             # Chat
@@ -115,3 +118,72 @@ class PromptEditor:
             response = self.inference_engine.chat(messages, stream=True)
             messages.append({"role": "assistant", "content": response})
             
+
+    def _IPython_chat(self):
+        """
+        This method runs an interactive chat session in Jupyter/IPython using ipywidgets to help users write prompt templates.
+        """
+        # Load the chat prompt template from the resources
+        file_path = importlib.resources.files('llm_ie.asset.PromptEditor_prompts').joinpath('chat.txt')
+        with open(file_path, 'r') as f:
+            chat_prompt_template = f.read()
+
+        # Prepare the initial system message with the prompt guideline
+        prompt = self._apply_prompt_template(text_content={"prompt_guideline": self.prompt_guide}, 
+                                            prompt_template=chat_prompt_template)
+
+        # Initialize conversation messages
+        messages = [{"role": "system", "content": self.system_prompt},
+                    {"role": "user", "content": prompt}]
+
+        # Widgets for user input and chat output
+        input_box = widgets.Text(placeholder="Type your message here...")
+        output_area = widgets.Output()
+
+        # Display initial instructions
+        with output_area:
+            display(HTML('Welcome to the interactive chat! Type "<span style="color: red;">exit</span>" to end the conversation.'))
+
+        def handle_input(sender):
+            user_input = input_box.value
+            input_box.value = ''  # Clear the input box after submission
+
+            # Exit condition
+            if user_input.strip().lower() == 'exit':
+                with output_area:
+                    display(HTML('<p style="color: orange;">Interactive chat ended. Goodbye!</p>'))
+                input_box.disabled = True  # Disable the input box after exiting
+                return
+
+            # Append user message to conversation
+            messages.append({"role": "user", "content": user_input})
+            print(f"User: {user_input}")
+            
+            # Display the user message
+            with output_area:
+                display(HTML(f'<pre><span style="color: green;">User: </span>{user_input}</pre>'))
+
+            # Get assistant's response and append it to conversation
+            print("Assistant: ", end="")
+            response = self.inference_engine.chat(messages, stream=True)
+            messages.append({"role": "assistant", "content": response})
+
+            # Display the assistant's response
+            with output_area:
+                display(HTML(f'<pre><span style="color: blue;">Assistant: </span>{response}</pre>'))
+
+        # Bind the user input to the handle_input function
+        input_box.on_submit(handle_input)
+
+        # Display the input box and output area
+        display(input_box)
+        display(output_area)
+
+    def chat(self):
+        """
+        External method that detects the environment and calls the appropriate chat method.
+        """
+        if 'ipykernel' in sys.modules:
+            self._IPython_chat()
+        else:
+            self._terminal_chat()

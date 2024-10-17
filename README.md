@@ -8,6 +8,7 @@ An LLM-powered tool that transforms everyday language into robust information ex
 
 | Features | Support |
 |----------|----------|
+| **LLM Agent for prompt writing** | :white_check_mark:  Interactive chat, Python functions |
 | **Named Entity Recognition (NER)** | :white_check_mark: Document-level, Sentence-level |
 | **Entity Attributes Extraction** | :white_check_mark: Flexible formats |
 | **Relation Extraction (RE)** | :white_check_mark: Binary & Multiclass relations |
@@ -117,21 +118,26 @@ We start with a casual description:
 
 *"Extract diagnosis from the clinical note. Make sure to include diagnosis date and status."* 
 
-The ```PromptEditor``` rewrites it following the schema required by the ```BasicFrameExtractor```. 
-
-```python 
+Define the AI prompt editor.
+```python
+from llm_ie.engines import OllamaInferenceEngine
 from llm_ie.extractors import BasicFrameExtractor
 from llm_ie.prompt_editor import PromptEditor
 
-# Describe the task in casual language
-prompt_draft = "Extract diagnosis from the clinical note. Make sure to include diagnosis date and status."
-
-# Use LLM editor to generate a formal prompt template with standard extraction schema
+# Define a LLM inference engine
+llm = OllamaInferenceEngine(model_name="llama3.1:8b-instruct-q8_0")
+# Define LLM prompt editor
 editor = PromptEditor(llm, BasicFrameExtractor)
-prompt_template = editor.rewrite(prompt_draft)
+# Start chat
+editor.chat()
 ```
 
-The editor generates a prompt template as below:
+This opens an interactive session:
+<div align="left"><img src=doc_asset/readme_img/terminal_chat.PNG width=1000 ></div>
+
+
+The ```PromptEditor``` drafts a prompt template following the schema required by the ```BasicFrameExtractor```:
+
 ```
 # Task description
 The paragraph below contains a clinical note with diagnoses listed. Please carefully review it and extract the diagnoses, including the diagnosis date and status.
@@ -157,6 +163,8 @@ If there is no specific date or status, just omit those keys.
 Below is the clinical note:
 {{input}}
 ```
+
+
 #### Information extraction pipeline
 Now we apply the prompt template to build an information extraction pipeline.
 
@@ -219,7 +227,8 @@ Press CTRL+C to quit
 
 
 ## Examples
-  - [Write prompt templates with AI editors](demo/prompt_template_writing.ipynb)
+  - [Interactive chat with LLM prompt editors](demo/prompt_template_writing_via_chat.ipynb)
+  - [Write prompt templates with LLM prompt editors](demo/prompt_template_writing.ipynb)
   - [NER + RE for Drug, Strength, Frequency](demo/medication_relation_extraction.ipynb)
 
 ## User Guide
@@ -444,7 +453,30 @@ print(BasicFrameExtractor.get_prompt_guide())
 ```
 
 ### Prompt Editor
-The prompt editor is an LLM agent that reviews, comments and rewrites a prompt following the defined schema of each extractor. It is recommended to use prompt editor iteratively: 
+The prompt editor is an LLM agent that help users write prompt templates following the defined schema and guideline of each extractor. Chat with the promtp editor:
+
+```python
+from llm_ie.prompt_editor import PromptEditor
+from llm_ie.extractors import BasicFrameExtractor
+from llm_ie.engines import OllamaInferenceEngine
+
+# Define an LLM inference engine
+ollama = OllamaInferenceEngine(model_name="llama3.1:8b-instruct-q8_0")
+
+# Define editor
+editor = PromptEditor(ollama, BasicFrameExtractor)
+
+editor.chat()
+```
+
+In a terminal environment, an interactive chat session will start:
+<div align="left"><img src=doc_asset/readme_img/terminal_chat.PNG width=1000 ></div>
+
+In the Jupyter/IPython environment, an ipywidgets session will start:
+<div align="left"><img src=doc_asset/readme_img/IPython_chat.PNG width=1000 ></div>
+
+
+We can also use the `rewrite()` and `comment()` methods to programmingly interact with the prompt editor: 
 1. start with a casual description of the task
 2. have the prompt editor generate a prompt template as the starting point
 3. manually revise the prompt template
@@ -590,40 +622,29 @@ print(BasicFrameExtractor.get_prompt_guide())
 ```
 
 ```
-Prompt template design:
-    1. Task description
-    2. Schema definition
-    3. Output format definition
-    4. Additional hints
-    5. Input placeholder
+Prompt Template Design:
 
-Example:
+1. Task Description:  
+   Provide a detailed description of the task, including the background and the type of task (e.g., named entity recognition).
 
-    # Task description
-    The paragraph below is from the Food and Drug Administration (FDA) Clinical Pharmacology Section of Labeling for Human Prescription Drug and Biological Products, Adverse reactions section. Please carefully review it and extract the adverse reactions and percentages. Note that each adverse reaction is nested under a clinical trial and potentially an arm. Your output should take that into consideration.
+2. Schema Definition:  
+   List the key concepts that should be extracted, and provide clear definitions for each one.
 
-    # Schema definition
-    Your output should contain: 
-        "ClinicalTrial" which is the name of the trial, 
-        If applicable, "Arm" which is the arm within the clinical trial, 
-        "AdverseReaction" which is the name of the adverse reaction,
-        If applicable, "Percentage" which is the occurance of the adverse reaction within the trial and arm,
-        "Evidence" which is the EXACT sentence in the text where you found the AdverseReaction from
+3. Output Format Definition:  
+   The output should be a JSON list, where each element is a dictionary representing a frame (an entity along with its attributes). Each dictionary must include a key that holds the entity text. This key can be named "entity_text" or anything else depend on the context. The attributes can either be flat (e.g., {"entity_text": "<entity_text>", "attr1": "<attr1>", "attr2": "<attr2>"}) or nested (e.g., {"entity_text": "<entity_text>", "attributes": {"attr1": "<attr1>", "attr2": "<attr2>"}}).
 
-    # Output format definition
-    Your output should follow JSON format, for example:
-    [
-        {"ClinicalTrial": "<Clinical trial name or number>", "Arm": "<name of arm>", "AdverseReaction": "<Adverse reaction text>", "Percentage": "<a percent>", "Evidence": "<exact sentence from the text>"},
-        {"ClinicalTrial": "<Clinical trial name or number>", "Arm": "<name of arm>", "AdverseReaction": "<Adverse reaction text>", "Percentage": "<a percent>", "Evidence": "<exact sentence from the text>"} 
-    ]
+4. Optional: Hints:  
+   Provide itemized hints for the information extractors to guide the extraction process.
 
-    # Additional hints
-    Your output should be 100% based on the provided content. DO NOT output fake numbers. 
-    If there is no specific arm, just omit the "Arm" key. If the percentage is not reported, just omit the "Percentage" key. The "Evidence" should always be provided.
+5. Optional: Examples:  
+   Include examples in the format:  
+    Input: ...  
+    Output: ...
 
-    # Input placeholder
-    Below is the Adverse reactions section:
-    {{input}}
+6. Input Placeholder:  
+   The template must include a placeholder in the format {{<placeholder_name>}} for the input text. The placeholder name can be customized as needed.
+
+......
 ```
 </details>
 

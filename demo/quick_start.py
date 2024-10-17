@@ -20,6 +20,9 @@ prompt_draft = "Extract diagnosis from the clinical note. Make sure to include d
 editor = PromptEditor(llm, BasicFrameExtractor)
 prompt_template = editor.rewrite(prompt_draft)
 
+# Alternatively, you can chat with the AI editor
+editor.chat()
+
 # Define extractor
 extractor = BasicFrameExtractor(llm, prompt_template)
 
