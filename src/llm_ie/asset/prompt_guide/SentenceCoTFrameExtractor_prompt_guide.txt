@@ -1,0 +1,217 @@
+Prompt Template Design:
+
+1. Task Description:  
+   Provide a detailed description of the task, including the background and the type of task (e.g., named entity recognition).
+
+2. Schema Definition:  
+   List the key concepts that should be extracted, and provide clear definitions for each one.
+
+3. Thinking process:
+   Provide clear step-by-step instructions for analyzing the input text. Typically, this process should begin with an analysis section and proceed to the output generation. Each section should have a specific purpose:
+
+   Optional: Recall Section (<Recall>... </Recall>):
+    Write a brief recall of the task description and schema definition for better understanding of the task. 
+
+   Analysis Section (<Analysis>... </Analysis>):
+    Break down the input text to identify important medical contents and clarify ambiguous concepts. 
+
+   Output Section (<Outputs>... </Outputs>):
+    Based on the analysis, generate the required output in the defined format. Ensure that the extracted information adheres to the schema and task description.
+
+4. Output Format Definition:  
+   The output should be a JSON list, where each element is a dictionary representing a frame (an entity along with its attributes). Each dictionary must include a key that holds the entity text. This key can be named "entity_text" or anything else depend on the context. The attributes can either be flat (e.g., {"entity_text": "<entity_text>", "attr1": "<attr1>", "attr2": "<attr2>"}) or nested (e.g., {"entity_text": "<entity_text>", "attributes": {"attr1": "<attr1>", "attr2": "<attr2>"}}).
+
+5. Optional: Hints:  
+   Provide itemized hints for the information extractors to guide the extraction process.
+
+6. Optional: Examples:  
+   Include examples in the format:  
+    Input: ...  
+    Output: ...
+
+7. Input Placeholder:  
+   The template must include a placeholder in the format {{<placeholder_name>}} for the input text. The placeholder name can be customized as needed.
+   
+
+Example 1 (single entity type with attributes):
+
+    # Task description
+    The paragraph below is from the Food and Drug Administration (FDA) Clinical Pharmacology Section of Labeling for Human Prescription Drug and Biological Products, Adverse reactions section. Please carefully review it and extract the adverse reactions and percentages. Note that each adverse reaction is nested under a clinical trial and potentially an arm. Your output should take that into consideration.
+
+    # Schema definition
+    Your output should contain: 
+        "ClinicalTrial" which is the name of the trial, 
+        If applicable, "Arm" which is the arm within the clinical trial, 
+        "AdverseReaction" which is the name of the adverse reaction,
+        If applicable, "Percentage" which is the occurance of the adverse reaction within the trial and arm,
+        "Evidence" which is the EXACT sentence in the text where you found the AdverseReaction from
+
+    # Thinking process
+    Approach this task step by step. Start with a recall section (<Recall>... </Recall>) that briefly summarize of the task description and schema definition for better understanding of the task. Then write an analysis section (<Analysis>... </Analysis>) to analyze the input sentence. Identify important pharmacology contents and clarify ambiguous concepts. Finally, the output section (<Outputs>... </Outputs>) that list your final outputs following the defined format. 
+
+    # Output format definition
+    Your output should follow JSON format, for example:
+    [
+        {"ClinicalTrial": "<Clinical trial name or number>", "Arm": "<name of arm>", "AdverseReaction": "<Adverse reaction text>", "Percentage": "<a percent>", "Evidence": "<exact sentence from the text>"},
+        {"ClinicalTrial": "<Clinical trial name or number>", "Arm": "<name of arm>", "AdverseReaction": "<Adverse reaction text>", "Percentage": "<a percent>", "Evidence": "<exact sentence from the text>"} 
+    ]
+
+    # Additional hints
+    Your output should be 100% based on the provided content. DO NOT output fake numbers. 
+    If there is no specific arm, just omit the "Arm" key. If the percentage is not reported, just omit the "Percentage" key. The "Evidence" should always be provided.
+
+    # Input placeholder
+    Below is the Adverse reactions section for your reference. I will feed you with sentences from it one by one. 
+    {{input}}
+
+
+Example 2 (multiple entity types):
+
+    # Task description
+    This is a named entity recognition task. Given a sentence from a medical note, annotate the Drug, Form, Strength, Frequency, Route, Dosage, Reason, ADE, and Duration.
+
+    # Schema definition
+    Your output should contain: 
+        "entity_text": the exact wording as mentioned in the note.
+        "entity_type": type of the entity. It should be one of the "Drug", "Form", "Strength", "Frequency", "Route", "Dosage", "Reason", "ADE", or "Duration".
+
+    # Thinking process
+    Approach this task step by step. Start with an analysis section (<Analysis>... </Analysis>) to analyze the input sentence. Identify important medical contents and clarify ambiguous concepts. Then, the output section (<Outputs>... </Outputs>) that list your final outputs following the defined format. 
+
+    # Output format definition
+    Your output should follow JSON format, 
+    if there are one of the entity mentions: Drug, Form, Strength, Frequency, Route, Dosage, Reason, ADE, or Duration:
+        [{"entity_text": "<Exact entity mentions as in the note>", "entity_type": "<entity type as listed above>"},
+        {"entity_text": "<Exact entity mentions as in the note>", "entity_type": "<entity type as listed above>"}]
+    if there is no entity mentioned in the given note, just output an empty list:
+        []
+
+    # Examples
+    Below are some examples:
+
+    Input: Acetaminophen 650 mg PO BID 5.
+    Output: 
+        <Analysis>
+        The sentence "Acetaminophen 650 mg PO BID 5." contains several potential medical entities.
+
+        "Acetaminophen" is a Drug.
+        "650 mg" represents the Strength.
+        "PO" is the Route (meaning by mouth).
+        "BID" stands for a dosing frequency, which represents Frequency (meaning twice a day).
+        </Analysis>
+    
+        <Outputs>
+        [{"entity_text": "Acetaminophen", "entity_type": "Drug"}, {"entity_text": "650 mg", "entity_type": "Strength"}, {"entity_text": "PO", "entity_type": "Route"}, {"entity_text": "BID", "entity_type": "Frequency"}]
+        </Outputs>
+
+    Input: Mesalamine DR 1200 mg PO BID 2.
+    Output: 
+        <Analysis>
+        The sentence "Mesalamine DR 1200 mg PO BID 2." contains the following medical entities:
+
+        "Mesalamine" is a Drug.
+        "DR" stands for Form (delayed-release).
+        "1200 mg" represents the Strength.
+        "PO" is the Route (by mouth).
+        "BID" is the Frequency (twice a day).
+        </Analysis>
+
+        <Outputs>
+        [{"entity_text": "Mesalamine DR", "entity_type": "Drug"}, {"entity_text": "1200 mg", "entity_type": "Strength"}, {"entity_text": "BID", "entity_type": "Frequency"}, {"entity_text": "PO", "entity_type": "Route"}]
+        </Outputs>
+
+    # Input placeholder
+    Below is the medical note for your reference. I will feed you with sentences from it one by one.
+    "{{input}}"
+
+
+Example 3 (multiple entity types with corresponding attributes):
+
+    # Task description
+    This is a named entity recognition task. Given a sentence from a medical note, annotate the events (EVENT) and time expressions (TIMEX3):
+
+    # Schema definition
+    Your output should contain: 
+        "entity_text": the exact wording as mentioned in the note.
+        "entity_type": type of the entity. It should be one of the "EVENT" or "TIMEX3".
+        if entity_type is "EVENT",
+            "type": the event type as one of the "TEST", "PROBLEM", "TREATMENT", "CLINICAL_DEPT", "EVIDENTIAL", or "OCCURRENCE".
+            "polarity": whether an EVENT is positive ("POS") or negative ("NAG"). For example, in “the patient reports headache, and denies chills”, the EVENT [headache] is positive in its polarity, and the EVENT [chills] is negative in its polarity.
+            "modality": whether an EVENT actually occurred or not. Must be one of the "FACTUAL", "CONDITIONAL", "POSSIBLE", or "PROPOSED".
+
+        if entity_type is "TIMEX3",
+            "type": the type as one of the "DATE", "TIME", "DURATION", or "FREQUENCY".
+            "val": the numeric value 1) DATE: [YYYY]-[MM]-[DD], 2) TIME: [hh]:[mm]:[ss], 3) DURATION: P[n][Y/M/W/D]. So, “for eleven days” will be 
+    represented as “P11D”, meaning a period of 11 days. 4)  R[n][duration], where n denotes the number of repeats. When the n is omitted, the expression denotes an unspecified amount of repeats. For example, “once a day for 3 days” is “R3P1D” (repeat the time interval of 1 day (P1D) for 3 times (R3)), twice every day is “RP12H” (repeat every 12 hours)
+            "mod": additional information regarding the temporal value of a time expression. Must be one of the:
+                “NA”: the default value, no relevant modifier is present;  
+                “MORE”, means “more than”, e.g. over 2 days (val = P2D, mod = MORE);  
+                “LESS”, means “less than”, e.g. almost 2 months (val = P2M, mod=LESS); 
+                “APPROX”, means “approximate”, e.g. nearly a week (val = P1W, mod=APPROX);  
+                “START”, describes the beginning of a period of time, e.g.  Christmas morning, 2005 (val= 2005-12-25, mod= START).  
+                “END”, describes the end of a period of time, e.g. late last year, (val = 2010, mod = END)
+                “MIDDLE”, describes the middle of a period of time, e.g. mid-September 2001 (val = 2001-09, mod = MIDDLE) 
+
+    # Thinking process
+    Approach this task step by step. Start with a recall section (<Recall>... </Recall>) that briefly summarize of the task description and schema definition for better understanding of the task. Followed by an analysis section (<Analysis>... </Analysis>) to analyze the input sentence. Identify important medical contents and clarify ambiguous concepts. Then, the output section (<Outputs>... </Outputs>) that list your final outputs following the defined format. 
+
+    # Output format definition
+    Your output should follow JSON format, 
+    if there are one of the EVENT or TIMEX3 entity mentions:
+        [
+            {"entity_text": "<Exact entity mentions as in the note>", "entity_type": "EVENT", "type": "<event type>", "polarity": "<event polarity>", "modality": "<event modality>"},
+            {"entity_text": "<Exact entity mentions as in the note>", "entity_type": "TIMEX3", "type": "<TIMEX3 type>", "val": "<time value>", "mod": "<additional information>"}
+            ...
+        ]
+    if there is no entity mentioned in the given note, just output an empty list:
+        []
+
+
+    # Examples
+    Below are some examples:
+
+    Input: At 9/7/93 , 1:00 a.m. , intravenous fluids rate was decreased to 50 cc&apos;s per hour , total fluids given during the first 24 hours were 140 to 150 cc&apos;s per kilo per day .
+    Output: 
+        <Recall>
+        This is a named entity recognition task that focuses on extracting medical events (EVENT) and time expressions (TIMEX3). Events are categorized by their type (TEST, PROBLEM, TREATMENT, etc.), polarity (POS or NEG), and modality (FACTUAL, CONDITIONAL, POSSIBLE, or PROPOSED). Time expressions are identified as either DATE, TIME, DURATION, or FREQUENCY and include specific values or modifiers where applicable.
+        </Recall>
+
+        <Analysis>
+        In this sentence:
+
+        "9/7/93" represents a TIMEX3 entity for the date.
+        "1:00 a.m." is a TIMEX3 entity representing the time.
+        "first 24 hours" refers to a TIMEX3 entity of duration.
+        "intravenous fluids rate was decreased" is an EVENT referring to a TREATMENT event with a negative polarity (as it was "decreased") and a FACTUAL modality (it actually happened).
+        "total fluids given during the first 24 hours" is another EVENT representing a TREATMENT that is FACTUAL in its modality.
+        </Analysis>
+    
+        <Outputs>
+        [{"entity_text": "intravenous fluids", "entity_type": "EVENT", "type": "TREATMENT", "polarity": "POS", "modality": "FACTUAL"},
+            {"entity_text": "decreased", "entity_type": "EVENT", "type": "OCCURRENCE", "polarity": "POS", "modality": "FACTUAL"},
+            {"entity_text": "total fluids", "entity_type": "EVENT", "type": "TREATMENT", "polarity": "POS", "modality": "FACTUAL"}, 
+            {"entity_text": "9/7/93 , 1:00 a.m.", "entity_type": "TIMEX3", "type": "TIME", "val": "1993-09-07T01:00", "mod": "NA"},
+            {"entity_text": "24 hours", "entity_type": "TIMEX3", "type": "DURATION", "val": "PT24H", "mod": "NA"}]
+        </Outputs>
+
+    Input: At that time it appeared well adhered to the underlying skin .
+    Output: 
+        <Recall>
+        This is a named entity recognition task focused on extracting medical events (EVENT) and time expressions (TIMEX3). Events are categorized by their type (e.g., TEST, PROBLEM, TREATMENT), polarity (POS or NEG), and modality (FACTUAL, CONDITIONAL, POSSIBLE, or PROPOSED). Time expressions are categorized as DATE, TIME, DURATION, or FREQUENCY, and include values or modifiers where applicable.
+        </Recall>
+
+        <Analysis>
+        In this sentence:
+
+        "At that time" refers to a TIMEX3 entity that is vague, so it can be considered as a TIME with an unspecified value.
+        "appeared well adhered to the underlying skin" describes an EVENT that likely indicates a PROBLEM (the condition of the skin) and has a POS polarity (since it is "well adhered") with a FACTUAL modality (it actually occurred).
+        </Analysis>
+
+        <Outputs>
+        [{"entity_text": "it", "entity_type": "EVENT", "type": "TREATMENT", "polarity": "POS", "modality": "FACTUAL"},
+            {"entity_text": "well adhered", "entity_type": "EVENT", "type": "OCCURRENCE", "polarity": "POS", "modality": "FACTUAL"}]
+        </Outputs>
+
+    # Input placeholder
+    Below is the entire medical note for your reference. I will feed you with sentences from it one by one.
+    "{{input}}"

@@ -8,6 +8,7 @@ import itertools
 from typing import List, Dict, Tuple, Union, Callable
 from llm_ie.data_types import LLMInformationExtractionFrame, LLMInformationExtractionDocument
 from llm_ie.engines import InferenceEngine
+from colorama import Fore, Style
 
 
 class Extractor:
@@ -115,7 +116,7 @@ class Extractor:
                 dict_obj = json.loads(dict_str)
                 out.append(dict_obj)
             except json.JSONDecodeError:
-                print(f'Post-processing failed at:\n{dict_str}')
+                raise warnings.warn(f'Post-processing failed:\n{dict_str}', RuntimeWarning)
         return out
     
 
@@ -275,7 +276,7 @@ class BasicFrameExtractor(FrameExtractor):
     
 
     def extract_frames(self, text_content:Union[str, Dict[str,str]], entity_key:str, max_new_tokens:int=2048, 
-                       temperature:float=0.0, document_key:str=None, **kwrs) -> List[LLMInformationExtractionFrame]:
+                       temperature:float=0.0, case_sensitive:bool=False, document_key:str=None, **kwrs) -> List[LLMInformationExtractionFrame]:
         """
         This method inputs a text and outputs a list of LLMInformationExtractionFrame
         It use the extract() method and post-process outputs into frames.
@@ -292,6 +293,8 @@ class BasicFrameExtractor(FrameExtractor):
             the max number of new tokens LLM should generate. 
         temperature : float, Optional
             the temperature for token sampling.
+        case_sensitive : bool, Optional
+            if True, entity text matching will be case-sensitive.
         document_key : str, Optional
             specify the key in text_content where document text is. 
             If text_content is str, this parameter will be ignored.
@@ -302,7 +305,14 @@ class BasicFrameExtractor(FrameExtractor):
         frame_list = []
         gen_text = self.extract(text_content=text_content, 
                                 max_new_tokens=max_new_tokens, temperature=temperature, **kwrs)
-        entity_json = self._extract_json(gen_text=gen_text)
+
+        entity_json = []
+        for entity in self._extract_json(gen_text=gen_text):
+            if entity_key in entity:
+                entity_json.append(entity)
+            else:
+                warnings.warn(f"Extractor output frame does not have entity_key ({entity_key}). This frame will be dropped.", RuntimeWarning)
+                
         if isinstance(text_content, str):
             text = text_content
         elif isinstance(text_content, dict):
@@ -310,7 +320,7 @@ class BasicFrameExtractor(FrameExtractor):
 
         spans = self._find_entity_spans(text=text, 
                                         entities=[e[entity_key] for e in entity_json], 
-                                        case_sensitive=False)
+                                        case_sensitive=case_sensitive)
         
         for i, (ent, span) in enumerate(zip(entity_json, spans)):
             if span is not None:
@@ -459,7 +469,7 @@ class SentenceFrameExtractor(FrameExtractor):
     
     
     def extract(self, text_content:Union[str, Dict[str,str]], max_new_tokens:int=512, 
-                document_key:str=None, multi_turn:bool=True, temperature:float=0.0, stream:bool=False, **kwrs) -> List[Dict[str,str]]:
+                document_key:str=None, multi_turn:bool=False, temperature:float=0.0, stream:bool=False, **kwrs) -> List[Dict[str,str]]:
         """
         This method inputs a text and outputs a list of outputs per sentence. 
 
@@ -507,8 +517,8 @@ class SentenceFrameExtractor(FrameExtractor):
         for sent in sentences:
             messages.append({'role': 'user', 'content': sent['sentence_text']})
             if stream:
-                print(f"\n\nSentence: \n{sent['sentence_text']}\n")
-                print("Extraction:")
+                print(f"\n\n{Fore.GREEN}Sentence: {Style.RESET_ALL}\n{sent['sentence_text']}\n")
+                print(f"{Fore.BLUE}Extraction:{Style.RESET_ALL}")
 
             gen_text = self.inference_engine.chat(
                             messages=messages, 
@@ -534,7 +544,8 @@ class SentenceFrameExtractor(FrameExtractor):
     
 
     def extract_frames(self, text_content:Union[str, Dict[str,str]], entity_key:str, max_new_tokens:int=512, 
-                       document_key:str=None, multi_turn:bool=True, temperature:float=0.0, stream:bool=False, **kwrs) -> List[LLMInformationExtractionFrame]:
+                       document_key:str=None, multi_turn:bool=False, temperature:float=0.0, case_sensitive:bool=False, 
+                       stream:bool=False, **kwrs) -> List[LLMInformationExtractionFrame]:
         """
         This method inputs a text and outputs a list of LLMInformationExtractionFrame
         It use the extract() method and post-process outputs into frames.
@@ -560,6 +571,8 @@ class SentenceFrameExtractor(FrameExtractor):
             can better utilize the KV caching. 
         temperature : float, Optional
             the temperature for token sampling.
+        case_sensitive : bool, Optional
+            if True, entity text matching will be case-sensitive.
         stream : bool, Optional
             if True, LLM generated text will be printed in terminal in real-time. 
 
@@ -575,9 +588,15 @@ class SentenceFrameExtractor(FrameExtractor):
                                            **kwrs)
         frame_list = []
         for sent in llm_output_sentence:
-            entity_json = self._extract_json(gen_text=sent['gen_text'])
+            entity_json = []
+            for entity in self._extract_json(gen_text=sent['gen_text']):
+                if entity_key in entity:
+                    entity_json.append(entity)
+                else:
+                    warnings.warn(f"Extractor output frame does not have entity_key ({entity_key}). This frame will be dropped.", RuntimeWarning)
+
             spans = self._find_entity_spans(text=sent['sentence_text'], 
-                                                entities=[e[entity_key] for e in entity_json], case_sensitive=False)
+                                            entities=[e[entity_key] for e in entity_json], case_sensitive=case_sensitive)
             for ent, span in zip(entity_json, spans):
                 if span is not None:
                     start, end = span
@@ -591,6 +610,110 @@ class SentenceFrameExtractor(FrameExtractor):
                     frame_list.append(frame)
         return frame_list
 
+
+class SentenceCoTFrameExtractor(SentenceFrameExtractor):
+    from nltk.tokenize.punkt import PunktSentenceTokenizer
+    def __init__(self, inference_engine:InferenceEngine, prompt_template:str, system_prompt:str=None, **kwrs):
+        """
+        This class performs sentence-based Chain-of-thoughts (CoT) information extraction.
+        A simulated chat follows this process:
+            1. system prompt (optional)
+            2. user instructions (schema, background, full text, few-shot example...)
+            3. user input first sentence
+            4. assistant analyze the sentence
+            5. assistant extract outputs
+            6. repeat #3, #4, #5
+
+        Input system prompt (optional), prompt template (with user instructions), 
+        and specify a LLM.
+
+        Parameters
+        ----------
+        inference_engine : InferenceEngine
+            the LLM inferencing engine object. Must implements the chat() method.
+        prompt_template : str
+            prompt template with "{{<placeholder name>}}" placeholder.
+        system_prompt : str, Optional
+            system prompt.
+        """
+        super().__init__(inference_engine=inference_engine, prompt_template=prompt_template, 
+                         system_prompt=system_prompt, **kwrs)
+        
+
+    def extract(self, text_content:Union[str, Dict[str,str]], max_new_tokens:int=512, 
+                document_key:str=None, multi_turn:bool=False, temperature:float=0.0, stream:bool=False, **kwrs) -> List[Dict[str,str]]:
+        """
+        This method inputs a text and outputs a list of outputs per sentence. 
+
+        Parameters:
+        ----------
+        text_content : Union[str, Dict[str,str]]
+            the input text content to put in prompt template. 
+            If str, the prompt template must has only 1 placeholder {{<placeholder name>}}, regardless of placeholder name.
+            If dict, all the keys must be included in the prompt template placeholder {{<placeholder name>}}.
+        max_new_tokens : str, Optional
+            the max number of new tokens LLM should generate. 
+        document_key : str, Optional
+            specify the key in text_content where document text is. 
+            If text_content is str, this parameter will be ignored.
+        multi_turn : bool, Optional
+            multi-turn conversation prompting. 
+            If True, sentences and LLM outputs will be appended to the input message and carry-over. 
+            If False, only the current sentence is prompted. 
+            For LLM inference engines that supports prompt cache (e.g., Llama.Cpp, Ollama), use multi-turn conversation prompting
+            can better utilize the KV caching. 
+        temperature : float, Optional
+            the temperature for token sampling.
+        stream : bool, Optional
+            if True, LLM generated text will be printed in terminal in real-time. 
+
+        Return : str
+            the output from LLM. Need post-processing.
+        """
+        # define output
+        output = []
+        # sentence tokenization
+        if isinstance(text_content, str):
+            sentences = self._get_sentences(text_content)
+        elif isinstance(text_content, dict):
+            sentences = self._get_sentences(text_content[document_key])
+        # construct chat messages
+        messages = []
+        if self.system_prompt:
+            messages.append({'role': 'system', 'content': self.system_prompt})
+
+        messages.append({'role': 'user', 'content': self._get_user_prompt(text_content)})
+        messages.append({'role': 'assistant', 'content': 'Sure, please start with the first sentence.'})
+
+        # generate sentence by sentence
+        for sent in sentences:
+            messages.append({'role': 'user', 'content': sent['sentence_text']})
+            if stream:
+                print(f"\n\n{Fore.GREEN}Sentence: {Style.RESET_ALL}\n{sent['sentence_text']}\n")
+                print(f"{Fore.BLUE}CoT:{Style.RESET_ALL}")
+
+            gen_text = self.inference_engine.chat(
+                            messages=messages, 
+                            max_new_tokens=max_new_tokens, 
+                            temperature=temperature,
+                            stream=stream,
+                            **kwrs
+                        )
+            
+            if multi_turn:
+                # update chat messages with LLM outputs
+                messages.append({'role': 'assistant', 'content': gen_text})
+            else:
+                # delete sentence so that message is reset
+                del messages[-1]
+
+            # add to output
+            output.append({'sentence_start': sent['start'],
+                            'sentence_end': sent['end'],
+                            'sentence_text': sent['sentence_text'],
+                            'gen_text': gen_text})
+        return output
+    
 
 class RelationExtractor(Extractor):
     def __init__(self, inference_engine:InferenceEngine, prompt_template:str, system_prompt:str=None, **kwrs):
@@ -752,8 +875,8 @@ class BinaryRelationExtractor(RelationExtractor):
         """
         roi_text = self._get_ROI(frame_1, frame_2, text, buffer_size=buffer_size)
         if stream:
-            print(f"\n\nROI text: \n{roi_text}\n")
-            print("Extraction:")
+            print(f"\n\n{Fore.GREEN}ROI text:{Style.RESET_ALL} \n{roi_text}\n")
+            print(f"{Fore.BLUE}Extraction:{Style.RESET_ALL}")
 
         messages = []
         if self.system_prompt:
@@ -904,8 +1027,8 @@ class MultiClassRelationExtractor(RelationExtractor):
         """
         roi_text = self._get_ROI(frame_1, frame_2, text, buffer_size=buffer_size)
         if stream:
-            print(f"\n\nROI text: \n{roi_text}\n")
-            print("Extraction:")
+            print(f"\n\n{Fore.GREEN}ROI text:{Style.RESET_ALL} \n{roi_text}\n")
+            print(f"{Fore.BLUE}Extraction:{Style.RESET_ALL}")
 
         messages = []
         if self.system_prompt:

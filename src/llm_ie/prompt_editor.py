@@ -1,10 +1,9 @@
 import sys
-from typing import Dict, Union
+from typing import Dict
 import importlib.resources
 from llm_ie.engines import InferenceEngine
 from llm_ie.extractors import FrameExtractor
 import re
-import colorama
 from colorama import Fore, Style
 import ipywidgets as widgets
 from IPython.display import display, HTML
@@ -90,7 +89,6 @@ class PromptEditor:
         """
         This method runs an interactive chat session in the terminal to help users write prompt templates.
         """
-        colorama.init(autoreset=True)
         file_path = importlib.resources.files('llm_ie.asset.PromptEditor_prompts').joinpath('chat.txt')
         with open(file_path, 'r') as f:
             chat_prompt_template = f.read()
