@@ -116,7 +116,7 @@ class Extractor:
                 dict_obj = json.loads(dict_str)
                 out.append(dict_obj)
             except json.JSONDecodeError:
-                raise warnings.warn(f'Post-processing failed:\n{dict_str}', RuntimeWarning)
+                warnings.warn(f'Post-processing failed:\n{dict_str}', RuntimeWarning)
         return out
     
 
@@ -311,7 +311,7 @@ class BasicFrameExtractor(FrameExtractor):
             if entity_key in entity:
                 entity_json.append(entity)
             else:
-                warnings.warn(f"Extractor output frame does not have entity_key ({entity_key}). This frame will be dropped.", RuntimeWarning)
+                warnings.warn(f'Extractor output "{entity}" does not have entity_key ("{entity_key}"). This frame will be dropped.', RuntimeWarning)
                 
         if isinstance(text_content, str):
             text = text_content
@@ -335,8 +335,8 @@ class BasicFrameExtractor(FrameExtractor):
         
 
 class ReviewFrameExtractor(BasicFrameExtractor):
-    def __init__(self, inference_engine:InferenceEngine, prompt_template:str, review_prompt:str, 
-                 review_mode:str, system_prompt:str=None, **kwrs):
+    def __init__(self, inference_engine:InferenceEngine, prompt_template:str, 
+                 review_mode:str, review_prompt:str=None,system_prompt:str=None, **kwrs):
         """
         This class add a review step after the BasicFrameExtractor.
         The Review process asks LLM to review its output and:
@@ -350,8 +350,9 @@ class ReviewFrameExtractor(BasicFrameExtractor):
             the LLM inferencing engine object. Must implements the chat() method.
         prompt_template : str
             prompt template with "{{<placeholder name>}}" placeholder.
-        review_prompt : str
-            the prompt text that ask LLM to review. Specify addition or revision in the instruction. 
+        review_prompt : str: Optional
+            the prompt text that ask LLM to review. Specify addition or revision in the instruction.
+            if not provided, a default review prompt will be used. 
         review_mode : str
             review mode. Must be one of {"addition", "revision"}
             addition mode only ask LLM to add new frames, while revision mode ask LLM to regenerate.
@@ -360,10 +361,19 @@ class ReviewFrameExtractor(BasicFrameExtractor):
         """
         super().__init__(inference_engine=inference_engine, prompt_template=prompt_template, 
                          system_prompt=system_prompt, **kwrs)
-        self.review_prompt = review_prompt
         if review_mode not in {"addition", "revision"}: 
             raise ValueError('review_mode must be one of {"addition", "revision"}.')
         self.review_mode = review_mode
+
+        if review_prompt:
+            self.review_prompt = review_prompt
+        else:
+            file_path = importlib.resources.files('llm_ie.asset.default_prompts').\
+                joinpath(f"{self.__class__.__name__}_{self.review_mode}_review_prompt.txt")
+            with open(file_path, 'r') as f:
+                self.review_prompt = f.read()
+
+            warnings.warn(f'Custom review prompt not provided. The default review prompt is used:\n"{self.review_prompt}"', UserWarning)
 
 
     def extract(self, text_content:Union[str, Dict[str,str]], 
@@ -387,12 +397,15 @@ class ReviewFrameExtractor(BasicFrameExtractor):
         Return : str
             the output from LLM. Need post-processing.
         """
-        # Pormpt extraction
         messages = []
         if self.system_prompt:
             messages.append({'role': 'system', 'content': self.system_prompt})
 
         messages.append({'role': 'user', 'content': self._get_user_prompt(text_content)})
+        # Initial output
+        if stream:
+            print(f"{Fore.BLUE}Initial Output:{Style.RESET_ALL}")
+
         initial = self.inference_engine.chat(
                         messages=messages,
                         max_new_tokens=max_new_tokens, 
@@ -405,6 +418,8 @@ class ReviewFrameExtractor(BasicFrameExtractor):
         messages.append({'role': 'assistant', 'content': initial})
         messages.append({'role': 'user', 'content': self.review_prompt})
 
+        if stream:
+            print(f"\n{Fore.YELLOW}Review:{Style.RESET_ALL}")
         review = self.inference_engine.chat(
                         messages=messages, 
                         max_new_tokens=max_new_tokens, 
@@ -593,7 +608,7 @@ class SentenceFrameExtractor(FrameExtractor):
                 if entity_key in entity:
                     entity_json.append(entity)
                 else:
-                    warnings.warn(f"Extractor output frame does not have entity_key ({entity_key}). This frame will be dropped.", RuntimeWarning)
+                    warnings.warn(f'Extractor output "{entity}" does not have entity_key ("{entity_key}"). This frame will be dropped.', RuntimeWarning)
 
             spans = self._find_entity_spans(text=sent['sentence_text'], 
                                             entities=[e[entity_key] for e in entity_json], case_sensitive=case_sensitive)
@@ -610,6 +625,144 @@ class SentenceFrameExtractor(FrameExtractor):
                     frame_list.append(frame)
         return frame_list
 
+
+class SentenceReviewFrameExtractor(SentenceFrameExtractor):
+    def __init__(self, inference_engine:InferenceEngine, prompt_template:str,  
+                 review_mode:str, review_prompt:str=None, system_prompt:str=None, **kwrs):
+        """
+        This class adds a review step after the SentenceFrameExtractor.
+        For each sentence, the review process asks LLM to review its output and:
+            1. add more frames while keeping current. This is efficient for boosting recall. 
+            2. or, regenerate frames (add new and delete existing). 
+        Use the review_mode parameter to specify. Note that the review_prompt should instruct LLM accordingly.
+
+        Parameters:
+        ----------
+        inference_engine : InferenceEngine
+            the LLM inferencing engine object. Must implements the chat() method.
+        prompt_template : str
+            prompt template with "{{<placeholder name>}}" placeholder.
+        review_prompt : str: Optional
+            the prompt text that ask LLM to review. Specify addition or revision in the instruction.
+            if not provided, a default review prompt will be used. 
+        review_mode : str
+            review mode. Must be one of {"addition", "revision"}
+            addition mode only ask LLM to add new frames, while revision mode ask LLM to regenerate.
+        system_prompt : str, Optional
+            system prompt.
+        """
+        super().__init__(inference_engine=inference_engine, prompt_template=prompt_template, 
+                         system_prompt=system_prompt, **kwrs)
+
+        if review_mode not in {"addition", "revision"}: 
+            raise ValueError('review_mode must be one of {"addition", "revision"}.')
+        self.review_mode = review_mode
+
+        if review_prompt:
+            self.review_prompt = review_prompt
+        else:
+            file_path = importlib.resources.files('llm_ie.asset.default_prompts').\
+                joinpath(f"{self.__class__.__name__}_{self.review_mode}_review_prompt.txt")
+            with open(file_path, 'r') as f:
+                self.review_prompt = f.read()
+
+            warnings.warn(f'Custom review prompt not provided. The default review prompt is used:\n"{self.review_prompt}"', UserWarning)
+
+
+    def extract(self, text_content:Union[str, Dict[str,str]], max_new_tokens:int=512, 
+                document_key:str=None, multi_turn:bool=False, temperature:float=0.0, stream:bool=False, **kwrs) -> List[Dict[str,str]]:
+        """
+        This method inputs a text and outputs a list of outputs per sentence. 
+
+        Parameters:
+        ----------
+        text_content : Union[str, Dict[str,str]]
+            the input text content to put in prompt template. 
+            If str, the prompt template must has only 1 placeholder {{<placeholder name>}}, regardless of placeholder name.
+            If dict, all the keys must be included in the prompt template placeholder {{<placeholder name>}}.
+        max_new_tokens : str, Optional
+            the max number of new tokens LLM should generate. 
+        document_key : str, Optional
+            specify the key in text_content where document text is. 
+            If text_content is str, this parameter will be ignored.
+        multi_turn : bool, Optional
+            multi-turn conversation prompting. 
+            If True, sentences and LLM outputs will be appended to the input message and carry-over. 
+            If False, only the current sentence is prompted. 
+            For LLM inference engines that supports prompt cache (e.g., Llama.Cpp, Ollama), use multi-turn conversation prompting
+            can better utilize the KV caching. 
+        temperature : float, Optional
+            the temperature for token sampling.
+        stream : bool, Optional
+            if True, LLM generated text will be printed in terminal in real-time. 
+
+        Return : str
+            the output from LLM. Need post-processing.
+        """
+        # define output
+        output = []
+        # sentence tokenization
+        if isinstance(text_content, str):
+            sentences = self._get_sentences(text_content)
+        elif isinstance(text_content, dict):
+            sentences = self._get_sentences(text_content[document_key])
+        # construct chat messages
+        messages = []
+        if self.system_prompt:
+            messages.append({'role': 'system', 'content': self.system_prompt})
+
+        messages.append({'role': 'user', 'content': self._get_user_prompt(text_content)})
+        messages.append({'role': 'assistant', 'content': 'Sure, please start with the first sentence.'})
+
+        # generate sentence by sentence
+        for sent in sentences:
+            messages.append({'role': 'user', 'content': sent['sentence_text']})
+            if stream:
+                print(f"\n\n{Fore.GREEN}Sentence: {Style.RESET_ALL}\n{sent['sentence_text']}\n")
+                print(f"{Fore.BLUE}Initial Output:{Style.RESET_ALL}")
+
+            initial = self.inference_engine.chat(
+                            messages=messages, 
+                            max_new_tokens=max_new_tokens, 
+                            temperature=temperature,
+                            stream=stream,
+                            **kwrs
+                        )
+            
+            # Review
+            if stream:
+                print(f"\n{Fore.YELLOW}Review:{Style.RESET_ALL}")
+            messages.append({'role': 'assistant', 'content': initial})
+            messages.append({'role': 'user', 'content': self.review_prompt})
+
+            review = self.inference_engine.chat(
+                            messages=messages, 
+                            max_new_tokens=max_new_tokens, 
+                            temperature=temperature,
+                            stream=stream,
+                            **kwrs
+                        )
+            
+            # Output
+            if self.review_mode == "revision":
+                gen_text = review
+            elif self.review_mode == "addition":
+                gen_text = initial + '\n' + review
+            
+            if multi_turn:
+                # update chat messages with LLM outputs
+                messages.append({'role': 'assistant', 'content': review})
+            else:
+                # delete sentence and review so that message is reset
+                del messages[-3:]
+
+            # add to output
+            output.append({'sentence_start': sent['start'],
+                            'sentence_end': sent['end'],
+                            'sentence_text': sent['sentence_text'],
+                            'gen_text': gen_text})
+        return output
+        
 
 class SentenceCoTFrameExtractor(SentenceFrameExtractor):
     from nltk.tokenize.punkt import PunktSentenceTokenizer
