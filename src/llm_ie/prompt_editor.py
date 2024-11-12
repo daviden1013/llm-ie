@@ -5,8 +5,6 @@ from llm_ie.engines import InferenceEngine
 from llm_ie.extractors import FrameExtractor
 import re
 from colorama import Fore, Style
-import ipywidgets as widgets
-from IPython.display import display, HTML
 
     
 class PromptEditor:
@@ -121,6 +119,16 @@ class PromptEditor:
         """
         This method runs an interactive chat session in Jupyter/IPython using ipywidgets to help users write prompt templates.
         """
+        # Check if ipywidgets is installed
+        if importlib.util.find_spec("ipywidgets") is None:
+            raise ImportError("ipywidgets not found. Please install ipywidgets (```pip install ipywidgets```).")
+        import ipywidgets as widgets
+
+        # Check if IPython is installed
+        if importlib.util.find_spec("IPython") is None:
+            raise ImportError("IPython not found. Please install IPython (```pip install ipython```).")
+        from IPython.display import display, HTML
+
         # Load the chat prompt template from the resources
         file_path = importlib.resources.files('llm_ie.asset.PromptEditor_prompts').joinpath('chat.txt')
         with open(file_path, 'r') as f:

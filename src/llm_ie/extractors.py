@@ -5,10 +5,11 @@ import inspect
 import importlib.resources
 import warnings
 import itertools
-from typing import List, Dict, Tuple, Union, Callable
+from typing import Set, List, Dict, Tuple, Union, Callable
 from llm_ie.data_types import LLMInformationExtractionFrame, LLMInformationExtractionDocument
 from llm_ie.engines import InferenceEngine
 from colorama import Fore, Style
+from nltk.tokenize import RegexpTokenizer
 
 
 class Extractor:
@@ -37,7 +38,7 @@ class Extractor:
         This method returns the pre-defined prompt guideline for the extractor from the package asset.
         """
         file_path = importlib.resources.files('llm_ie.asset.prompt_guide').joinpath(f"{cls.__name__}_prompt_guide.txt")
-        with open(file_path, 'r') as f:
+        with open(file_path, 'r', encoding="utf-8") as f:
             return f.read()
 
 
@@ -139,9 +140,68 @@ class FrameExtractor(Extractor):
                          prompt_template=prompt_template,
                          system_prompt=system_prompt,
                          **kwrs)
-    
+        self.tokenizer = RegexpTokenizer(r'\w+|[^\w\s]')
 
-    def _find_entity_spans(self, text: str, entities: List[str], case_sensitive:bool=False) -> List[Tuple[int]]:
+
+    def _jaccard_score(self, s1:set, s2:set) -> float:
+        """
+        This method calculates the Jaccard score between two sets of word tokens.
+        """
+        return len(s1.intersection(s2)) / len(s1.union(s2))
+
+
+    def _get_word_tokens(self, text) -> Tuple[List[str], List[Tuple[int]]]:
+        """
+        This method tokenizes the input text into a list of word tokens and their spans.
+        """
+        tokens = []
+        spans = []
+        for span in self.tokenizer.span_tokenize(text):
+            spans.append(span)
+            start, end = span
+            tokens.append(text[start:end])
+        return tokens, spans
+
+
+    def _get_closest_substring(self, text:str, pattern:str, buffer_size:float=0.2) -> Tuple[Tuple[int, int], float]:
+        """
+        This method finds the closest (highest Jaccard score) substring in text that matches the pattern.
+
+        Parameters
+        ----------
+        text : str
+            the input text.
+        pattern : str
+            the pattern to match.
+        buffer_size : float, Optional
+            the buffer size for the matching window. Default is 20% of pattern length.
+
+        Returns : Tuple[Tuple[int, int], float]
+            a tuple of 2-tuple span and Jaccard score.
+        """
+        text_tokens, text_spans = self._get_word_tokens(text)
+        pattern_tokens, _ = self._get_word_tokens(pattern)
+        pattern_tokens = set(pattern_tokens)
+        window_size = len(pattern_tokens)
+        window_size_min = int(window_size * (1 - buffer_size))
+        window_size_max = int(window_size * (1 + buffer_size))
+        closest_substring_spans = None
+        best_score = 0
+        
+        for i in range(len(text_tokens) - window_size_max):
+            for w in range(window_size_min, window_size_max): 
+                sub_str_tokens = set(text_tokens[i:i + w])
+                score = self._jaccard_score(sub_str_tokens, pattern_tokens)
+                if score > best_score:
+                    best_score = score
+                    sub_string_word_spans = text_spans[i:i + w]
+                    closest_substring_spans = (sub_string_word_spans[0][0], sub_string_word_spans[-1][-1])
+
+        return closest_substring_spans, best_score
+
+
+    def _find_entity_spans(self, text: str, entities: List[str], case_sensitive:bool=False, 
+                           fuzzy_match:bool=True, fuzzy_buffer_size:float=0.2, fuzzy_score_cutoff:float=0.8) -> List[Tuple[int]]:
         """
         This function inputs a text and a list of entity text, 
         outputs a list of spans (2-tuple) for each entity.
@@ -151,19 +211,46 @@ class FrameExtractor(Extractor):
         ----------
         text : str
             text that contains entities
+        entities : List[str]
+            a list of entity text to find in the text
+        case_sensitive : bool, Optional
+            if True, entity text matching will be case-sensitive.
+        fuzzy_match : bool, Optional
+            if True, fuzzy matching will be applied to find entity text.
+        fuzzy_buffer_size : float, Optional
+            the buffer size for fuzzy matching. Default is 20% of entity text length.
+        fuzzy_score_cutoff : float, Optional
+            the Jaccard score cutoff for fuzzy matching. 
+            Matched entity text must have a score higher than this value or a None will be returned.
         """
+        # Handle case sensitivity
+        if not case_sensitive:
+            text = text.lower()
+
+        # Match entities
         entity_spans = []
-        for entity in entities:            
-            if case_sensitive:
-                match = re.search(re.escape(entity), text)
-            else: 
-                match = re.search(re.escape(entity), text, re.IGNORECASE)
-                
+        for entity in entities:          
+            if not case_sensitive:
+                entity = entity.lower()
+
+            # Exact match  
+            match = re.search(re.escape(entity), text)
             if match:
                 start, end = match.span()
                 entity_spans.append((start, end))
                 # Replace the found entity with spaces to avoid finding the same instance again
                 text = text[:start] + ' ' * (end - start) + text[end:]
+            # Fuzzy match
+            elif fuzzy_match:
+                closest_substring_span, best_score = self._get_closest_substring(text, entity, buffer_size=fuzzy_buffer_size)
+                if best_score >= fuzzy_score_cutoff:
+                    entity_spans.append(closest_substring_span)
+                    # Replace the found entity with spaces to avoid finding the same instance again
+                    text = text[:closest_substring_span[0]] + ' ' * (closest_substring_span[1] - closest_substring_span[0]) + text[closest_substring_span[1]:]
+                else:
+                    entity_spans.append(None)
+
+            # No match
             else:
                 entity_spans.append(None)
 
@@ -276,7 +363,9 @@ class BasicFrameExtractor(FrameExtractor):
     
 
     def extract_frames(self, text_content:Union[str, Dict[str,str]], entity_key:str, max_new_tokens:int=2048, 
-                       temperature:float=0.0, case_sensitive:bool=False, document_key:str=None, **kwrs) -> List[LLMInformationExtractionFrame]:
+                       temperature:float=0.0, document_key:str=None, stream:bool=False,
+                       case_sensitive:bool=False, fuzzy_match:bool=True, fuzzy_buffer_size:float=0.2, 
+                       fuzzy_score_cutoff:float=0.8, **kwrs) -> List[LLMInformationExtractionFrame]:
         """
         This method inputs a text and outputs a list of LLMInformationExtractionFrame
         It use the extract() method and post-process outputs into frames.
@@ -293,18 +382,30 @@ class BasicFrameExtractor(FrameExtractor):
             the max number of new tokens LLM should generate. 
         temperature : float, Optional
             the temperature for token sampling.
-        case_sensitive : bool, Optional
-            if True, entity text matching will be case-sensitive.
         document_key : str, Optional
             specify the key in text_content where document text is. 
             If text_content is str, this parameter will be ignored.
+        stream : bool, Optional
+            if True, LLM generated text will be printed in terminal in real-time.
+        case_sensitive : bool, Optional
+            if True, entity text matching will be case-sensitive.
+        fuzzy_match : bool, Optional
+            if True, fuzzy matching will be applied to find entity text.
+        fuzzy_buffer_size : float, Optional
+            the buffer size for fuzzy matching. Default is 20% of entity text length.
+        fuzzy_score_cutoff : float, Optional
+            the Jaccard score cutoff for fuzzy matching. 
+            Matched entity text must have a score higher than this value or a None will be returned.
 
         Return : str
             a list of frames.
         """
         frame_list = []
         gen_text = self.extract(text_content=text_content, 
-                                max_new_tokens=max_new_tokens, temperature=temperature, **kwrs)
+                                max_new_tokens=max_new_tokens, 
+                                temperature=temperature, 
+                                stream=stream,
+                                **kwrs)
 
         entity_json = []
         for entity in self._extract_json(gen_text=gen_text):
@@ -320,7 +421,10 @@ class BasicFrameExtractor(FrameExtractor):
 
         spans = self._find_entity_spans(text=text, 
                                         entities=[e[entity_key] for e in entity_json], 
-                                        case_sensitive=case_sensitive)
+                                        case_sensitive=case_sensitive,
+                                        fuzzy_match=fuzzy_match,
+                                        fuzzy_buffer_size=fuzzy_buffer_size,
+                                        fuzzy_score_cutoff=fuzzy_score_cutoff)
         
         for i, (ent, span) in enumerate(zip(entity_json, spans)):
             if span is not None:
@@ -370,7 +474,7 @@ class ReviewFrameExtractor(BasicFrameExtractor):
         else:
             file_path = importlib.resources.files('llm_ie.asset.default_prompts').\
                 joinpath(f"{self.__class__.__name__}_{self.review_mode}_review_prompt.txt")
-            with open(file_path, 'r') as f:
+            with open(file_path, 'r', encoding="utf-8") as f:
                 self.review_prompt = f.read()
 
             warnings.warn(f'Custom review prompt not provided. The default review prompt is used:\n"{self.review_prompt}"', UserWarning)
@@ -559,8 +663,9 @@ class SentenceFrameExtractor(FrameExtractor):
     
 
     def extract_frames(self, text_content:Union[str, Dict[str,str]], entity_key:str, max_new_tokens:int=512, 
-                       document_key:str=None, multi_turn:bool=False, temperature:float=0.0, case_sensitive:bool=False, 
-                       stream:bool=False, **kwrs) -> List[LLMInformationExtractionFrame]:
+                       document_key:str=None, multi_turn:bool=False, temperature:float=0.0, stream:bool=False,
+                       case_sensitive:bool=False, fuzzy_match:bool=True, fuzzy_buffer_size:float=0.2, fuzzy_score_cutoff:float=0.8,
+                        **kwrs) -> List[LLMInformationExtractionFrame]:
         """
         This method inputs a text and outputs a list of LLMInformationExtractionFrame
         It use the extract() method and post-process outputs into frames.
@@ -586,10 +691,17 @@ class SentenceFrameExtractor(FrameExtractor):
             can better utilize the KV caching. 
         temperature : float, Optional
             the temperature for token sampling.
-        case_sensitive : bool, Optional
-            if True, entity text matching will be case-sensitive.
         stream : bool, Optional
             if True, LLM generated text will be printed in terminal in real-time. 
+        case_sensitive : bool, Optional
+            if True, entity text matching will be case-sensitive.
+        fuzzy_match : bool, Optional
+            if True, fuzzy matching will be applied to find entity text.
+        fuzzy_buffer_size : float, Optional
+            the buffer size for fuzzy matching. Default is 20% of entity text length.
+        fuzzy_score_cutoff : float, Optional
+            the Jaccard score cutoff for fuzzy matching. 
+            Matched entity text must have a score higher than this value or a None will be returned.
 
         Return : str
             a list of frames.
@@ -611,7 +723,11 @@ class SentenceFrameExtractor(FrameExtractor):
                     warnings.warn(f'Extractor output "{entity}" does not have entity_key ("{entity_key}"). This frame will be dropped.', RuntimeWarning)
 
             spans = self._find_entity_spans(text=sent['sentence_text'], 
-                                            entities=[e[entity_key] for e in entity_json], case_sensitive=case_sensitive)
+                                            entities=[e[entity_key] for e in entity_json], 
+                                            case_sensitive=case_sensitive,
+                                            fuzzy_match=fuzzy_match,
+                                            fuzzy_buffer_size=fuzzy_buffer_size,
+                                            fuzzy_score_cutoff=fuzzy_score_cutoff)
             for ent, span in zip(entity_json, spans):
                 if span is not None:
                     start, end = span
@@ -663,7 +779,7 @@ class SentenceReviewFrameExtractor(SentenceFrameExtractor):
         else:
             file_path = importlib.resources.files('llm_ie.asset.default_prompts').\
                 joinpath(f"{self.__class__.__name__}_{self.review_mode}_review_prompt.txt")
-            with open(file_path, 'r') as f:
+            with open(file_path, 'r', encoding="utf-8") as f:
                 self.review_prompt = f.read()
 
             warnings.warn(f'Custom review prompt not provided. The default review prompt is used:\n"{self.review_prompt}"', UserWarning)
