@@ -143,7 +143,7 @@ class FrameExtractor(Extractor):
         self.tokenizer = RegexpTokenizer(r'\w+|[^\w\s]')
 
 
-    def _jaccard_score(self, s1:set, s2:set) -> float:
+    def _jaccard_score(self, s1:Set[str], s2:Set[str]) -> float:
         """
         This method calculates the Jaccard score between two sets of word tokens.
         """
@@ -166,7 +166,8 @@ class FrameExtractor(Extractor):
     def _get_closest_substring(self, text:str, pattern:str, buffer_size:float=0.2) -> Tuple[Tuple[int, int], float]:
         """
         This method finds the closest (highest Jaccard score) substring in text that matches the pattern.
-        the substring must start and end with the same word token as the pattern.
+        the substring must start with the same word token as the pattern. This is due to the observation that 
+        LLM often generate the first few words consistently. 
 
         Parameters
         ----------
@@ -186,7 +187,7 @@ class FrameExtractor(Extractor):
         window_size = len(pattern_tokens)
         window_size_min = int(window_size * (1 - buffer_size))
         window_size_max = int(window_size * (1 + buffer_size))
-        closest_substring_spans = None
+        closest_substring_span = None
         best_score = 0
         
         for i in range(len(text_tokens) - window_size_max):
@@ -197,9 +198,9 @@ class FrameExtractor(Extractor):
                     if score > best_score:
                         best_score = score
                         sub_string_word_spans = text_spans[i:i + w]
-                        closest_substring_spans = (sub_string_word_spans[0][0], sub_string_word_spans[-1][-1])
+                        closest_substring_span = (sub_string_word_spans[0][0], sub_string_word_spans[-1][-1])
 
-        return closest_substring_spans, best_score
+        return closest_substring_span, best_score
 
 
     def _find_entity_spans(self, text: str, entities: List[str], case_sensitive:bool=False, 
