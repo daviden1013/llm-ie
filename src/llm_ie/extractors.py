@@ -166,6 +166,7 @@ class FrameExtractor(Extractor):
     def _get_closest_substring(self, text:str, pattern:str, buffer_size:float=0.2) -> Tuple[Tuple[int, int], float]:
         """
         This method finds the closest (highest Jaccard score) substring in text that matches the pattern.
+        the substring must start and end with the same word token as the pattern.
 
         Parameters
         ----------
@@ -181,7 +182,7 @@ class FrameExtractor(Extractor):
         """
         text_tokens, text_spans = self._get_word_tokens(text)
         pattern_tokens, _ = self._get_word_tokens(pattern)
-        pattern_tokens = set(pattern_tokens)
+        pattern_tokens_set = set(pattern_tokens)
         window_size = len(pattern_tokens)
         window_size_min = int(window_size * (1 - buffer_size))
         window_size_max = int(window_size * (1 + buffer_size))
@@ -190,12 +191,13 @@ class FrameExtractor(Extractor):
         
         for i in range(len(text_tokens) - window_size_max):
             for w in range(window_size_min, window_size_max): 
-                sub_str_tokens = set(text_tokens[i:i + w])
-                score = self._jaccard_score(sub_str_tokens, pattern_tokens)
-                if score > best_score:
-                    best_score = score
-                    sub_string_word_spans = text_spans[i:i + w]
-                    closest_substring_spans = (sub_string_word_spans[0][0], sub_string_word_spans[-1][-1])
+                sub_str_tokens = text_tokens[i:i + w]
+                if sub_str_tokens[0] == pattern_tokens[0]:
+                    score = self._jaccard_score(set(sub_str_tokens), pattern_tokens_set)
+                    if score > best_score:
+                        best_score = score
+                        sub_string_word_spans = text_spans[i:i + w]
+                        closest_substring_spans = (sub_string_word_spans[0][0], sub_string_word_spans[-1][-1])
 
         return closest_substring_spans, best_score
 
@@ -243,7 +245,7 @@ class FrameExtractor(Extractor):
             # Fuzzy match
             elif fuzzy_match:
                 closest_substring_span, best_score = self._get_closest_substring(text, entity, buffer_size=fuzzy_buffer_size)
-                if best_score >= fuzzy_score_cutoff:
+                if best_score >= fuzzy_score_cutoff and closest_substring_span:
                     entity_spans.append(closest_substring_span)
                     # Replace the found entity with spaces to avoid finding the same instance again
                     text = text[:closest_substring_span[0]] + ' ' * (closest_substring_span[1] - closest_substring_span[0]) + text[closest_substring_span[1]:]
@@ -432,7 +434,7 @@ class BasicFrameExtractor(FrameExtractor):
                 frame = LLMInformationExtractionFrame(frame_id=f"{i}", 
                             start=start,
                             end=end,
-                            entity_text=ent[entity_key],
+                            entity_text=text[start:end],
                             attr={k: v for k, v in ent.items() if k != entity_key and v != ""})
                 frame_list.append(frame)
         return frame_list
@@ -731,12 +733,13 @@ class SentenceFrameExtractor(FrameExtractor):
             for ent, span in zip(entity_json, spans):
                 if span is not None:
                     start, end = span
+                    entity_text = sent['sentence_text'][start:end]
                     start += sent['sentence_start']
                     end += sent['sentence_start']
                     frame = LLMInformationExtractionFrame(frame_id=f"{len(frame_list)}", 
                                 start=start,
                                 end=end,
-                                entity_text=ent[entity_key],
+                                entity_text=entity_text,
                                 attr={k: v for k, v in ent.items() if k != entity_key and v != ""})
                     frame_list.append(frame)
         return frame_list
