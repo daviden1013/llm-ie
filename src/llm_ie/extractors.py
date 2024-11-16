@@ -181,11 +181,14 @@ class FrameExtractor(Extractor):
         Returns : Tuple[Tuple[int, int], float]
             a tuple of 2-tuple span and Jaccard score.
         """
+        if not text or not pattern:
+            return None, 0
+
         text_tokens, text_spans = self._get_word_tokens(text)
         pattern_tokens, _ = self._get_word_tokens(pattern)
         pattern_tokens_set = set(pattern_tokens)
         window_size = len(pattern_tokens)
-        window_size_min = int(window_size * (1 - buffer_size))
+        window_size_min = max(1, int(window_size * (1 - buffer_size)))
         window_size_max = int(window_size * (1 + buffer_size))
         closest_substring_span = None
         best_score = 0
@@ -193,7 +196,7 @@ class FrameExtractor(Extractor):
         for i in range(len(text_tokens) - window_size_max):
             for w in range(window_size_min, window_size_max): 
                 sub_str_tokens = text_tokens[i:i + w]
-                if sub_str_tokens[0] == pattern_tokens[0]:
+                if len(sub_str_tokens) > 0 and sub_str_tokens[0] == pattern_tokens[0]:
                     score = self._jaccard_score(set(sub_str_tokens), pattern_tokens_set)
                     if score > best_score:
                         best_score = score
@@ -238,7 +241,7 @@ class FrameExtractor(Extractor):
 
             # Exact match  
             match = re.search(re.escape(entity), text)
-            if match:
+            if match and entity:
                 start, end = match.span()
                 entity_spans.append((start, end))
                 # Replace the found entity with spaces to avoid finding the same instance again
@@ -246,7 +249,7 @@ class FrameExtractor(Extractor):
             # Fuzzy match
             elif fuzzy_match:
                 closest_substring_span, best_score = self._get_closest_substring(text, entity, buffer_size=fuzzy_buffer_size)
-                if best_score >= fuzzy_score_cutoff and closest_substring_span:
+                if closest_substring_span and best_score >= fuzzy_score_cutoff:
                     entity_spans.append(closest_substring_span)
                     # Replace the found entity with spaces to avoid finding the same instance again
                     text = text[:closest_substring_span[0]] + ' ' * (closest_substring_span[1] - closest_substring_span[0]) + text[closest_substring_span[1]:]
