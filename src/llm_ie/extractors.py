@@ -189,7 +189,7 @@ class FrameExtractor(Extractor):
         pattern_tokens_set = set(pattern_tokens)
         window_size = len(pattern_tokens)
         window_size_min = max(1, int(window_size * (1 - buffer_size)))
-        window_size_max = int(window_size * (1 + buffer_size))
+        window_size_max = int(window_size * (1 + buffer_size)) + 1
         closest_substring_span = None
         best_score = 0
         
