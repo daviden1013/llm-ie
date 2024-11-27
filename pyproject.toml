@@ -15,6 +15,7 @@ exclude = [
 python = "^3.11"
 nltk = "^3.8"
 colorama = "^0.4.6"
+json_repair = "^0.30"
 
 
 [build-system]

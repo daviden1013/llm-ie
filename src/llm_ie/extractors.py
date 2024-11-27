@@ -1,6 +1,7 @@
 import abc
 import re
 import json
+import json_repair
 import inspect
 import importlib.resources
 import warnings
@@ -117,7 +118,12 @@ class Extractor:
                 dict_obj = json.loads(dict_str)
                 out.append(dict_obj)
             except json.JSONDecodeError:
-                warnings.warn(f'Post-processing failed:\n{dict_str}', RuntimeWarning)
+                dict_obj = json_repair.repair_json(dict_str, skip_json_loads=True, return_objects=True)
+                if dict_obj:
+                    warnings.warn(f'JSONDecodeError detected, fixed with repair_json:\n{dict_str}', RuntimeWarning)
+                    out.append(dict_obj)
+                else:
+                    warnings.warn(f'JSONDecodeError could not be fixed:\n{dict_str}', RuntimeWarning)
         return out
     
 
