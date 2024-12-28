@@ -8,7 +8,7 @@ An LLM-powered tool that transforms everyday language into robust information ex
 
 | Features | Support |
 |----------|----------|
-| **LLM Agent for prompt writing** | :white_check_mark:  Interactive chat, Python functions |
+| **LLM Agent for prompt writing** | :white_check_mark: Interactive chat, Python functions |
 | **Named Entity Recognition (NER)** | :white_check_mark: Document-level, Sentence-level |
 | **Entity Attributes Extraction** | :white_check_mark: Flexible formats |
 | **Relation Extraction (RE)** | :white_check_mark: Binary & Multiclass relations |
@@ -22,10 +22,12 @@ An LLM-powered tool that transforms everyday language into robust information ex
 - [User Guide](#user-guide)
     - [LLM Inference Engine](#llm-inference-engine)
     - [Prompt Template](#prompt-template)
-    - [Prompt Editor](#prompt-editor)
+    - [Prompt Editor LLM Agent](#prompt-editor-llm-agent)
     - [Extractor](#extractor)
         - [FrameExtractor](#frameextractor)
         - [RelationExtractor](#relationextractor)
+- [Benchmarks](#benchmarks)
+- [Citation](#citation)
 
 ## Overview
 LLM-IE is a toolkit that provides robust information extraction utilities for named entity, entity attributes, and entity relation extraction. Since prompt design has a significant impact on generative information extraction with LLMs, it has a built-in LLM agent ("editor") to help with prompt writing. The flowchart below demonstrates the workflow starting from a casual language request to output visualization.
@@ -452,7 +454,7 @@ from llm_ie.extractors import BasicFrameExtractor
 print(BasicFrameExtractor.get_prompt_guide())
 ```
 
-### Prompt Editor
+### Prompt Editor LLM Agent
 The prompt editor is an LLM agent that help users write prompt templates following the defined schema and guideline of each extractor. Chat with the promtp editor:
 
 ```python
@@ -596,10 +598,12 @@ After a few iterations of revision, we will have a high-quality prompt template 
 
 ### Extractor
 An extractor implements a prompting method for information extraction. There are two extractor families: ```FrameExtractor``` and ```RelationExtractor```. 
-The ```FrameExtractor``` extracts named entities and entity attributes ("frame"). The ```RelationExtractor``` extracts the relation (and relation types) between frames. 
+The ```FrameExtractor``` extracts named entities and entity attributes ("frame"). The ```RelationExtractor``` extracts the relation (and relation types) between frames.  
 
 #### FrameExtractor
 The ```BasicFrameExtractor``` directly prompts LLM to generate a list of dictionaries. Each dictionary is then post-processed into a frame. The ```ReviewFrameExtractor``` is based on the ```BasicFrameExtractor``` but adds a review step after the initial extraction to boost sensitivity and improve performance. ```SentenceFrameExtractor``` gives LLM the entire document upfront as a reference, then prompts LLM sentence by sentence and collects per-sentence outputs. To learn about an extractor, use the class method ```get_prompt_guide()``` to print out the prompt guide. 
+
+Since the output entity text from LLMs might not be consistent with the original text due to the limitations of LLMs, we apply fuzzy search in post-processing to find the accurate entity span. In the `FrameExtractor.extract_frames()` method, setting parameter `fuzzy_match=True` applies Jaccard similarity matching. 
 
 <details>
 <summary>BasicFrameExtractor</summary>
@@ -610,7 +614,7 @@ The ```BasicFrameExtractor``` directly prompts LLM to generate a list of diction
 from llm_ie.extractors import BasicFrameExtractor
 
 extractor = BasicFrameExtractor(llm, prompt_temp)
-frames = extractor.extract_frames(text_content=text, entity_key="Diagnosis", stream=True)
+frames = extractor.extract_frames(text_content=text, entity_key="Diagnosis", case_sensitive=False, fuzzy_match=True, stream=True)
 ```
 
 Use the ```get_prompt_guide()``` method to inspect the prompt template guideline for ```BasicFrameExtractor```. 
@@ -688,7 +692,7 @@ The ```multi_turn``` parameter specifies multi-turn conversation for prompting. 
 from llm_ie.extractors import SentenceFrameExtractor
 
 extractor = SentenceFrameExtractor(llm, prompt_temp)
-frames = extractor.extract_frames(text_content=text, entity_key="Diagnosis", multi_turn=True, stream=True)
+frames = extractor.extract_frames(text_content=text, entity_key="Diagnosis", multi_turn=True, case_sensitive=False, fuzzy_match=True, stream=True)
 ```
 </details>
 
@@ -879,3 +883,18 @@ relations = extractor.extract_relations(doc, stream=True)
 ```
 
 </details>
+
+### Benchmarks
+We benchmarked the frame and relation extractors on biomedical information extraction tasks. The results and experiment code is available on [this page](https://github.com/daviden1013/LLM-IE_Benchmark).
+
+
+### Citation
+For more information and benchmarks, please check our paper:
+```bibtex
+@article{hsu2024llm,
+  title={LLM-IE: A Python Package for Generative Information Extraction with Large Language Models},
+  author={Hsu, Enshuo and Roberts, Kirk},
+  journal={arXiv preprint arXiv:2411.11779},
+  year={2024}
+}
+```
