@@ -8,7 +8,7 @@ from colorama import Fore, Style
 
     
 class PromptEditor:
-    def __init__(self, inference_engine:InferenceEngine, extractor:FrameExtractor):
+    def __init__(self, inference_engine:InferenceEngine, extractor:FrameExtractor, prompt_guide:str=None):
         """
         This class is a LLM agent that rewrite or comment a prompt draft based on the prompt guide of an extractor.
 
@@ -18,10 +18,25 @@ class PromptEditor:
             the LLM inferencing engine object. Must implements the chat() method.
         extractor : FrameExtractor
             a FrameExtractor. 
+        prompt_guide : str, optional
+            the prompt guide for the extractor. 
+            All built-in extractors have a prompt guide in the asset folder. Passing values to this parameter 
+            will override the built-in prompt guide which is not recommended.
+            For custom extractors, this parameter must be provided.
         """
         self.inference_engine = inference_engine
-        self.prompt_guide = extractor.get_prompt_guide()
 
+        # if prompt_guide is provided, use it anyways
+        if prompt_guide:
+            self.prompt_guide = prompt_guide
+        # if prompt_guide is not provided, get it from the extractor
+        else:
+            self.prompt_guide = extractor.get_prompt_guide()
+            # when extractor does not have a prompt guide (e.g. custom extractor), ValueError
+            if self.prompt_guide is None:
+                raise ValueError(f"Prompt guide for {extractor.__class__.__name__} is not available. Use `prompt_guide` parameter to provide a prompt guide.")
+        
+        # get system prompt
         file_path = importlib.resources.files('llm_ie.asset.PromptEditor_prompts').joinpath('system.txt')
         with open(file_path, 'r') as f:
             self.system_prompt =  f.read()
