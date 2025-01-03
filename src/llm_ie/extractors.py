@@ -1,11 +1,14 @@
 import abc
 import re
+import copy
 import json
 import json_repair
 import inspect
 import importlib.resources
 import warnings
 import itertools
+import asyncio
+import nest_asyncio
 from typing import Set, List, Dict, Tuple, Union, Callable
 from llm_ie.data_types import LLMInformationExtractionFrame, LLMInformationExtractionDocument
 from llm_ie.engines import InferenceEngine
@@ -19,7 +22,7 @@ class Extractor:
         This is the abstract class for (frame and relation) extractors.
         Input LLM inference engine, system prompt (optional), prompt template (with instruction, few-shot examples).
 
-        Parameters
+        Parameters:
         ----------
         inference_engine : InferenceEngine
             the LLM inferencing engine object. Must implements the chat() method.
@@ -38,16 +41,20 @@ class Extractor:
         """
         This method returns the pre-defined prompt guideline for the extractor from the package asset.
         """
+        # Check if the prompt guide is available
         file_path = importlib.resources.files('llm_ie.asset.prompt_guide').joinpath(f"{cls.__name__}_prompt_guide.txt")
-        with open(file_path, 'r', encoding="utf-8") as f:
-            return f.read()
-
+        try:     
+            with open(file_path, 'r', encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            warnings.warn(f"Prompt guide for {cls.__name__} is not available. Is it a customed extractor?", UserWarning)
+            return None
 
     def _get_user_prompt(self, text_content:Union[str, Dict[str,str]]) -> str:
         """
         This method applies text_content to prompt_template and returns a prompt.
 
-        Parameters
+        Parameters:
         ----------
         text_content : Union[str, Dict[str,str]]
             the input text content to put in prompt template. 
@@ -133,7 +140,7 @@ class FrameExtractor(Extractor):
         This is the abstract class for frame extraction.
         Input LLM inference engine, system prompt (optional), prompt template (with instruction, few-shot examples).
 
-        Parameters
+        Parameters:
         ----------
         inference_engine : InferenceEngine
             the LLM inferencing engine object. Must implements the chat() method.
@@ -175,7 +182,7 @@ class FrameExtractor(Extractor):
         the substring must start with the same word token as the pattern. This is due to the observation that 
         LLM often generate the first few words consistently. 
 
-        Parameters
+        Parameters:
         ----------
         text : str
             the input text.
@@ -219,7 +226,7 @@ class FrameExtractor(Extractor):
         outputs a list of spans (2-tuple) for each entity.
         Entities that are not found in the text will be None from output.
 
-        Parameters
+        Parameters:
         ----------
         text : str
             text that contains entities
@@ -322,7 +329,7 @@ class BasicFrameExtractor(FrameExtractor):
         Input system prompt (optional), prompt template (with instruction, few-shot examples), 
         and specify a LLM.
 
-        Parameters
+        Parameters:
         ----------
         inference_engine : InferenceEngine
             the LLM inferencing engine object. Must implements the chat() method.
@@ -555,18 +562,18 @@ class SentenceFrameExtractor(FrameExtractor):
     from nltk.tokenize.punkt import PunktSentenceTokenizer
     def __init__(self, inference_engine:InferenceEngine, prompt_template:str, system_prompt:str=None, **kwrs):
         """
-        This class performs sentence-based information extraction.
-        A simulated chat follows this process:
+        This class performs sentence-by-sentence information extraction.
+        The process is as follows:
             1. system prompt (optional)
-            2. user instructions (schema, background, full text, few-shot example...)
-            3. user input first sentence
-            4. assistant extract outputs
+            2. user prompt with instructions (schema, background, full text, few-shot example...)
+            3. feed a sentence (start with first sentence)
+            4. LLM extract entities and attributes from the sentence
             5. repeat #3 and #4
 
         Input system prompt (optional), prompt template (with user instructions), 
         and specify a LLM.
 
-        Parameters
+        Parameters:
         ----------
         inference_engine : InferenceEngine
             the LLM inferencing engine object. Must implements the chat() method.
@@ -583,7 +590,7 @@ class SentenceFrameExtractor(FrameExtractor):
         This method sentence tokenize the input text into a list of sentences 
         as dict of {start, end, sentence_text}
 
-        Parameters
+        Parameters:
         ----------
         text : str
             text to sentence tokenize.
@@ -674,10 +681,76 @@ class SentenceFrameExtractor(FrameExtractor):
         return output
     
 
+    async def extract_async(self, text_content:Union[str, Dict[str,str]], max_new_tokens:int=512, 
+                document_key:str=None, temperature:float=0.0, n_parallel_sentences:int=32, **kwrs) -> List[Dict[str,str]]:
+        """
+        The asynchronous version of the extract() method.
+
+        Parameters:
+        ----------
+        text_content : Union[str, Dict[str,str]]
+            the input text content to put in prompt template. 
+            If str, the prompt template must has only 1 placeholder {{<placeholder name>}}, regardless of placeholder name.
+            If dict, all the keys must be included in the prompt template placeholder {{<placeholder name>}}.
+        max_new_tokens : str, Optional
+            the max number of new tokens LLM should generate. 
+        document_key : str, Optional
+            specify the key in text_content where document text is. 
+            If text_content is str, this parameter will be ignored.
+        temperature : float, Optional
+            the temperature for token sampling.
+        n_parallel_sentences : int, Optional
+            the number of sentences to process in parallel.
+        """
+        # define output
+        output = []
+        # sentence tokenization
+        if isinstance(text_content, str):
+            sentences = self._get_sentences(text_content)
+        elif isinstance(text_content, dict):
+            sentences = self._get_sentences(text_content[document_key])
+        # construct chat messages
+        base_messages = []
+        if self.system_prompt:
+            base_messages.append({'role': 'system', 'content': self.system_prompt})
+
+        base_messages.append({'role': 'user', 'content': self._get_user_prompt(text_content)})
+        base_messages.append({'role': 'assistant', 'content': 'Sure, please start with the first sentence.'})
+
+        # generate sentence by sentence
+        tasks = []
+        for i in range(0, len(sentences), n_parallel_sentences):
+            batch = sentences[i:i + n_parallel_sentences]
+            for sent in batch:
+                messages = copy.deepcopy(base_messages)
+                messages.append({'role': 'user', 'content': sent['sentence_text']})
+                task = asyncio.create_task(
+                    self.inference_engine.chat_async(
+                                messages=messages, 
+                                max_new_tokens=max_new_tokens, 
+                                temperature=temperature,
+                                **kwrs
+                            )
+                )
+                tasks.append(task)
+
+            # Wait until the batch is done, collect results and move on to next batch
+            responses = await asyncio.gather(*tasks)
+
+        # Collect outputs
+        for gen_text, sent in zip(responses, sentences):
+            output.append({'sentence_start': sent['start'],
+                            'sentence_end': sent['end'],
+                            'sentence_text': sent['sentence_text'],
+                            'gen_text': gen_text})
+        return output
+    
+
     def extract_frames(self, text_content:Union[str, Dict[str,str]], entity_key:str, max_new_tokens:int=512, 
-                       document_key:str=None, multi_turn:bool=False, temperature:float=0.0, stream:bool=False,
-                       case_sensitive:bool=False, fuzzy_match:bool=True, fuzzy_buffer_size:float=0.2, fuzzy_score_cutoff:float=0.8,
-                        **kwrs) -> List[LLMInformationExtractionFrame]:
+                            document_key:str=None, multi_turn:bool=False, temperature:float=0.0, stream:bool=False, 
+                            parallel:bool=False, n_parallel_sentences:int=32,
+                            case_sensitive:bool=False, fuzzy_match:bool=True, fuzzy_buffer_size:float=0.2, fuzzy_score_cutoff:float=0.8,
+                            **kwrs) -> List[LLMInformationExtractionFrame]:
         """
         This method inputs a text and outputs a list of LLMInformationExtractionFrame
         It use the extract() method and post-process outputs into frames.
@@ -705,6 +778,10 @@ class SentenceFrameExtractor(FrameExtractor):
             the temperature for token sampling.
         stream : bool, Optional
             if True, LLM generated text will be printed in terminal in real-time. 
+        parallel : bool, Optional
+            if True, the sentences will be extracted in parallel.
+        n_parallel_sentences : int, Optional
+            the number of sentences to process in parallel. Only used when `parallel` is True.
         case_sensitive : bool, Optional
             if True, entity text matching will be case-sensitive.
         fuzzy_match : bool, Optional
@@ -718,15 +795,26 @@ class SentenceFrameExtractor(FrameExtractor):
         Return : str
             a list of frames.
         """
-        llm_output_sentence = self.extract(text_content=text_content, 
-                                           max_new_tokens=max_new_tokens, 
-                                           document_key=document_key,
-                                           multi_turn=multi_turn, 
-                                           temperature=temperature, 
-                                           stream=stream,
-                                           **kwrs)
+        if parallel:
+            nest_asyncio.apply() # For Jupyter notebook. Terminal does not need this.
+            llm_output_sentences = asyncio.run(self.extract_async(text_content=text_content, 
+                                        max_new_tokens=max_new_tokens, 
+                                        document_key=document_key,
+                                        multi_turn=multi_turn, 
+                                        temperature=temperature, 
+                                        n_parallel_sentences=n_parallel_sentences,
+                                        **kwrs)
+                                        )
+        else:
+            llm_output_sentences = self.extract(text_content=text_content, 
+                                            max_new_tokens=max_new_tokens, 
+                                            document_key=document_key,
+                                            multi_turn=multi_turn, 
+                                            temperature=temperature, 
+                                            stream=stream,
+                                            **kwrs)
         frame_list = []
-        for sent in llm_output_sentence:
+        for sent in llm_output_sentences:
             entity_json = []
             for entity in self._extract_json(gen_text=sent['gen_text']):
                 if entity_key in entity:
@@ -824,6 +912,92 @@ class SentenceReviewFrameExtractor(SentenceFrameExtractor):
             the temperature for token sampling.
         stream : bool, Optional
             if True, LLM generated text will be printed in terminal in real-time. 
+
+        Return : str
+            the output from LLM. Need post-processing.
+        """
+        # define output
+        output = []
+        # sentence tokenization
+        if isinstance(text_content, str):
+            sentences = self._get_sentences(text_content)
+        elif isinstance(text_content, dict):
+            sentences = self._get_sentences(text_content[document_key])
+        # construct chat messages
+        messages = []
+        if self.system_prompt:
+            messages.append({'role': 'system', 'content': self.system_prompt})
+
+        messages.append({'role': 'user', 'content': self._get_user_prompt(text_content)})
+        messages.append({'role': 'assistant', 'content': 'Sure, please start with the first sentence.'})
+
+        # generate sentence by sentence
+        for sent in sentences:
+            messages.append({'role': 'user', 'content': sent['sentence_text']})
+            if stream:
+                print(f"\n\n{Fore.GREEN}Sentence: {Style.RESET_ALL}\n{sent['sentence_text']}\n")
+                print(f"{Fore.BLUE}Initial Output:{Style.RESET_ALL}")
+
+            initial = self.inference_engine.chat(
+                            messages=messages, 
+                            max_new_tokens=max_new_tokens, 
+                            temperature=temperature,
+                            stream=stream,
+                            **kwrs
+                        )
+            
+            # Review
+            if stream:
+                print(f"\n{Fore.YELLOW}Review:{Style.RESET_ALL}")
+            messages.append({'role': 'assistant', 'content': initial})
+            messages.append({'role': 'user', 'content': self.review_prompt})
+
+            review = self.inference_engine.chat(
+                            messages=messages, 
+                            max_new_tokens=max_new_tokens, 
+                            temperature=temperature,
+                            stream=stream,
+                            **kwrs
+                        )
+            
+            # Output
+            if self.review_mode == "revision":
+                gen_text = review
+            elif self.review_mode == "addition":
+                gen_text = initial + '\n' + review
+            
+            if multi_turn:
+                # update chat messages with LLM outputs
+                messages.append({'role': 'assistant', 'content': review})
+            else:
+                # delete sentence and review so that message is reset
+                del messages[-3:]
+
+            # add to output
+            output.append({'sentence_start': sent['start'],
+                            'sentence_end': sent['end'],
+                            'sentence_text': sent['sentence_text'],
+                            'gen_text': gen_text})
+        return output
+    
+    async def extract_async(self, text_content:Union[str, Dict[str,str]], max_new_tokens:int=512, 
+                document_key:str=None, temperature:float=0.0, **kwrs) -> List[Dict[str,str]]:
+        """
+        The asynchronous version of the extract() method.
+
+        Parameters:
+        ----------
+        text_content : Union[str, Dict[str,str]]
+            the input text content to put in prompt template. 
+            If str, the prompt template must has only 1 placeholder {{<placeholder name>}}, regardless of placeholder name.
+            If dict, all the keys must be included in the prompt template placeholder {{<placeholder name>}}.
+        max_new_tokens : str, Optional
+            the max number of new tokens LLM should generate. 
+        document_key : str, Optional
+            specify the key in text_content where document text is. 
+            If text_content is str, this parameter will be ignored.
+        temperature : float, Optional
+            the temperature for token sampling.
 
         Return : str
             the output from LLM. Need post-processing.
