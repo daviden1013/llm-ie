@@ -248,7 +248,10 @@ class FrameExtractor(Extractor):
 
         # Match entities
         entity_spans = []
-        for entity in entities:          
+        for entity in entities:   
+            if not isinstance(entity, str):  
+                entity_spans.append(None) 
+                continue    
             if not case_sensitive:
                 entity = entity.lower()
 
@@ -682,7 +685,7 @@ class SentenceFrameExtractor(FrameExtractor):
     
 
     async def extract_async(self, text_content:Union[str, Dict[str,str]], max_new_tokens:int=512, 
-                document_key:str=None, temperature:float=0.0, n_parallel_sentences:int=32, **kwrs) -> List[Dict[str,str]]:
+                document_key:str=None, temperature:float=0.0, concurrent_batch_size:int=32, **kwrs) -> List[Dict[str,str]]:
         """
         The asynchronous version of the extract() method.
 
@@ -699,9 +702,13 @@ class SentenceFrameExtractor(FrameExtractor):
             If text_content is str, this parameter will be ignored.
         temperature : float, Optional
             the temperature for token sampling.
-        n_parallel_sentences : int, Optional
-            the number of sentences to process in parallel.
+        concurrent_batch_size : int, Optional
+            the number of sentences to process in concurrent.
         """
+        # Check if self.inference_engine.chat_async() is implemented
+        if not hasattr(self.inference_engine, 'chat_async'):
+            raise NotImplementedError(f"{self.inference_engine.__class__.__name__} does not have chat_async() method.")
+
         # define output
         output = []
         # sentence tokenization
@@ -719,8 +726,8 @@ class SentenceFrameExtractor(FrameExtractor):
 
         # generate sentence by sentence
         tasks = []
-        for i in range(0, len(sentences), n_parallel_sentences):
-            batch = sentences[i:i + n_parallel_sentences]
+        for i in range(0, len(sentences), concurrent_batch_size):
+            batch = sentences[i:i + concurrent_batch_size]
             for sent in batch:
                 messages = copy.deepcopy(base_messages)
                 messages.append({'role': 'user', 'content': sent['sentence_text']})
@@ -748,7 +755,7 @@ class SentenceFrameExtractor(FrameExtractor):
 
     def extract_frames(self, text_content:Union[str, Dict[str,str]], entity_key:str, max_new_tokens:int=512, 
                             document_key:str=None, multi_turn:bool=False, temperature:float=0.0, stream:bool=False, 
-                            parallel:bool=False, n_parallel_sentences:int=32,
+                            concurrent:bool=False, concurrent_batch_size:int=32,
                             case_sensitive:bool=False, fuzzy_match:bool=True, fuzzy_buffer_size:float=0.2, fuzzy_score_cutoff:float=0.8,
                             **kwrs) -> List[LLMInformationExtractionFrame]:
         """
@@ -778,10 +785,10 @@ class SentenceFrameExtractor(FrameExtractor):
             the temperature for token sampling.
         stream : bool, Optional
             if True, LLM generated text will be printed in terminal in real-time. 
-        parallel : bool, Optional
-            if True, the sentences will be extracted in parallel.
-        n_parallel_sentences : int, Optional
-            the number of sentences to process in parallel. Only used when `parallel` is True.
+        concurrent : bool, Optional
+            if True, the sentences will be extracted in concurrent.
+        concurrent_batch_size : int, Optional
+            the number of sentences to process in concurrent. Only used when `concurrent` is True.
         case_sensitive : bool, Optional
             if True, entity text matching will be case-sensitive.
         fuzzy_match : bool, Optional
@@ -795,14 +802,18 @@ class SentenceFrameExtractor(FrameExtractor):
         Return : str
             a list of frames.
         """
-        if parallel:
+        if concurrent:
+            if stream:
+                warnings.warn("stream=True is not supported in concurrent mode.", RuntimeWarning)
+            if multi_turn:
+                warnings.warn("multi_turn=True is not supported in concurrent mode.", RuntimeWarning)
+
             nest_asyncio.apply() # For Jupyter notebook. Terminal does not need this.
             llm_output_sentences = asyncio.run(self.extract_async(text_content=text_content, 
                                         max_new_tokens=max_new_tokens, 
                                         document_key=document_key,
-                                        multi_turn=multi_turn, 
                                         temperature=temperature, 
-                                        n_parallel_sentences=n_parallel_sentences,
+                                        concurrent_batch_size=concurrent_batch_size,
                                         **kwrs)
                                         )
         else:
@@ -981,7 +992,7 @@ class SentenceReviewFrameExtractor(SentenceFrameExtractor):
         return output
     
     async def extract_async(self, text_content:Union[str, Dict[str,str]], max_new_tokens:int=512, 
-                document_key:str=None, temperature:float=0.0, **kwrs) -> List[Dict[str,str]]:
+                document_key:str=None, temperature:float=0.0, concurrent_batch_size:int=32, **kwrs) -> List[Dict[str,str]]:
         """
         The asynchronous version of the extract() method.
 
@@ -998,10 +1009,16 @@ class SentenceReviewFrameExtractor(SentenceFrameExtractor):
             If text_content is str, this parameter will be ignored.
         temperature : float, Optional
             the temperature for token sampling.
+        concurrent_batch_size : int, Optional
+            the number of sentences to process in concurrent.
 
         Return : str
             the output from LLM. Need post-processing.
         """
+        # Check if self.inference_engine.chat_async() is implemented
+        if not hasattr(self.inference_engine, 'chat_async'):
+            raise NotImplementedError(f"{self.inference_engine.__class__.__name__} does not have chat_async() method.")
+        
         # define output
         output = []
         # sentence tokenization
@@ -1010,59 +1027,82 @@ class SentenceReviewFrameExtractor(SentenceFrameExtractor):
         elif isinstance(text_content, dict):
             sentences = self._get_sentences(text_content[document_key])
         # construct chat messages
-        messages = []
+        base_messages = []
         if self.system_prompt:
-            messages.append({'role': 'system', 'content': self.system_prompt})
+            base_messages.append({'role': 'system', 'content': self.system_prompt})
 
-        messages.append({'role': 'user', 'content': self._get_user_prompt(text_content)})
-        messages.append({'role': 'assistant', 'content': 'Sure, please start with the first sentence.'})
+        base_messages.append({'role': 'user', 'content': self._get_user_prompt(text_content)})
+        base_messages.append({'role': 'assistant', 'content': 'Sure, please start with the first sentence.'})
 
-        # generate sentence by sentence
-        for sent in sentences:
-            messages.append({'role': 'user', 'content': sent['sentence_text']})
-            if stream:
-                print(f"\n\n{Fore.GREEN}Sentence: {Style.RESET_ALL}\n{sent['sentence_text']}\n")
-                print(f"{Fore.BLUE}Initial Output:{Style.RESET_ALL}")
+        # generate initial outputs sentence by sentence
+        initials = []
+        tasks = []
+        message_list = []
+        for i in range(0, len(sentences), concurrent_batch_size):
+            batch = sentences[i:i + concurrent_batch_size]
+            for sent in batch:
+                messages = copy.deepcopy(base_messages)
+                messages.append({'role': 'user', 'content': sent['sentence_text']})
+                message_list.append(messages)
+                task = asyncio.create_task(
+                    self.inference_engine.chat_async(
+                                messages=messages, 
+                                max_new_tokens=max_new_tokens, 
+                                temperature=temperature,
+                                **kwrs
+                            )
+                )
+                tasks.append(task)
 
-            initial = self.inference_engine.chat(
-                            messages=messages, 
-                            max_new_tokens=max_new_tokens, 
-                            temperature=temperature,
-                            stream=stream,
-                            **kwrs
-                        )
-            
-            # Review
-            if stream:
-                print(f"\n{Fore.YELLOW}Review:{Style.RESET_ALL}")
-            messages.append({'role': 'assistant', 'content': initial})
-            messages.append({'role': 'user', 'content': self.review_prompt})
-
-            review = self.inference_engine.chat(
-                            messages=messages, 
-                            max_new_tokens=max_new_tokens, 
-                            temperature=temperature,
-                            stream=stream,
-                            **kwrs
-                        )
-            
-            # Output
-            if self.review_mode == "revision":
-                gen_text = review
-            elif self.review_mode == "addition":
-                gen_text = initial + '\n' + review
-            
-            if multi_turn:
-                # update chat messages with LLM outputs
-                messages.append({'role': 'assistant', 'content': review})
-            else:
-                # delete sentence and review so that message is reset
-                del messages[-3:]
-
-            # add to output
-            output.append({'sentence_start': sent['start'],
+        # Wait until the batch is done, collect results and move on to next batch
+        responses = await asyncio.gather(*tasks)
+        # Collect initials
+        for gen_text, sent, message in zip(responses, sentences, message_list):
+            initials.append({'sentence_start': sent['start'],
                             'sentence_end': sent['end'],
                             'sentence_text': sent['sentence_text'],
+                            'gen_text': gen_text,
+                            'messages': message})
+            
+        # Review
+        reviews = []
+        tasks = []
+        for i in range(0, len(initials), concurrent_batch_size):
+            batch = initials[i:i + concurrent_batch_size]
+            for init in batch:
+                messages = init["messages"]
+                initial = init["gen_text"]
+                messages.append({'role': 'assistant', 'content': initial})
+                messages.append({'role': 'user', 'content': self.review_prompt})
+                task = asyncio.create_task(
+                                self.inference_engine.chat_async(
+                                messages=messages, 
+                                max_new_tokens=max_new_tokens, 
+                                temperature=temperature,
+                                **kwrs
+                                )
+                            )
+                tasks.append(task) 
+            
+            responses = await asyncio.gather(*tasks)
+
+        # Collect reviews
+        for gen_text, sent in zip(responses, sentences):
+            reviews.append({'sentence_start': sent['start'],
+                            'sentence_end': sent['end'],
+                            'sentence_text': sent['sentence_text'],
+                            'gen_text': gen_text})
+
+        for init, rev in zip(initials, reviews):
+            if self.review_mode == "revision":
+                gen_text = rev['gen_text']
+            elif self.review_mode == "addition":
+                gen_text = init['gen_text'] + '\n' + rev['gen_text']
+
+            # add to output
+            output.append({'sentence_start': init['sentence_start'],
+                            'sentence_end': init['sentence_end'],
+                            'sentence_text': init['sentence_text'],
                             'gen_text': gen_text})
         return output
         
@@ -1304,53 +1344,7 @@ class BinaryRelationExtractor(RelationExtractor):
             self.possible_relation_func = possible_relation_func
 
 
-    def _extract_relation(self, frame_1:LLMInformationExtractionFrame, frame_2:LLMInformationExtractionFrame, 
-                      text:str, buffer_size:int=100, max_new_tokens:int=128, temperature:float=0.0, stream:bool=False, **kwrs) -> bool:
-        """
-        This method inputs two frames and a ROI text, extracts the binary relation.
-
-        Parameters:
-        -----------
-        frame_1 : LLMInformationExtractionFrame
-            a frame
-        frame_2 : LLMInformationExtractionFrame
-            the other frame
-        text : str
-            the entire document text
-        buffer_size : int, Optional
-            the number of characters before and after the two frames in the ROI text.
-        max_new_tokens : str, Optional
-            the max number of new tokens LLM should generate. 
-        temperature : float, Optional
-            the temperature for token sampling.
-        stream : bool, Optional
-            if True, LLM generated text will be printed in terminal in real-time. 
-
-        Return : bool
-            a relation indicator
-        """
-        roi_text = self._get_ROI(frame_1, frame_2, text, buffer_size=buffer_size)
-        if stream:
-            print(f"\n\n{Fore.GREEN}ROI text:{Style.RESET_ALL} \n{roi_text}\n")
-            print(f"{Fore.BLUE}Extraction:{Style.RESET_ALL}")
-
-        messages = []
-        if self.system_prompt:
-            messages.append({'role': 'system', 'content': self.system_prompt})
-
-        messages.append({'role': 'user', 'content': self._get_user_prompt(text_content={"roi_text":roi_text, 
-                                                                                        "frame_1": str(frame_1.to_dict()),
-                                                                                        "frame_2": str(frame_2.to_dict())}
-                                                                                        )})
-        response = self.inference_engine.chat(
-                    messages=messages,
-                    max_new_tokens=max_new_tokens,
-                    temperature=temperature,
-                    stream=stream,
-                    **kwrs
-                )
-        
-        rel_json = self._extract_json(response)
+    def _post_process(self, rel_json:str) -> bool:
         if len(rel_json) > 0:
             if "Relation" in rel_json[0]:
                 rel = rel_json[0]["Relation"]
@@ -1360,19 +1354,19 @@ class BinaryRelationExtractor(RelationExtractor):
                     return eval(rel)
                 else:
                     warnings.warn('Extractor output JSON "Relation" key does not have bool or {"True", "False"} as value.' + \
-                                  'Following default, relation = False.', RuntimeWarning)
+                                'Following default, relation = False.', RuntimeWarning)
             else:
                 warnings.warn('Extractor output JSON without "Relation" key. Following default, relation = False.', RuntimeWarning)
         else:
-            warnings.warn("Extractor did not output a JSON. Following default, relation = False.", RuntimeWarning)
-
+            warnings.warn('Extractor did not output a JSON list. Following default, relation = False.', RuntimeWarning)
         return False
     
-    
-    def extract_relations(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, max_new_tokens:int=128, 
-                         temperature:float=0.0, stream:bool=False, **kwrs) -> List[Dict]:
+
+    def extract(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, max_new_tokens:int=128, 
+                temperature:float=0.0, stream:bool=False, **kwrs) -> List[Dict]:
         """
         This method considers all combinations of two frames. Use the possible_relation_func to filter impossible pairs.
+        Outputs pairs that are related.
 
         Parameters:
         -----------
@@ -1388,6 +1382,131 @@ class BinaryRelationExtractor(RelationExtractor):
             if True, LLM generated text will be printed in terminal in real-time. 
 
         Return : List[Dict]
+            a list of dict with {"frame_1_id", "frame_2_id"}.
+        """
+        pairs = itertools.combinations(doc.frames, 2)
+        output = []
+        for frame_1, frame_2 in pairs:
+            pos_rel = self.possible_relation_func(frame_1, frame_2)
+
+            if pos_rel:
+                roi_text = self._get_ROI(frame_1, frame_2, doc.text, buffer_size=buffer_size)
+                if stream:
+                    print(f"\n\n{Fore.GREEN}ROI text:{Style.RESET_ALL} \n{roi_text}\n")
+                    print(f"{Fore.BLUE}Extraction:{Style.RESET_ALL}")
+                messages = []
+                if self.system_prompt:
+                    messages.append({'role': 'system', 'content': self.system_prompt})
+
+                messages.append({'role': 'user', 'content': self._get_user_prompt(text_content={"roi_text":roi_text, 
+                                                                                                "frame_1": str(frame_1.to_dict()),
+                                                                                                "frame_2": str(frame_2.to_dict())}
+                                                                                                )})
+
+                gen_text = self.inference_engine.chat(
+                                messages=messages, 
+                                max_new_tokens=max_new_tokens, 
+                                temperature=temperature,
+                                stream=stream,
+                                **kwrs
+                            )
+                rel_json = self._extract_json(gen_text)
+                if self._post_process(rel_json):
+                    output.append({'frame_1':frame_1.frame_id, 'frame_2':frame_2.frame_id})
+
+        return output
+    
+    
+    async def extract_async(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, max_new_tokens:int=128, 
+                            temperature:float=0.0, concurrent_batch_size:int=32, **kwrs) -> List[Dict]:
+        """
+        This is the asynchronous version of the extract() method.
+
+        Parameters:
+        -----------
+        doc : LLMInformationExtractionDocument
+            a document with frames.
+        buffer_size : int, Optional
+            the number of characters before and after the two frames in the ROI text.
+        max_new_tokens : str, Optional
+            the max number of new tokens LLM should generate. 
+        temperature : float, Optional
+            the temperature for token sampling.
+        concurrent_batch_size : int, Optional
+            the number of frame pairs to process in concurrent.
+
+        Return : List[Dict]
+            a list of dict with {"frame_1", "frame_2"}. 
+        """
+        # Check if self.inference_engine.chat_async() is implemented
+        if not hasattr(self.inference_engine, 'chat_async'):
+            raise NotImplementedError(f"{self.inference_engine.__class__.__name__} does not have chat_async() method.")
+        
+        pairs = itertools.combinations(doc.frames, 2)
+        n_frames = len(doc.frames)
+        num_pairs = (n_frames * (n_frames-1)) // 2
+        rel_pair_list = []
+        tasks = []
+        for i in range(0, num_pairs, concurrent_batch_size):
+            batch = list(itertools.islice(pairs, concurrent_batch_size))
+            for frame_1, frame_2 in batch:
+                pos_rel = self.possible_relation_func(frame_1, frame_2)
+    
+                if pos_rel:
+                    rel_pair_list.append({'frame_1_id':frame_1.frame_id, 'frame_2_id':frame_2.frame_id})
+                    roi_text = self._get_ROI(frame_1, frame_2, doc.text, buffer_size=buffer_size)
+                    messages = []
+                    if self.system_prompt:
+                        messages.append({'role': 'system', 'content': self.system_prompt})
+
+                    messages.append({'role': 'user', 'content': self._get_user_prompt(text_content={"roi_text":roi_text, 
+                                                                                                    "frame_1": str(frame_1.to_dict()),
+                                                                                                    "frame_2": str(frame_2.to_dict())}
+                                                                                                    )})
+                    task = asyncio.create_task(
+                        self.inference_engine.chat_async(
+                            messages=messages, 
+                            max_new_tokens=max_new_tokens, 
+                            temperature=temperature,
+                            **kwrs
+                        )
+                    )
+                    tasks.append(task)
+
+            responses = await asyncio.gather(*tasks)
+
+        output = []
+        for d, response in zip(rel_pair_list, responses):
+            rel_json = self._extract_json(response)
+            if self._post_process(rel_json):
+                output.append(d)
+
+        return output
+
+
+    def extract_relations(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, max_new_tokens:int=128, 
+                         temperature:float=0.0, concurrent:bool=False, concurrent_batch_size:int=32, stream:bool=False, **kwrs) -> List[Dict]:
+        """
+        This method considers all combinations of two frames. Use the possible_relation_func to filter impossible pairs.
+
+        Parameters:
+        -----------
+        doc : LLMInformationExtractionDocument
+            a document with frames.
+        buffer_size : int, Optional
+            the number of characters before and after the two frames in the ROI text.
+        max_new_tokens : str, Optional
+            the max number of new tokens LLM should generate. 
+        temperature : float, Optional
+            the temperature for token sampling.
+        concurrent: bool, Optional
+            if True, the extraction will be done in concurrent.
+        concurrent_batch_size : int, Optional
+            the number of frame pairs to process in concurrent.
+        stream : bool, Optional
+            if True, LLM generated text will be printed in terminal in real-time. 
+
+        Return : List[Dict]
             a list of dict with {"frame_1", "frame_2"} for all relations.
         """
         if not doc.has_frame():
@@ -1396,19 +1515,26 @@ class BinaryRelationExtractor(RelationExtractor):
         if doc.has_duplicate_frame_ids():
             raise ValueError("All frame_ids in the input document must be unique.")
 
-        pairs = itertools.combinations(doc.frames, 2)
-        rel_pair_list = []
-        for frame_1, frame_2 in pairs:
-            pos_rel = self.possible_relation_func(frame_1, frame_2)
-            if pos_rel:
-                rel = self._extract_relation(frame_1=frame_1, frame_2=frame_2, text=doc.text, buffer_size=buffer_size, 
-                                         max_new_tokens=max_new_tokens, temperature=temperature, stream=stream, **kwrs)
-                if rel:
-                    rel_pair_list.append({'frame_1':frame_1.frame_id, 'frame_2':frame_2.frame_id})
+        if concurrent:
+            if stream:
+                warnings.warn("stream=True is not supported in concurrent mode.", RuntimeWarning)
 
-        return rel_pair_list
-
-
+            nest_asyncio.apply() # For Jupyter notebook. Terminal does not need this.
+            return asyncio.run(self.extract_async(doc=doc, 
+                                                  buffer_size=buffer_size, 
+                                                  max_new_tokens=max_new_tokens,
+                                                  temperature=temperature,
+                                                  concurrent_batch_size=concurrent_batch_size, 
+                                                  **kwrs)
+                                )
+        else:
+            return self.extract(doc=doc, 
+                                buffer_size=buffer_size, 
+                                max_new_tokens=max_new_tokens,
+                                temperature=temperature,
+                                stream=stream,
+                                **kwrs)
+            
 
 class MultiClassRelationExtractor(RelationExtractor):
     def __init__(self, inference_engine:InferenceEngine, prompt_template:str, possible_relation_types_func: Callable, 
@@ -1453,79 +1579,36 @@ class MultiClassRelationExtractor(RelationExtractor):
 
             self.possible_relation_types_func = possible_relation_types_func
 
-        
-    def _extract_relation(self, frame_1:LLMInformationExtractionFrame, frame_2:LLMInformationExtractionFrame, 
-                      pos_rel_types:List[str], text:str, buffer_size:int=100, max_new_tokens:int=128, temperature:float=0.0, stream:bool=False, **kwrs) -> str:
+
+    def _post_process(self, rel_json:List[Dict], pos_rel_types:List[str]) -> Union[str, None]:
         """
-        This method inputs two frames and a ROI text, extracts the relation.
+        This method post-processes the extracted relation JSON.
 
         Parameters:
         -----------
-        frame_1 : LLMInformationExtractionFrame
-            a frame
-        frame_2 : LLMInformationExtractionFrame
-            the other frame
+        rel_json : List[Dict]
+            the extracted relation JSON.
         pos_rel_types : List[str]
-            possible relation types.
-        text : str
-            the entire document text
-        buffer_size : int, Optional
-            the number of characters before and after the two frames in the ROI text.
-        max_new_tokens : str, Optional
-            the max number of new tokens LLM should generate. 
-        temperature : float, Optional
-            the temperature for token sampling.
-        stream : bool, Optional
-            if True, LLM generated text will be printed in terminal in real-time. 
+            possible relation types by the possible_relation_types_func.
 
-        Return : str
-            a relation type 
+        Return : Union[str, None]
+            the relation type (str) or None for no relation.
         """
-        roi_text = self._get_ROI(frame_1, frame_2, text, buffer_size=buffer_size)
-        if stream:
-            print(f"\n\n{Fore.GREEN}ROI text:{Style.RESET_ALL} \n{roi_text}\n")
-            print(f"{Fore.BLUE}Extraction:{Style.RESET_ALL}")
-
-        messages = []
-        if self.system_prompt:
-            messages.append({'role': 'system', 'content': self.system_prompt})
-
-        messages.append({'role': 'user', 'content': self._get_user_prompt(text_content={"roi_text":roi_text, 
-                                                                                        "frame_1": str(frame_1.to_dict()),
-                                                                                        "frame_2": str(frame_2.to_dict()),
-                                                                                        "pos_rel_types":str(pos_rel_types)})})
-        response = self.inference_engine.chat(
-                    messages=messages,
-                    max_new_tokens=max_new_tokens,
-                    temperature=temperature,
-                    stream=stream,
-                    **kwrs
-                )
-        
-        rel_json = self._extract_json(response)
         if len(rel_json) > 0:
             if "RelationType" in rel_json[0]:
-                rel = rel_json[0]["RelationType"]
-                if rel in pos_rel_types or rel == "No Relation":
+                if rel_json[0]["RelationType"] in pos_rel_types:
                     return rel_json[0]["RelationType"]
-                else:
-                    warnings.warn(f'Extracted relation type "{rel}", which is not in the return of possible_relation_types_func: {pos_rel_types}.'+ \
-                                  'Following default, relation = "No Relation".', RuntimeWarning)
-            
             else:
                 warnings.warn('Extractor output JSON without "RelationType" key. Following default, relation = "No Relation".', RuntimeWarning)
-        
         else:
             warnings.warn('Extractor did not output a JSON. Following default, relation = "No Relation".', RuntimeWarning)
+        return None
+    
 
-        return "No Relation"
-
-
-    def extract_relations(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, max_new_tokens:int=128, 
-                         temperature:float=0.0, stream:bool=False, **kwrs) -> List[Dict]:
+    def extract(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, max_new_tokens:int=128, 
+                temperature:float=0.0, stream:bool=False, **kwrs) -> List[Dict]:
         """
-        This method considers all combinations of two frames. Use the possible_relation_types_func to filter impossible pairs 
-        and to provide possible relation types between two frames. 
+        This method considers all combinations of two frames. Use the possible_relation_types_func to filter impossible pairs.
 
         Parameters:
         -----------
@@ -1541,6 +1624,135 @@ class MultiClassRelationExtractor(RelationExtractor):
             if True, LLM generated text will be printed in terminal in real-time. 
 
         Return : List[Dict]
+            a list of dict with {"frame_1", "frame_2", "relation"} for all frame pairs.
+        """
+        pairs = itertools.combinations(doc.frames, 2)
+        output = []
+        for frame_1, frame_2 in pairs:
+            pos_rel_types = self.possible_relation_types_func(frame_1, frame_2)
+
+            if pos_rel_types:
+                roi_text = self._get_ROI(frame_1, frame_2, doc.text, buffer_size=buffer_size)
+                if stream:
+                    print(f"\n\n{Fore.GREEN}ROI text:{Style.RESET_ALL} \n{roi_text}\n")
+                    print(f"{Fore.BLUE}Extraction:{Style.RESET_ALL}")
+                messages = []
+                if self.system_prompt:
+                    messages.append({'role': 'system', 'content': self.system_prompt})
+
+                messages.append({'role': 'user', 'content': self._get_user_prompt(text_content={"roi_text":roi_text, 
+                                                                                                "frame_1": str(frame_1.to_dict()),
+                                                                                                "frame_2": str(frame_2.to_dict()),
+                                                                                                "pos_rel_types":str(pos_rel_types)}
+                                                                                                )})
+
+                gen_text = self.inference_engine.chat(
+                                messages=messages, 
+                                max_new_tokens=max_new_tokens, 
+                                temperature=temperature,
+                                stream=stream,
+                                **kwrs
+                            )
+                rel_json = self._extract_json(gen_text)
+                rel = self._post_process(rel_json, pos_rel_types)
+                if rel:
+                    output.append({'frame_1':frame_1.frame_id, 'frame_2':frame_2.frame_id, 'relation':rel})
+
+        return output   
+    
+    
+    async def extract_async(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, max_new_tokens:int=128, 
+                            temperature:float=0.0, concurrent_batch_size:int=32, **kwrs) -> List[Dict]:
+        """
+        This is the asynchronous version of the extract() method.
+
+        Parameters:
+        -----------
+        doc : LLMInformationExtractionDocument
+            a document with frames.
+        buffer_size : int, Optional
+            the number of characters before and after the two frames in the ROI text.
+        max_new_tokens : str, Optional
+            the max number of new tokens LLM should generate. 
+        temperature : float, Optional
+            the temperature for token sampling.
+        concurrent_batch_size : int, Optional
+            the number of frame pairs to process in concurrent.
+
+        Return : List[Dict]
+            a list of dict with {"frame_1", "frame_2", "relation"} for all frame pairs. 
+        """
+        # Check if self.inference_engine.chat_async() is implemented
+        if not hasattr(self.inference_engine, 'chat_async'):
+            raise NotImplementedError(f"{self.inference_engine.__class__.__name__} does not have chat_async() method.")
+        
+        pairs = itertools.combinations(doc.frames, 2)
+        n_frames = len(doc.frames)
+        num_pairs = (n_frames * (n_frames-1)) // 2
+        rel_pair_list = []
+        tasks = []
+        for i in range(0, num_pairs, concurrent_batch_size):
+            batch = list(itertools.islice(pairs, concurrent_batch_size))
+            for frame_1, frame_2 in batch:
+                pos_rel_types = self.possible_relation_types_func(frame_1, frame_2)
+    
+                if pos_rel_types:
+                    rel_pair_list.append({'frame_1':frame_1.frame_id, 'frame_2':frame_2.frame_id, 'pos_rel_types':pos_rel_types})
+                    roi_text = self._get_ROI(frame_1, frame_2, doc.text, buffer_size=buffer_size)
+                    messages = []
+                    if self.system_prompt:
+                        messages.append({'role': 'system', 'content': self.system_prompt})
+
+                    messages.append({'role': 'user', 'content': self._get_user_prompt(text_content={"roi_text":roi_text, 
+                                                                                                    "frame_1": str(frame_1.to_dict()),
+                                                                                                    "frame_2": str(frame_2.to_dict()),
+                                                                                                    "pos_rel_types":str(pos_rel_types)}
+                                                                                                    )})
+                    task = asyncio.create_task(
+                        self.inference_engine.chat_async(
+                            messages=messages, 
+                            max_new_tokens=max_new_tokens, 
+                            temperature=temperature,
+                            **kwrs
+                        )
+                    )
+                    tasks.append(task)
+
+            responses = await asyncio.gather(*tasks)
+
+        output = []
+        for d, response in zip(rel_pair_list, responses):
+            rel_json = self._extract_json(response)
+            rel = self._post_process(rel_json, d['pos_rel_types'])
+            if rel:
+                output.append({'frame_1':d['frame_1'], 'frame_2':d['frame_2'], 'relation':rel})
+
+        return output
+
+
+    def extract_relations(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, max_new_tokens:int=128, 
+                         temperature:float=0.0, concurrent:bool=False, concurrent_batch_size:int=32, stream:bool=False, **kwrs) -> List[Dict]:
+        """
+        This method considers all combinations of two frames. Use the possible_relation_types_func to filter impossible pairs.
+
+        Parameters:
+        -----------
+        doc : LLMInformationExtractionDocument
+            a document with frames.
+        buffer_size : int, Optional
+            the number of characters before and after the two frames in the ROI text.
+        max_new_tokens : str, Optional
+            the max number of new tokens LLM should generate. 
+        temperature : float, Optional
+            the temperature for token sampling.
+        concurrent: bool, Optional
+            if True, the extraction will be done in concurrent.
+        concurrent_batch_size : int, Optional
+            the number of frame pairs to process in concurrent.
+        stream : bool, Optional
+            if True, LLM generated text will be printed in terminal in real-time. 
+
+        Return : List[Dict]
             a list of dict with {"frame_1", "frame_2", "relation"} for all relations.
         """
         if not doc.has_frame():
@@ -1549,15 +1761,23 @@ class MultiClassRelationExtractor(RelationExtractor):
         if doc.has_duplicate_frame_ids():
             raise ValueError("All frame_ids in the input document must be unique.")
 
-        pairs = itertools.combinations(doc.frames, 2)
-        rel_pair_list = []
-        for frame_1, frame_2 in pairs:
-            pos_rel_types = self.possible_relation_types_func(frame_1, frame_2)
-            if pos_rel_types:
-                rel = self._extract_relation(frame_1=frame_1, frame_2=frame_2, pos_rel_types=pos_rel_types, text=doc.text, 
-                                         buffer_size=buffer_size, max_new_tokens=max_new_tokens, temperature=temperature, stream=stream, **kwrs)
-            
-                if rel != "No Relation":
-                    rel_pair_list.append({'frame_1':frame_1.frame_id, 'frame_2':frame_2.frame_id, "relation":rel})
+        if concurrent:
+            if stream:
+                warnings.warn("stream=True is not supported in concurrent mode.", RuntimeWarning)
 
-        return rel_pair_list
+            nest_asyncio.apply() # For Jupyter notebook. Terminal does not need this.
+            return asyncio.run(self.extract_async(doc=doc, 
+                                                  buffer_size=buffer_size, 
+                                                  max_new_tokens=max_new_tokens,
+                                                  temperature=temperature,
+                                                  concurrent_batch_size=concurrent_batch_size, 
+                                                  **kwrs)
+                                )
+        else:
+            return self.extract(doc=doc, 
+                                buffer_size=buffer_size, 
+                                max_new_tokens=max_new_tokens,
+                                temperature=temperature,
+                                stream=stream,
+                                **kwrs)
+            
