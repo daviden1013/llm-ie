@@ -12,6 +12,16 @@ An LLM-powered tool that transforms everyday language into robust information ex
 | **Named Entity Recognition (NER)** | :white_check_mark: Document-level, Sentence-level |
 | **Entity Attributes Extraction** | :white_check_mark: Flexible formats |
 | **Relation Extraction (RE)** | :white_check_mark: Binary & Multiclass relations |
+| **Visualization** | :white_check_mark: Built-in entity & relation visualization |
+
+## Recent Updates
+- [v0.3.0](https://github.com/daviden1013/llm-ie/releases/tag/v0.3.0) (Oct 17, 2024): Interactive chat to Prompt editor LLM agent.
+- [v0.3.1](https://github.com/daviden1013/llm-ie/releases/tag/v0.3.1) (Oct 26, 2024): Added Sentence Review Frame Extractor and Sentence CoT Frame Extractor
+- [v0.3.4](https://github.com/daviden1013/llm-ie/releases/tag/v0.3.4) (Nov 24, 2024): Added entity fuzzy search.
+- [v0.3.5](https://github.com/daviden1013/llm-ie/releases/tag/v0.3.5) (Nov 27, 2024): Adopted `json_repair` to fix broken JSON from LLM outputs.
+- v0.4.0: 
+    - Concurrent LLM inferencing to speed up frame and relation extraction. 
+    - Support for LiteLLM.
 
 ## Table of Contents
 - [Overview](#overview)
@@ -26,6 +36,7 @@ An LLM-powered tool that transforms everyday language into robust information ex
     - [Extractor](#extractor)
         - [FrameExtractor](#frameextractor)
         - [RelationExtractor](#relationextractor)
+- [Visualization](#visualization)
 - [Benchmarks](#benchmarks)
 - [Citation](#citation)
 
@@ -35,7 +46,7 @@ LLM-IE is a toolkit that provides robust information extraction utilities for na
 <div align="center"><img src="doc_asset/readme_img/LLM-IE flowchart.png" width=800 ></div>
 
 ## Prerequisite
-At least one LLM inference engine is required. There are built-in supports for 🦙 [Llama-cpp-python](https://github.com/abetlen/llama-cpp-python), <img src="https://avatars.githubusercontent.com/u/151674099?s=48&v=4" alt="Icon" width="20"/> [Ollama](https://github.com/ollama/ollama), 🤗 [Huggingface_hub](https://github.com/huggingface/huggingface_hub), <img src=doc_asset/readme_img/openai-logomark.png width=16 /> [OpenAI API](https://platform.openai.com/docs/api-reference/introduction), and <img src=doc_asset/readme_img/vllm-logo.png width=20 /> [vLLM](https://github.com/vllm-project/vllm). For installation guides, please refer to those projects. Other inference engines can be configured through the [InferenceEngine](src/llm_ie/engines.py) abstract class. See [LLM Inference Engine](#llm-inference-engine) section below.
+At least one LLM inference engine is required. There are built-in supports for 🚅 [LiteLLM](https://github.com/BerriAI/litellm), 🦙 [Llama-cpp-python](https://github.com/abetlen/llama-cpp-python), <img src="doc_asset/readme_img/ollama_icon_small.png" alt="Icon" width="18"/> [Ollama](https://github.com/ollama/ollama), 🤗 [Huggingface_hub](https://github.com/huggingface/huggingface_hub), <img src=doc_asset/readme_img/openai-logomark.png width=16 /> [OpenAI API](https://platform.openai.com/docs/api-reference/introduction), and <img src=doc_asset/readme_img/vllm-logo_small.png width=20 /> [vLLM](https://github.com/vllm-project/vllm). For installation guides, please refer to those projects. Other inference engines can be configured through the [InferenceEngine](src/llm_ie/engines.py) abstract class. See [LLM Inference Engine](#llm-inference-engine) section below.
 
 ## Installation
 The Python package is available on PyPI. 
@@ -51,32 +62,12 @@ We use a [synthesized medical note](demo/document/synthesized_note.txt) by ChatG
 Choose one of the built-in engines below.
 
 <details>
-<summary><img src="https://avatars.githubusercontent.com/u/151674099?s=48&v=4" alt="Icon" width="20"/> Ollama</summary>
-
-```python 
-from llm_ie.engines import OllamaInferenceEngine
-
-llm = OllamaInferenceEngine(model_name="llama3.1:8b-instruct-q8_0")
-```
-</details>
-<details>
-<summary>🦙 Llama-cpp-python</summary>
+<summary>🚅 LiteLLM</summary>
 
 ```python
-from llm_ie.engines import LlamaCppInferenceEngine
+from llm_ie.engines import LiteLLMInferenceEngine
 
-llm = LlamaCppInferenceEngine(repo_id="bullerwins/Meta-Llama-3.1-8B-Instruct-GGUF",
-                                    gguf_filename="Meta-Llama-3.1-8B-Instruct-Q8_0.gguf")
-```
-</details>
-
-<details>
-<summary>🤗 Huggingface_hub</summary>
-
-```python
-from llm_ie.engines import HuggingFaceHubInferenceEngine
-
-llm = HuggingFaceHubInferenceEngine(model="meta-llama/Meta-Llama-3-8B-Instruct")
+inference_engine = LiteLLMInferenceEngine(model="openai/Llama-3.3-70B-Instruct", base_url="http://localhost:8000/v1", api_key="EMPTY")
 ```
 </details>
 
@@ -87,13 +78,32 @@ Follow the [Best Practices for API Key Safety](https://help.openai.com/en/articl
 ```python
 from llm_ie.engines import OpenAIInferenceEngine
 
-llm = OpenAIInferenceEngine(model="gpt-4o-mini")
+inference_engine = OpenAIInferenceEngine(model="gpt-4o-mini")
 ```
-
 </details>
 
 <details>
-<summary><img src=doc_asset/readme_img/vllm-logo.png width=20 /> vLLM</summary>
+<summary>🤗 Huggingface_hub</summary>
+
+```python
+from llm_ie.engines import HuggingFaceHubInferenceEngine
+
+inference_engine = HuggingFaceHubInferenceEngine(model="meta-llama/Meta-Llama-3-8B-Instruct")
+```
+</details>
+
+<details>
+<summary><img src="doc_asset/readme_img/ollama_icon_small.png" alt="Icon" width="18"/> Ollama</summary>
+
+```python 
+from llm_ie.engines import OllamaInferenceEngine
+
+inference_engine = OllamaInferenceEngine(model_name="llama3.1:8b-instruct-q8_0")
+```
+</details>
+
+<details>
+<summary><img src=doc_asset/readme_img/vllm-logo_small.png width=20 /> vLLM</summary>
 
 The vLLM support follows the [OpenAI Compatible Server](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html). For more parameters, please refer to the documentation.
 
@@ -104,15 +114,24 @@ vllm serve meta-llama/Meta-Llama-3.1-8B-Instruct
 Define inference engine
 ```python
 from llm_ie.engines import OpenAIInferenceEngine
-engine = OpenAIInferenceEngine(base_url="http://localhost:8000/v1",
-                               api_key="EMPTY",
-                               model="meta-llama/Meta-Llama-3.1-8B-Instruct")
+inference_engine = OpenAIInferenceEngine(base_url="http://localhost:8000/v1",
+                                         api_key="EMPTY",
+                                         model="meta-llama/Meta-Llama-3.1-8B-Instruct")
 ```
-
-
 </details>
 
-In this quick start demo, we use Llama-cpp-python to run Llama-3.1-8B with int8 quantization ([bullerwins/Meta-Llama-3.1-8B-Instruct-GGUF](https://huggingface.co/bullerwins/Meta-Llama-3.1-8B-Instruct-GGUF)). 
+<details>
+<summary>🦙 Llama-cpp-python</summary>
+
+```python
+from llm_ie.engines import LlamaCppInferenceEngine
+
+inference_engine = LlamaCppInferenceEngine(repo_id="bullerwins/Meta-Llama-3.1-8B-Instruct-GGUF",
+                                           gguf_filename="Meta-Llama-3.1-8B-Instruct-Q8_0.gguf")
+```
+</details>
+
+In this quick start demo, we use Ollama to run Llama-3.1-8B with int8 quantization.
 The outputs might be slightly different with other inference engines, LLMs, or quantization. 
 
 #### Casual language as prompt 
@@ -122,14 +141,12 @@ We start with a casual description:
 
 Define the AI prompt editor.
 ```python
-from llm_ie.engines import OllamaInferenceEngine
-from llm_ie.extractors import BasicFrameExtractor
-from llm_ie.prompt_editor import PromptEditor
+from llm_ie import OllamaInferenceEngine, PromptEditor, BasicFrameExtractor
 
 # Define a LLM inference engine
-llm = OllamaInferenceEngine(model_name="llama3.1:8b-instruct-q8_0")
+inference_engine = OllamaInferenceEngine(model_name="llama3.1:8b-instruct-q8_0")
 # Define LLM prompt editor
-editor = PromptEditor(llm, BasicFrameExtractor)
+editor = PromptEditor(inference_engine, BasicFrameExtractor)
 # Start chat
 editor.chat()
 ```
@@ -176,7 +193,7 @@ with open("./demo/document/synthesized_note.txt", 'r') as f:
     note_text = f.read()
 
 # Define extractor
-extractor = BasicFrameExtractor(llm, prompt_template)
+extractor = BasicFrameExtractor(inference_engine, prompt_template)
 
 # Extract
 frames =  extractor.extract_frames(note_text, entity_key="Diagnosis", stream=True)
@@ -214,7 +231,7 @@ To visualize the extracted frames, we use the ```viz_serve()``` method.
 ```python
 doc.viz_serve()
 ```
-A Flask APP starts at port 5000 (default).
+A Flask App starts at port 5000 (default).
 ```
 * Serving Flask app 'ie_viz.utilities'
 * Debug mode: off
@@ -241,39 +258,28 @@ This package is comprised of some key classes:
 - Extractors
 
 ### LLM Inference Engine
-Provides an interface for different LLM inference engines to work in the information extraction workflow. The built-in engines are ```LlamaCppInferenceEngine```, ```OllamaInferenceEngine```, and ```HuggingFaceHubInferenceEngine```. 
+Provides an interface for different LLM inference engines to work in the information extraction workflow. The built-in engines are `LiteLLMInferenceEngine`, `OpenAIInferenceEngine`, `HuggingFaceHubInferenceEngine`, `OllamaInferenceEngine`, and `LlamaCppInferenceEngine`. 
 
-#### 🦙 Llama-cpp-python
-The ```repo_id``` and ```gguf_filename``` must match the ones on the Huggingface repo to ensure the correct model is loaded. ```n_ctx``` determines the context length LLM will consider during text generation. Empirically, longer context length gives better performance, while consuming more memory and increases computation. Note that when ```n_ctx``` is less than the prompt length, Llama.cpp throws exceptions. ```n_gpu_layers``` indicates a number of model layers to offload to GPU. Default is -1 for all layers (entire LLM). Flash attention ```flash_attn``` is supported by Llama.cpp. The ```verbose``` indicates whether model information should be displayed. For more input parameters, see 🦙 [Llama-cpp-python](https://github.com/abetlen/llama-cpp-python). 
+#### 🚅 LiteLLM
+The LiteLLM is an adaptor project that unifies many proprietary and open-source LLM APIs. Popular inferncing servers, including OpenAI, Huggingface Hub, and Ollama are supported via its interface. For more details, refer to [LiteLLM GitHub page](https://github.com/BerriAI/litellm). 
 
+To use LiteLLM with LLM-IE, import the `LiteLLMInferenceEngine` and follow the required model naming.
 ```python
-from llm_ie.engines import LlamaCppInferenceEngine
+from llm_ie.engines import LiteLLMInferenceEngine
 
-llama_cpp = LlamaCppInferenceEngine(repo_id="bullerwins/Meta-Llama-3.1-8B-Instruct-GGUF",
-                                    gguf_filename="Meta-Llama-3.1-8B-Instruct-Q8_0.gguf",
-                                    n_ctx=4096,
-                                    n_gpu_layers=-1,
-                                    flash_attn=True,
-                                    verbose=False)
-```
-####  <img src="https://avatars.githubusercontent.com/u/151674099?s=48&v=4" alt="Icon" width="20"/> Ollama
-The ```model_name``` must match the names on the [Ollama library](https://ollama.com/library). Use the command line ```ollama ls``` to check your local model list. ```num_ctx``` determines the context length LLM will consider during text generation. Empirically, longer context length gives better performance, while consuming more memory and increases computation. ```keep_alive``` regulates the lifespan of LLM. It indicates a number of seconds to hold the LLM after the last API call. Default is 5 minutes (300 sec).
+# Huggingface serverless inferencing
+os.environ['HF_TOKEN']
+inference_engine = LiteLLMInferenceEngine(model="huggingface/meta-llama/Meta-Llama-3-8B-Instruct")
 
-```python
-from llm_ie.engines import OllamaInferenceEngine
+# OpenAI GPT models
+os.environ['OPENAI_API_KEY']
+inference_engine = LiteLLMInferenceEngine(model="openai/gpt-4o-mini")
 
-ollama = OllamaInferenceEngine(model_name="llama3.1:8b-instruct-q8_0",
-                               num_ctx=4096,
-                               keep_alive=300)
-```
+# OpenAI compatible local server
+inference_engine = LiteLLMInferenceEngine(model="openai/Llama-3.1-8B-Instruct", base_url="http://localhost:8000/v1", api_key="EMPTY")
 
-#### 🤗 huggingface_hub
-The ```model``` can be a model id hosted on the Hugging Face Hub or a URL to a deployed Inference Endpoint. Refer to the [Inference Client](https://huggingface.co/docs/huggingface_hub/en/package_reference/inference_client) documentation for more details. 
-
-```python
-from llm_ie.engines import HuggingFaceHubInferenceEngine
-
-hf = HuggingFaceHubInferenceEngine(model="meta-llama/Meta-Llama-3-8B-Instruct")
+# Ollama 
+inference_engine = LiteLLMInferenceEngine(model="ollama/llama3.1:8b-instruct-q8_0")
 ```
 
 #### <img src=doc_asset/readme_img/openai-logomark.png width=16 /> OpenAI API
@@ -288,10 +294,28 @@ For more parameters, see [OpenAI API reference](https://platform.openai.com/docs
 ```python
 from llm_ie.engines import OpenAIInferenceEngine
 
-openai_engine = OpenAIInferenceEngine(model="gpt-4o-mini")
+inference_engine = OpenAIInferenceEngine(model="gpt-4o-mini")
 ```
 
-#### <img src=doc_asset/readme_img/vllm-logo.png width=20 /> vLLM
+#### 🤗 huggingface_hub
+The ```model``` can be a model id hosted on the Hugging Face Hub or a URL to a deployed Inference Endpoint. Refer to the [Inference Client](https://huggingface.co/docs/huggingface_hub/en/package_reference/inference_client) documentation for more details. 
+
+```python
+from llm_ie.engines import HuggingFaceHubInferenceEngine
+
+inference_engine = HuggingFaceHubInferenceEngine(model="meta-llama/Meta-Llama-3-8B-Instruct")
+```
+
+####  <img src="doc_asset/readme_img/ollama_icon_small.png" alt="Icon" width="18"/> Ollama
+The ```model_name``` must match the names on the [Ollama library](https://ollama.com/library). Use the command line ```ollama ls``` to check your local model list. ```num_ctx``` determines the context length LLM will consider during text generation. Empirically, longer context length gives better performance, while consuming more memory and increases computation. ```keep_alive``` regulates the lifespan of LLM. It indicates a number of seconds to hold the LLM after the last API call. Default is 5 minutes (300 sec).
+
+```python
+from llm_ie.engines import OllamaInferenceEngine
+
+inference_engine = OllamaInferenceEngine(model_name="llama3.1:8b-instruct-q8_0", num_ctx=4096, keep_alive=300)
+```
+
+#### <img src=doc_asset/readme_img/vllm-logo_small.png width=20 /> vLLM
 The vLLM support follows the [OpenAI Compatible Server](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html). For more parameters, please refer to the documentation.
 
 Start the server
@@ -304,11 +328,25 @@ the default port is 8000. ```--port``` sets the port.
 Define inference engine
 ```python
 from llm_ie.engines import OpenAIInferenceEngine
-engine = OpenAIInferenceEngine(base_url="http://localhost:8000/v1",
+inference_engine = OpenAIInferenceEngine(base_url="http://localhost:8000/v1",
                                api_key="MY_API_KEY",
                                model="meta-llama/Meta-Llama-3.1-8B-Instruct")
 ```
 The ```model``` must match the repo name specified in the server.
+
+#### 🦙 Llama-cpp-python
+The ```repo_id``` and ```gguf_filename``` must match the ones on the Huggingface repo to ensure the correct model is loaded. ```n_ctx``` determines the context length LLM will consider during text generation. Empirically, longer context length gives better performance, while consuming more memory and increases computation. Note that when ```n_ctx``` is less than the prompt length, Llama.cpp throws exceptions. ```n_gpu_layers``` indicates a number of model layers to offload to GPU. Default is -1 for all layers (entire LLM). Flash attention ```flash_attn``` is supported by Llama.cpp. The ```verbose``` indicates whether model information should be displayed. For more input parameters, see 🦙 [Llama-cpp-python](https://github.com/abetlen/llama-cpp-python). 
+
+```python
+from llm_ie.engines import LlamaCppInferenceEngine
+
+inference_engine = LlamaCppInferenceEngine(repo_id="bullerwins/Meta-Llama-3.1-8B-Instruct-GGUF",
+                                           gguf_filename="Meta-Llama-3.1-8B-Instruct-Q8_0.gguf",
+                                           n_ctx=4096,
+                                           n_gpu_layers=-1,
+                                           flash_attn=True,
+                                           verbose=False)
+```
 
 #### Test inference engine configuration
 To test the inference engine, use the ```chat()``` method. 
@@ -316,8 +354,8 @@ To test the inference engine, use the ```chat()``` method.
 ```python
 from llm_ie.engines import OllamaInferenceEngine
 
-ollama = OllamaInferenceEngine(model_name="llama3.1:8b-instruct-q8_0")
-engine.chat(messages=[{"role": "user", "content":"Hi"}], stream=True)
+inference_engine = OllamaInferenceEngine(model_name="llama3.1:8b-instruct-q8_0")
+inference_engine.chat(messages=[{"role": "user", "content":"Hi"}], stream=True)
 ```
 The output should be something like (might vary by LLMs and versions)
 
@@ -435,8 +473,8 @@ prompt_template = """
     Below is the medical note:
     "{{note}}"
 """
-ollama = OllamaInferenceEngine(model_name="llama3.1:8b-instruct-q8_0")
-extractor = BasicFrameExtractor(ollama, prompt_template)
+inference_engine = OllamaInferenceEngine(model_name="llama3.1:8b-instruct-q8_0")
+extractor = BasicFrameExtractor(inference_engine, prompt_template)
 prompt_text = extractor._get_user_prompt(text_content={"knowledge": "<some text...>", 
                                                        "note": "<some text...>")
 print(prompt_text)
@@ -463,10 +501,10 @@ from llm_ie.extractors import BasicFrameExtractor
 from llm_ie.engines import OllamaInferenceEngine
 
 # Define an LLM inference engine
-ollama = OllamaInferenceEngine(model_name="llama3.1:8b-instruct-q8_0")
+inference_engine = OllamaInferenceEngine(model_name="llama3.1:8b-instruct-q8_0")
 
 # Define editor
-editor = PromptEditor(ollama, BasicFrameExtractor)
+editor = PromptEditor(inference_engine, BasicFrameExtractor)
 
 editor.chat()
 ```
@@ -490,10 +528,10 @@ from llm_ie.extractors import BasicFrameExtractor
 from llm_ie.engines import OllamaInferenceEngine
 
 # Define an LLM inference engine
-ollama = OllamaInferenceEngine(model_name="llama3.1:8b-instruct-q8_0")
+inference_engine = OllamaInferenceEngine(model_name="llama3.1:8b-instruct-q8_0")
 
 # Define editor
-editor = PromptEditor(ollama, BasicFrameExtractor)
+editor = PromptEditor(inference_engine, BasicFrameExtractor)
 
 # Have editor to generate initial prompt template
 initial_version = editor.rewrite("Extract treatment events from the discharge summary.")
@@ -598,10 +636,10 @@ After a few iterations of revision, we will have a high-quality prompt template 
 
 ### Extractor
 An extractor implements a prompting method for information extraction. There are two extractor families: ```FrameExtractor``` and ```RelationExtractor```. 
-The ```FrameExtractor``` extracts named entities and entity attributes ("frame"). The ```RelationExtractor``` extracts the relation (and relation types) between frames.  
+The ```FrameExtractor``` extracts named entities with attributes ("frames"). The ```RelationExtractor``` extracts the relations (and relation types) between frames.
 
 #### FrameExtractor
-The ```BasicFrameExtractor``` directly prompts LLM to generate a list of dictionaries. Each dictionary is then post-processed into a frame. The ```ReviewFrameExtractor``` is based on the ```BasicFrameExtractor``` but adds a review step after the initial extraction to boost sensitivity and improve performance. ```SentenceFrameExtractor``` gives LLM the entire document upfront as a reference, then prompts LLM sentence by sentence and collects per-sentence outputs. To learn about an extractor, use the class method ```get_prompt_guide()``` to print out the prompt guide. 
+The ```BasicFrameExtractor``` directly prompts LLM to generate a list of dictionaries. Each dictionary is then post-processed into a frame. The ```ReviewFrameExtractor``` is based on the ```BasicFrameExtractor``` but adds a review step after the initial extraction to boost sensitivity and improve performance. ```SentenceFrameExtractor``` gives LLM the entire document upfront as a reference, then prompts LLM sentence by sentence and collects per-sentence outputs. ```SentenceReviewFrameExtractor``` is the combined version of ```ReviewFrameExtractor``` and ```SentenceFrameExtractor``` which each sentence is extracted and reviewed. The ```SentenceCoTFrameExtractor``` implements chain of thoughts (CoT). It first analyzes a sentence, then extract frames based on the CoT. To learn about an extractor, use the class method ```get_prompt_guide()``` to print out the prompt guide. 
 
 Since the output entity text from LLMs might not be consistent with the original text due to the limitations of LLMs, we apply fuzzy search in post-processing to find the accurate entity span. In the `FrameExtractor.extract_frames()` method, setting parameter `fuzzy_match=True` applies Jaccard similarity matching. 
 
@@ -613,7 +651,7 @@ The ```BasicFrameExtractor``` directly prompts LLM to generate a list of diction
 ```python
 from llm_ie.extractors import BasicFrameExtractor
 
-extractor = BasicFrameExtractor(llm, prompt_temp)
+extractor = BasicFrameExtractor(inference_engine, prompt_temp)
 frames = extractor.extract_frames(text_content=text, entity_key="Diagnosis", case_sensitive=False, fuzzy_match=True, stream=True)
 ```
 
@@ -676,7 +714,7 @@ The ```review_mode``` should be set to ```review_mode="revision"```
  ```python 
 review_prompt = "Review the input and your output again. If you find some diagnosis was missed, add them to your output. Regenerate your output."
 
-extractor = ReviewFrameExtractor(llm, prompt_temp, review_prompt, review_mode="revision")
+extractor = ReviewFrameExtractor(inference_engine, prompt_temp, review_prompt, review_mode="revision")
 frames = extractor.extract_frames(text_content=text, entity_key="Diagnosis", stream=True)
  ```
 </details>
@@ -686,14 +724,95 @@ frames = extractor.extract_frames(text_content=text, entity_key="Diagnosis", str
 
 The ```SentenceFrameExtractor``` instructs the LLM to extract sentence by sentence. The reason is to ensure the accuracy of frame spans. It also prevents LLMs from overseeing sections/ sentences. Empirically, this extractor results in better recall than the ```BasicFrameExtractor``` in complex tasks. 
 
+For concurrent extraction (recommended), the `async/ await` feature is used to speed up inferencing. The `concurrent_batch_size` sets the batch size of sentences to be processed in cocurrent.
+
+```python
+from llm_ie.extractors import SentenceFrameExtractor
+
+extractor = SentenceFrameExtractor(inference_engine, prompt_temp)
+frames = extractor.extract_frames(text_content=text, entity_key="Diagnosis", case_sensitive=False, fuzzy_match=True, concurrent=True, concurrent_batch_size=32)
+```
+
 The ```multi_turn``` parameter specifies multi-turn conversation for prompting. If True, sentences and LLM outputs will be appended to the input message and carry-over. If False, only the current sentence is prompted. For LLM inference engines that supports prompt cache (e.g., Llama.Cpp, Ollama), use multi-turn conversation prompting can better utilize the KV caching and results in faster inferencing. But for vLLM with [Automatic Prefix Caching (APC)](https://docs.vllm.ai/en/latest/automatic_prefix_caching/apc.html), multi-turn conversation is not necessary.
 
 ```python
 from llm_ie.extractors import SentenceFrameExtractor
 
-extractor = SentenceFrameExtractor(llm, prompt_temp)
-frames = extractor.extract_frames(text_content=text, entity_key="Diagnosis", multi_turn=True, case_sensitive=False, fuzzy_match=True, stream=True)
+extractor = SentenceFrameExtractor(inference_engine, prompt_temp)
+frames = extractor.extract_frames(text_content=text, entity_key="Diagnosis", multi_turn=False, case_sensitive=False, fuzzy_match=True, stream=True)
 ```
+
+</details>
+
+<details>
+<summary>SentenceReviewFrameExtractor</summary>
+
+The `SentenceReviewFrameExtractor` performs sentence-level extraction and review. 
+
+```python
+from llm_ie.extractors import SentenceReviewFrameExtractor
+
+extractor = SentenceReviewFrameExtractor(inference_engine, prompt_temp, review_mode="revision")
+frames = extractor.extract_frames(text_content=note_text, entity_key="Diagnosis", stream=True)
+```
+
+```
+Sentence: 
+#### History of Present Illness
+The patient reported that the chest pain started two days prior to admission.
+
+Initial Output:
+[
+  {"Diagnosis": "chest pain", "Date": "two days prior to admission", "Status": "reported"}
+]
+Review:
+[
+  {"Diagnosis": "admission", "Date": null, "Status": null}
+]
+```
+
+</details>
+
+<details>
+<summary>SentenceCoTFrameExtractor</summary>
+
+The `SentenceCoTFrameExtractor` processes document sentence-by-sentence. For each sentence, it first generate an analysis paragraph in `<Analysis>... </Analysis>`(chain-of-thought). Then output extraction in JSON in `<Outputs>... </Outputs>`, similar to `SentenceFrameExtractor`.
+
+```python
+from llm_ie.extractors import SentenceCoTFrameExtractor
+
+extractor = SentenceCoTFrameExtractor(inference_engine, CoT_prompt_temp)
+frames = extractor.extract_frames(text_content=note_text, entity_key="Diagnosis", stream=True)
+```
+
+```
+Sentence: 
+#### Discharge Medications
+- Aspirin 81 mg daily
+- Clopidogrel 75 mg daily
+- Atorvastatin 40 mg daily
+- Metoprolol 50 mg twice daily
+- Lisinopril 20 mg daily
+- Metformin 1000 mg twice daily
+
+#### Discharge Instructions
+John Doe was advised to follow a heart-healthy diet, engage in regular physical activity, and monitor his blood glucose levels.
+
+CoT:
+<Analysis>
+The given text does not explicitly mention a diagnosis, but rather lists the discharge medications and instructions for the patient. However, we can infer that the patient has been diagnosed with conditions that require these medications, such as high blood pressure, high cholesterol, and diabetes.
+
+</Analysis>
+
+<Outputs>
+[
+  {"Diagnosis": "hypertension", "Date": null, "Status": "confirmed"},
+  {"Diagnosis": "hyperlipidemia", "Date": null, "Status": "confirmed"},
+  {"Diagnosis": "Type 2 diabetes mellitus", "Date": null, "Status": "confirmed"}
+]
+</Outputs>
+```
+
 </details>
 
 #### RelationExtractor
@@ -713,12 +832,32 @@ print(BinaryRelationExtractor.get_prompt_guide())
 ```
 
 ```
-Prompt template design:
-    1. Task description (mention binary relation extraction and ROI)
-    2. Schema definition (defines relation)
-    3. Output format definition (must use the key "Relation")
-    4. Hints
-    5. Input placeholders (must include "roi_text", "frame_1", and "frame_2" placeholders)
+Prompt Template Design:
+
+1. Task description:
+   Provide a detailed description of the task, including the background and the type of task (e.g., binary relation extraction). Mention the region of interest (ROI) text. 
+2. Schema definition: 
+   List the criterion for relation (True) and for no relation (False).
+
+3. Output format definition:
+   The ouptut must be a dictionary with a key "Relation" (i.e., {"Relation": "<True or False>"}).
+
+4. (optional) Hints:
+   Provide itemized hints for the information extractors to guide the extraction process.
+
+5. (optional) Examples:
+   Include examples in the format:  
+    Input: ...  
+    Output: ...
+
+6. Entity 1 full information:
+   Include a placeholder in the format {{<frame_1>}}
+
+7. Entity 2 full information:
+   Include a placeholder in the format {{<frame_2>}}
+
+8. Input placeholders:
+   The template must include a placeholder "{{roi_text}}" for the ROI text.
 
 
 Example:
@@ -742,15 +881,15 @@ Example:
         3. If the strength or frequency is for another medication, output False. 
         4. If the strength or frequency is for the same medication but at a different location (span), output False.
 
+    # Entity 1 full information:
+    {{frame_1}}
+
+    # Entity 2 full information:
+    {{frame_2}}
+
     # Input placeholders
     ROI Text with the two entities annotated with <entity_1> and <entity_2>:
     "{{roi_text}}"
-
-    Entity 1 full information:
-    {{frame_1}}
-
-    Entity 2 full information:
-    {{frame_2}}
 ```
 
 As an example, we define the ```possible_relation_func``` function:
@@ -785,8 +924,12 @@ In the ```BinaryRelationExtractor``` constructor, we pass in the prompt template
 ```python
 from llm_ie.extractors import BinaryRelationExtractor
 
-extractor = BinaryRelationExtractor(llm, prompt_template=prompt_template, possible_relation_func=possible_relation_func)
-relations = extractor.extract_relations(doc, stream=True)
+extractor = BinaryRelationExtractor(inference_engine, prompt_template=prompt_template, possible_relation_func=possible_relation_func)
+# Extract binary relations with concurrent mode (faster)
+relations = extractor.extract_relations(doc, concurrent=True)
+
+# To print out the step-by-step, use the `concurrent=False` and `stream=True` options
+relations = extractor.extract_relations(doc, concurrent=False, stream=True)
 ```
 
 </details>
@@ -802,11 +945,34 @@ print(MultiClassRelationExtractor.get_prompt_guide())
 ```
 
 ```
-Prompt template design:
-    1. Task description (mention multi-class relation extraction and ROI)
-    2. Schema definition (defines relation types)
-    3. Output format definition (must use the key "RelationType")
-    4. Input placeholders (must include "roi_text", "frame_1", and "frame_2" placeholders)
+Prompt Template Design:
+
+1. Task description:
+   Provide a detailed description of the task, including the background and the type of task (e.g., binary relation extraction). Mention the region of interest (ROI) text. 
+2. Schema definition: 
+   List the criterion for relation (True) and for no relation (False).
+
+3. Output format definition:
+   This section must include a placeholder "{{pos_rel_types}}" for the possible relation types.
+   The ouptut must be a dictionary with a key "RelationType" (i.e., {"RelationType": "<relation type or No Relation>"}).
+
+4. (optional) Hints:
+   Provide itemized hints for the information extractors to guide the extraction process.
+
+5. (optional) Examples:
+   Include examples in the format:  
+    Input: ...  
+    Output: ...
+
+6. Entity 1 full information:
+   Include a placeholder in the format {{<frame_1>}}
+
+7. Entity 2 full information:
+   Include a placeholder in the format {{<frame_2>}}
+
+8. Input placeholders:
+   The template must include a placeholder "{{roi_text}}" for the ROI text.
+
 
 
 Example:
@@ -839,15 +1005,15 @@ Example:
         3. If the strength or frequency is for another medication, output "No Relation". 
         4. If the strength or frequency is for the same medication but at a different location (span), output "No Relation".
 
+    # Entity 1 full information:
+    {{frame_1}}
+
+    # Entity 2 full information:
+    {{frame_2}}
+
     # Input placeholders
     ROI Text with the two entities annotated with <entity_1> and <entity_2>:
     "{{roi_text}}"
-
-    Entity 1 full information:
-    {{frame_1}}
-
-    Entity 2 full information:
-    {{frame_2}}
 ```
 
 As an example, we define the ```possible_relation_types_func``` :
@@ -878,17 +1044,70 @@ def possible_relation_types_func(frame_1, frame_2) -> List[str]:
 ```python
 from llm_ie.extractors import MultiClassRelationExtractor
 
-extractor = MultiClassRelationExtractor(llm, prompt_template=re_prompt_template, possible_relation_types_func=possible_relation_types_func)
-relations = extractor.extract_relations(doc, stream=True)
+extractor = MultiClassRelationExtractor(inference_engine, prompt_template=re_prompt_template,
+                                        possible_relation_types_func=possible_relation_types_func)
+
+# Extract multi-class relations with concurrent mode (faster)
+relations = extractor.extract_relations(doc, concurrent=True)
+
+# To print out the step-by-step, use the `concurrent=False` and `stream=True` options
+relations = extractor.extract_relations(doc, concurrent=False, stream=True)
 ```
 
 </details>
 
-### Benchmarks
+### Visualization
+The `LLMInformationExtractionDocument` class supports named entity, entity attributes, and relation visualization. The implementation is through our plug-in package [ie-viz](https://github.com/daviden1013/ie-viz). Check the example Jupyter Notebook [NER + RE for Drug, Strength, Frequency](demo/medication_relation_extraction.ipynb) for a working demo.
+
+```cmd
+pip install ie-viz
+```
+
+The `viz_serve()` method starts a Flask App on localhost port 5000 by default. 
+```python
+from llm_ie.data_types import LLMInformationExtractionDocument
+
+# Define document
+doc = LLMInformationExtractionDocument(doc_id="Medical note",
+                                       text=note_text)
+# Add extracted frames and relations to document
+doc.add_frames(frames)
+doc.add_relations(relations)
+# Visualize the document
+doc.viz_serve()
+```
+
+Alternatively, the `viz_render()` method returns a self-contained (HTML + JS + CSS) string. Save it to file and open with a browser.
+```python
+html = doc.viz_render()
+
+with open("Medical note.html", "w") as f:
+    f.write(html)
+```
+
+To customize colors for different entities, use `color_attr_key` (simple) or `color_map_func` (advanced). 
+
+The `color_attr_key` automatically assign colors based on the specified attribute key. For example, "EntityType".
+```python
+doc.viz_serve(color_attr_key="EntityType")
+```
+
+The `color_map_func` allow users to define a custom entity-color mapping function. For example,
+```python
+def color_map_func(entity) -> str:
+    if entity['attr']['<attribute key>'] == "<a certain value>":
+        return "#7f7f7f"
+    else:
+        return "#03A9F4"
+
+doc.viz_serve(color_map_func=color_map_func)
+```
+
+## Benchmarks
 We benchmarked the frame and relation extractors on biomedical information extraction tasks. The results and experiment code is available on [this page](https://github.com/daviden1013/LLM-IE_Benchmark).
 
 
-### Citation
+## Citation
 For more information and benchmarks, please check our paper:
 ```bibtex
 @article{hsu2024llm,
