@@ -19,7 +19,7 @@ An LLM-powered tool that transforms everyday language into robust information ex
 - [v0.3.1](https://github.com/daviden1013/llm-ie/releases/tag/v0.3.1) (Oct 26, 2024): Added Sentence Review Frame Extractor and Sentence CoT Frame Extractor
 - [v0.3.4](https://github.com/daviden1013/llm-ie/releases/tag/v0.3.4) (Nov 24, 2024): Added entity fuzzy search.
 - [v0.3.5](https://github.com/daviden1013/llm-ie/releases/tag/v0.3.5) (Nov 27, 2024): Adopted `json_repair` to fix broken JSON from LLM outputs.
-- v0.4.0: 
+- [v0.4.0](https://github.com/daviden1013/llm-ie/releases/tag/v0.4.0) (Jan 4, 2025): 
     - Concurrent LLM inferencing to speed up frame and relation extraction. 
     - Support for LiteLLM.
 
@@ -46,7 +46,7 @@ LLM-IE is a toolkit that provides robust information extraction utilities for na
 <div align="center"><img src="doc_asset/readme_img/LLM-IE flowchart.png" width=800 ></div>
 
 ## Prerequisite
-At least one LLM inference engine is required. There are built-in supports for 🚅 [LiteLLM](https://github.com/BerriAI/litellm), 🦙 [Llama-cpp-python](https://github.com/abetlen/llama-cpp-python), <img src="doc_asset/readme_img/ollama_icon_small.png" alt="Icon" width="18"/> [Ollama](https://github.com/ollama/ollama), 🤗 [Huggingface_hub](https://github.com/huggingface/huggingface_hub), <img src=doc_asset/readme_img/openai-logomark.png width=16 /> [OpenAI API](https://platform.openai.com/docs/api-reference/introduction), and <img src=doc_asset/readme_img/vllm-logo_small.png width=20 /> [vLLM](https://github.com/vllm-project/vllm). For installation guides, please refer to those projects. Other inference engines can be configured through the [InferenceEngine](src/llm_ie/engines.py) abstract class. See [LLM Inference Engine](#llm-inference-engine) section below.
+At least one LLM inference engine is required. There are built-in supports for 🚅 [LiteLLM](https://github.com/BerriAI/litellm), 🦙 [Llama-cpp-python](https://github.com/abetlen/llama-cpp-python), <img src="doc_asset/readme_img/ollama_icon.png" alt="Icon" width="22"/> [Ollama](https://github.com/ollama/ollama), 🤗 [Huggingface_hub](https://github.com/huggingface/huggingface_hub), <img src=doc_asset/readme_img/openai-logomark_white.png width=16 /> [OpenAI API](https://platform.openai.com/docs/api-reference/introduction), and <img src=doc_asset/readme_img/vllm-logo_small.png width=20 /> [vLLM](https://github.com/vllm-project/vllm). For installation guides, please refer to those projects. Other inference engines can be configured through the [InferenceEngine](src/llm_ie/engines.py) abstract class. See [LLM Inference Engine](#llm-inference-engine) section below.
 
 ## Installation
 The Python package is available on PyPI. 
@@ -72,7 +72,7 @@ inference_engine = LiteLLMInferenceEngine(model="openai/Llama-3.3-70B-Instruct",
 </details>
 
 <details>
-<summary><img src=doc_asset/readme_img/openai-logomark.png width=16 /> OpenAI API</summary>
+<summary><img src=doc_asset/readme_img/openai-logomark_white.png width=16 /> OpenAI API</summary>
 
 Follow the [Best Practices for API Key Safety](https://help.openai.com/en/articles/5112595-best-practices-for-api-key-safety) to set up API key.
 ```python
@@ -93,7 +93,7 @@ inference_engine = HuggingFaceHubInferenceEngine(model="meta-llama/Meta-Llama-3-
 </details>
 
 <details>
-<summary><img src="doc_asset/readme_img/ollama_icon_small.png" alt="Icon" width="18"/> Ollama</summary>
+<summary><img src="doc_asset/readme_img/ollama_icon.png" alt="Icon" width="22"/> Ollama</summary>
 
 ```python 
 from llm_ie.engines import OllamaInferenceEngine
@@ -282,7 +282,7 @@ inference_engine = LiteLLMInferenceEngine(model="openai/Llama-3.1-8B-Instruct", 
 inference_engine = LiteLLMInferenceEngine(model="ollama/llama3.1:8b-instruct-q8_0")
 ```
 
-#### <img src=doc_asset/readme_img/openai-logomark.png width=16 /> OpenAI API
+#### <img src=doc_asset/readme_img/openai-logomark_white.png width=16 /> OpenAI API
 In bash, save API key to the environmental variable ```OPENAI_API_KEY```.
 ```
 export OPENAI_API_KEY=<your_API_key>
@@ -306,7 +306,7 @@ from llm_ie.engines import HuggingFaceHubInferenceEngine
 inference_engine = HuggingFaceHubInferenceEngine(model="meta-llama/Meta-Llama-3-8B-Instruct")
 ```
 
-####  <img src="doc_asset/readme_img/ollama_icon_small.png" alt="Icon" width="18"/> Ollama
+####  <img src="doc_asset/readme_img/ollama_icon.png" alt="Icon" width="22"/> Ollama
 The ```model_name``` must match the names on the [Ollama library](https://ollama.com/library). Use the command line ```ollama ls``` to check your local model list. ```num_ctx``` determines the context length LLM will consider during text generation. Empirically, longer context length gives better performance, while consuming more memory and increases computation. ```keep_alive``` regulates the lifespan of LLM. It indicates a number of seconds to hold the LLM after the last API call. Default is 5 minutes (300 sec).
 
 ```python
