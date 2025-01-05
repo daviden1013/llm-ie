@@ -1,0 +1,51 @@
+### Patient Information
+The patient is a 45-year-old male who presented to the clinic for a routine check-up and to discuss concerns regarding his blood pressure management.
+
+### Chief Complaint
+The patient's chief complaint is that he has been experiencing elevated blood pressure readings over the past few months, despite adhering to his medication regimen and making lifestyle modifications as recommended by his healthcare provider.
+
+### History of Present Illness
+The patient reports that he was first diagnosed with hypertension approximately 5 years ago. Since then, he has been managed with a combination of lifestyle modifications, including dietary changes and regular exercise, as well as pharmacological therapy. However, over the past few months, he has noticed that his blood pressure readings have been consistently higher than expected, with systolic readings often exceeding 140 mmHg and diastolic readings exceeding 90 mmHg.
+
+### Past Medical History
+The patient has a past medical history significant for hypertension, hyperlipidemia, and a family history of cardiovascular disease. He denies any history of diabetes, kidney disease, or liver disease.
+
+### Medications
+The patient is currently taking the following medications:
+- Amlodipine 10mg daily for blood pressure management
+- Atorvastatin 20mg daily for cholesterol management
+- Aspirin 81mg daily for cardiovascular risk reduction
+
+### Social History
+The patient is a non-smoker and consumes alcohol in moderation. He works as an office administrator and reports a sedentary lifestyle, although he attempts to exercise for at least 30 minutes, 3 times a week.
+
+### Family History
+The patient's family history is significant for cardiovascular disease, with his father having suffered a myocardial infarction at the age of 60.
+
+### Review of Systems
+- **Cardiovascular:** The patient denies any symptoms of chest pain, shortness of breath, or palpitations.
+- **Neurological:** The patient denies any symptoms of dizziness, weakness, or numbness.
+- **Gastrointestinal:** The patient reports occasional heartburn but denies any abdominal pain or changes in bowel habits.
+
+### Physical Examination
+- **Vital Signs:** Blood pressure 148/92 mmHg, heart rate 88 bpm, respiratory rate 16 breaths/min, oxygen saturation 98% on room air.
+- **General Appearance:** The patient appears well-developed and well-nourished.
+- **Cardiovascular:** The heart has a regular rate and rhythm without murmurs.
+- **Abdominal:** The abdomen is soft and non-tender.
+
+### Laboratory Results
+Recent laboratory results show:
+- **Lipid Profile:** Total cholesterol 200 mg/dL, LDL 120 mg/dL, HDL 40 mg/dL, triglycerides 150 mg/dL.
+- **Complete Blood Count (CBC):** Within normal limits.
+- **Basic Metabolic Panel (BMP):** Within normal limits, with a serum creatinine of 1.0 mg/dL.
+
+### Assessment and Plan
+The patient's elevated blood pressure readings despite current management suggest the need for adjustment of his antihypertensive regimen. Considering his lipid profile, there is also a need to optimize his statin therapy to achieve better control of his cholesterol levels.
+
+1. **Medication Adjustment:** Increase Amlodipine to 15mg daily and add Lisinopril 10mg daily to enhance blood pressure control.
+2. **Lifestyle Modifications:** Encourage increased physical activity to at least 150 minutes of moderate-intensity exercise per week, and refer to a dietitian for personalized dietary advice to reduce sodium intake and promote a heart-healthy diet.
+3. **Follow-Up:** Schedule a follow-up appointment in 6 weeks to reassess blood pressure control and adjust medications as necessary.
+4. **Monitoring:** Recommend regular monitoring of blood pressure at home and in the clinic, as well as periodic laboratory assessments to monitor kidney function and electrolyte levels given the initiation of an ACE inhibitor.
+
+### Conclusion
+The management of this patient's hypertension requires a multifaceted approach, including pharmacological therapy, lifestyle modifications, and regular monitoring. By adjusting his medication regimen and emphasizing the importance of lifestyle changes, we aim to achieve better control of his blood pressure and reduce his risk of cardiovascular complications.

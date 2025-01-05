@@ -1,0 +1,99 @@
+# Clinical Note
+
+**Patient Name**: Lisa Martin  
+**Medical Record Number**: 5566778899  
+**Date of Visit**: January 5, 2025  
+**Provider**: Dr. Sophia Bennett, MD  
+
+---
+
+## Visit Overview  
+**Reason for Visit**: Evaluation of persistent fatigue and unexplained weight loss.
+
+---
+
+## Patient Narrative  
+Lisa Martin is a 42-year-old female presenting with a 2-month history of progressive fatigue and unintentional weight loss of approximately 12 pounds. She denies changes in appetite but notes feeling "drained" even after a full night’s sleep. She describes occasional mild headaches and intermittent muscle aches, primarily in her thighs and shoulders.
+
+Lisa denies fever, chills, or night sweats. She also denies gastrointestinal symptoms, such as diarrhea, constipation, or abdominal pain. Her menstrual cycles remain regular, and she has not experienced any abnormal bleeding. She is concerned about possible thyroid or autoimmune issues as her mother has hypothyroidism.
+
+---
+
+## Relevant Medical History  
+- **Chronic Conditions**:  
+  - Seasonal allergies.  
+  - Anxiety, managed without medication.  
+- **Family History**:  
+  - Mother: Hypothyroidism.  
+  - Father: Alive and well, no significant medical issues.  
+  - Sibling: Sister with rheumatoid arthritis.  
+
+---
+
+## Medications and Lifestyle  
+- **Medications**:  
+  - Loratadine 10 mg as needed for seasonal allergies.  
+- **Social History**:  
+  - Non-smoker.  
+  - Drinks 1-2 glasses of wine weekly.  
+  - Works as a marketing executive; reports high levels of stress.  
+
+---
+
+## Examination Findings  
+
+### Vital Signs:  
+- Blood Pressure: 118/76 mmHg  
+- Heart Rate: 72 bpm  
+- Respiratory Rate: 16 breaths/min  
+- Temperature: 98.6°F  
+- Weight: 140 lbs (down from 152 lbs 2 months ago)  
+
+### Physical Exam:  
+- **General**: Appears tired but well-nourished. No acute distress.  
+- **Thyroid**: No palpable enlargement or nodules.  
+- **Cardiovascular**: Regular rate and rhythm, no murmurs.  
+- **Respiratory**: Clear to auscultation bilaterally.  
+- **Abdomen**: Soft, non-tender, no organomegaly.  
+- **Musculoskeletal**: Normal range of motion; no joint swelling or tenderness.  
+- **Neurological**: Alert and oriented; no focal deficits.  
+
+---
+
+## Initial Workup  
+- **Complete Blood Count (CBC)**: Pending.  
+- **Comprehensive Metabolic Panel (CMP)**: Pending.  
+- **Thyroid Function Tests (TSH, Free T4)**: Pending.  
+- **Erythrocyte Sedimentation Rate (ESR)**: Pending.  
+
+---
+
+## Assessment and Plan  
+
+### Assessment:  
+1. Persistent fatigue and unintentional weight loss, etiology unclear but concerning for metabolic, endocrine, or autoimmune disorder.  
+2. High stress levels, contributing to reported symptoms.  
+3. Family history of thyroid dysfunction and autoimmune disease.  
+
+### Plan:  
+1. **Diagnostics**:  
+   - Expedite lab tests for thyroid dysfunction, anemia, and inflammatory markers.  
+   - Add C-reactive protein (CRP) and antinuclear antibodies (ANA) if autoimmune process is suspected based on results.  
+
+2. **Lifestyle and Support**:  
+   - Encourage stress management techniques, such as mindfulness and regular physical activity.  
+   - Suggest trial of a balanced diet with adequate caloric intake to prevent further weight loss.  
+
+3. **Follow-Up**:  
+   - Review lab results within one week via phone or telehealth.  
+   - Schedule in-person follow-up in two weeks to discuss findings and adjust the plan if needed.  
+
+4. **Counseling**:  
+   - Reassure the patient that her symptoms will be carefully evaluated.  
+   - Advise to report any new symptoms such as fever, worsening fatigue, or joint swelling.  
+
+---
+
+**Provider's Signature**:  
+Dr. Sophia Bennett, MD  
+**Date**: January 5, 2025

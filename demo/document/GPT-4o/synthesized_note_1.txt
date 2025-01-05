@@ -1,0 +1,123 @@
+# Clinical Note
+
+**Patient Name**: Mary Johnson  
+**Medical Record Number**: 987654321  
+**Date of Visit**: January 5, 2025  
+**Provider**: Dr. David Lee, DO  
+
+---
+
+## Chief Complaint  
+Severe abdominal pain and nausea for 48 hours.
+
+---
+
+## History of Present Illness  
+Mary Johnson is a 34-year-old female presenting with a 48-hour history of severe, intermittent abdominal pain localized to the right lower quadrant. She describes the pain as sharp, rated 8/10 at its worst, and worsened by movement or palpation. Associated symptoms include nausea and two episodes of non-bloody vomiting. She denies diarrhea, constipation, or changes in bowel habits.
+
+She reports no fever or chills but states she feels "off." She denies recent travel, changes in diet, or use of over-the-counter medications for the pain. Last menstrual period was three weeks ago, and she denies the possibility of pregnancy.
+
+---
+
+## Past Medical History  
+- Migraines, managed with sumatriptan as needed.  
+- No history of gastrointestinal or gynecological disorders.  
+
+---
+
+## Past Surgical History  
+- Cholecystectomy at age 29.  
+
+---
+
+## Family History  
+- Mother: Alive, age 62, with hypothyroidism.  
+- Father: Deceased at age 67 from colon cancer.  
+- Sibling: Brother, age 38, with no significant medical history.  
+
+---
+
+## Social History  
+- Non-smoker.  
+- Occasional alcohol use (1-2 glasses of wine per week).  
+- Works as a school teacher.  
+- No illicit drug use.  
+
+---
+
+## Review of Systems  
+- **General**: Fatigue, no weight loss.  
+- **Gastrointestinal**: Abdominal pain, nausea, and vomiting. No diarrhea or blood in stool.  
+- **Genitourinary**: No dysuria or hematuria.  
+- **Reproductive**: Regular menstrual cycles. No history of pelvic inflammatory disease.  
+- **Neurological**: No headaches or dizziness.  
+
+---
+
+## Medications  
+- Sumatriptan 50 mg as needed for migraines.  
+
+---
+
+## Allergies  
+- Penicillin: Rash.  
+
+---
+
+## Physical Examination  
+
+### Vital Signs:  
+- Temperature: 99.2°F  
+- Heart Rate: 92 bpm  
+- Respiratory Rate: 16 breaths/min  
+- Blood Pressure: 128/76 mmHg  
+- Oxygen Saturation: 98% on room air  
+
+### General:  
+Alert and oriented, appears mildly uncomfortable.  
+
+### Abdomen:  
+Tenderness to palpation in the right lower quadrant with guarding. Positive rebound tenderness. No palpable masses or organomegaly. Bowel sounds are hypoactive.  
+
+### Cardiovascular:  
+Regular rate and rhythm, no murmurs.  
+
+### Respiratory:  
+Clear to auscultation bilaterally.  
+
+### Extremities:  
+No edema or cyanosis.  
+
+---
+
+## Assessment and Plan  
+
+### Assessment:  
+1. Right lower quadrant abdominal pain, likely acute appendicitis.  
+2. Nausea and vomiting, secondary to abdominal pathology.  
+3. History of migraines, stable.  
+
+### Plan:  
+1. **Diagnostics**:  
+   - Order abdominal ultrasound and CT abdomen/pelvis to confirm the diagnosis.  
+   - CBC and CMP to evaluate for leukocytosis and electrolyte imbalances.  
+   - Urinalysis to rule out urinary tract infection or nephrolithiasis.  
+   - Serum beta-HCG to rule out pregnancy.  
+
+2. **Treatment**:  
+   - NPO status in preparation for possible surgery.  
+   - Start IV fluids (normal saline) for hydration.  
+   - Administer IV ondansetron for nausea.  
+   - Initiate empiric antibiotics (ceftriaxone and metronidazole) after confirming no contraindications.  
+
+3. **Referral**:  
+   - Consult general surgery for evaluation and possible appendectomy.  
+
+4. **Follow-Up**:  
+   - Continuous monitoring for any worsening symptoms or signs of peritonitis.  
+
+---
+
+**Provider's Signature**:  
+Dr. David Lee, DO  
+**Date**: January 5, 2025

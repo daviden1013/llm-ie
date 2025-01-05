@@ -1,0 +1,131 @@
+# Clinical Note
+
+**Patient Name**: John Doe  
+**Medical Record Number**: 123456789  
+**Date of Visit**: January 5, 2025  
+**Provider**: Dr. Jane Smith, MD  
+
+---
+
+## Chief Complaint  
+Persistent cough, shortness of breath, and fatigue for the past two weeks.
+
+---
+
+## History of Present Illness  
+John Doe is a 55-year-old male who presents with a two-week history of a persistent dry cough, progressive shortness of breath, and generalized fatigue. He reports that the symptoms began insidiously and have progressively worsened. The cough is non-productive, and he denies any hemoptysis. He experiences shortness of breath primarily on exertion, which limits his ability to perform daily activities. He denies fever, chills, or night sweats. 
+
+John reports mild chest discomfort but denies sharp or pleuritic chest pain. He has not had recent travel, sick contacts, or known exposure to environmental irritants. He works as an accountant and spends most of his time indoors.
+
+---
+
+## Past Medical History  
+- Hypertension, well-controlled with medication.  
+- Hyperlipidemia.  
+- Seasonal allergic rhinitis.  
+
+---
+
+## Past Surgical History  
+- Appendectomy at age 25.  
+
+---
+
+## Family History  
+- Father: Deceased at age 70 from myocardial infarction.  
+- Mother: Alive, age 78, with type 2 diabetes mellitus.  
+- No known family history of pulmonary conditions or malignancy.
+
+---
+
+## Social History  
+- Smokes 1 pack per day for 30 years (30 pack-years). Currently attempting to quit.  
+- Drinks alcohol socially (1-2 drinks per week).  
+- No history of illicit drug use.  
+- Lives with his spouse and has two adult children.  
+
+---
+
+## Review of Systems  
+- **General**: Fatigue, no fever or weight loss.  
+- **HEENT**: No sore throat or nasal congestion.  
+- **Respiratory**: Persistent dry cough, shortness of breath on exertion.  
+- **Cardiovascular**: No chest pain or palpitations.  
+- **Gastrointestinal**: No nausea, vomiting, or abdominal pain.  
+- **Musculoskeletal**: No joint pain or swelling.  
+- **Neurological**: No headaches or dizziness.  
+
+---
+
+## Medications  
+- Lisinopril 10 mg daily for hypertension.  
+- Atorvastatin 20 mg daily for hyperlipidemia.  
+- Loratadine 10 mg as needed for allergies.  
+
+---
+
+## Allergies  
+- No known drug allergies.  
+
+---
+
+## Physical Examination  
+
+### Vital Signs:  
+- Temperature: 98.6°F  
+- Heart Rate: 78 bpm  
+- Respiratory Rate: 18 breaths/min  
+- Blood Pressure: 132/82 mmHg  
+- Oxygen Saturation: 94% on room air  
+
+### General:  
+Alert and oriented, in no acute distress.  
+
+### HEENT:  
+No nasal congestion or oropharyngeal erythema.  
+
+### Chest/Lungs:  
+Bilateral decreased breath sounds in the lower lung fields with faint inspiratory crackles. No wheezing noted.  
+
+### Cardiovascular:  
+Regular rate and rhythm, no murmurs, rubs, or gallops.  
+
+### Abdomen:  
+Soft, non-tender, no masses or organomegaly.  
+
+### Extremities:  
+No edema or cyanosis.  
+
+### Neurological:  
+Normal reflexes, strength, and sensation.  
+
+---
+
+## Assessment and Plan  
+
+### Assessment:  
+1. Persistent cough and shortness of breath, likely secondary to chronic obstructive pulmonary disease (COPD). Differential includes asthma exacerbation, interstitial lung disease, or early pulmonary infection.  
+2. Long-standing smoking history (30 pack-years), contributing to symptoms.  
+3. Hypertension and hyperlipidemia, well-controlled.  
+
+### Plan:  
+1. **Diagnostics**:  
+   - Order chest X-ray to evaluate for structural abnormalities or signs of infection.  
+   - Pulmonary function tests to assess for COPD or other respiratory pathology.  
+   - Basic metabolic panel and complete blood count.  
+
+2. **Treatment**:  
+   - Start albuterol inhaler (90 mcg per actuation) as needed for symptomatic relief.  
+   - Encourage smoking cessation with nicotine replacement therapy and referral to a smoking cessation program.  
+
+3. **Lifestyle**:  
+   - Discuss dietary modifications and regular exercise to optimize overall health.  
+
+4. **Follow-Up**:  
+   - Schedule a follow-up visit in two weeks or sooner if symptoms worsen.  
+
+---
+
+**Provider's Signature**:  
+Dr. Jane Smith, MD  
+**Date**: January 5, 2025

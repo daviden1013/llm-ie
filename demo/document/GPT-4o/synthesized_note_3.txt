@@ -1,0 +1,91 @@
+# Clinical Note
+
+**Patient Name**: Sarah Williams  
+**Medical Record Number**: 4455667788  
+**Date of Visit**: January 5, 2025  
+**Provider**: Dr. Rachel Adams, MD  
+
+---
+
+## Visit Reason  
+Evaluation of persistent headache and neck stiffness.
+
+---
+
+## History  
+**History of Present Illness**:  
+Sarah Williams, a 37-year-old female, reports a 5-day history of persistent headache and neck stiffness. She describes the headache as a dull, bilateral pain that worsens with movement and improves slightly with over-the-counter analgesics. She also notes mild photophobia and fatigue but denies nausea, vomiting, fever, or recent trauma.
+
+Sarah works as a software developer and spends long hours at her desk. She attributes her symptoms to stress and prolonged computer use but is concerned about their persistence despite rest and self-care measures.
+
+---
+
+## Relevant Medical History  
+- **Chronic Conditions**:  
+  - Migraine without aura, managed with sumatriptan (last episode 6 months ago).  
+  - No history of hypertension, diabetes, or thyroid dysfunction.  
+- **Family History**:  
+  - Mother: History of migraines.  
+  - Father: Hypertension, no history of neurological disorders.  
+
+---
+
+## Medications and Allergies  
+- **Current Medications**:  
+  - Sumatriptan 50 mg as needed for migraines.  
+  - Ibuprofen 200 mg as needed for headache relief.  
+- **Allergies**:  
+  - None reported.  
+
+---
+
+## Examination Findings  
+
+### Vital Signs:  
+- Temperature: 98.7°F  
+- Blood Pressure: 120/78 mmHg  
+- Heart Rate: 76 bpm  
+- Respiratory Rate: 16 breaths/min  
+- Oxygen Saturation: 99% on room air  
+
+### Physical Exam:  
+- **General**: Appears fatigued but alert and oriented.  
+- **Head**: No tenderness over sinuses or scalp.  
+- **Neck**: Mild stiffness with reduced range of motion; no lymphadenopathy.  
+- **Neurological**:  
+  - Cranial nerves intact.  
+  - No focal neurological deficits.  
+  - Normal reflexes and coordination.  
+- **Eyes**: No papilledema on fundoscopy.  
+
+---
+
+## Initial Assessment  
+1. Persistent headache with neck stiffness, likely tension-type headache exacerbated by prolonged posture and stress. Differential includes migraine variant or early signs of meningitis (low suspicion without fever or photophobia worsening).  
+2. History of migraines, currently well-controlled.  
+
+---
+
+## Management Plan  
+
+1. **Immediate Care**:  
+   - Prescribe cyclobenzaprine 5 mg nightly for muscle relaxation.  
+   - Continue ibuprofen as needed for pain, but limit use to avoid medication-overuse headache.  
+
+2. **Lifestyle Adjustments**:  
+   - Recommend frequent breaks during computer use (20-20-20 rule: every 20 minutes, look 20 feet away for 20 seconds).  
+   - Suggest ergonomic adjustments to her workstation to improve posture.  
+   - Encourage stress reduction techniques such as mindfulness or yoga.  
+
+3. **Diagnostics**:  
+   - If symptoms persist or worsen, consider imaging (MRI of the brain and cervical spine) to rule out other causes.  
+   - Monitor for warning signs such as worsening photophobia, fever, or focal neurological deficits that may warrant lumbar puncture or additional evaluation.  
+
+4. **Follow-Up**:  
+   - Schedule a follow-up visit in 2 weeks to reassess symptoms. Advise the patient to seek immediate care if she develops fever, vomiting, or worsening neck stiffness.  
+
+---
+
+**Provider's Signature**:  
+Dr. Rachel Adams, MD  
+**Date**: January 5, 2025

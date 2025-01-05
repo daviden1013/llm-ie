@@ -1,0 +1,52 @@
+### Patient Information
+The patient is a 45-year-old male who presented to the clinic for a routine check-up and to discuss concerns regarding his blood pressure management.
+
+### Chief Complaint
+The patient's chief complaint is that he has been experiencing elevated blood pressure readings over the past few months, despite adhering to his medication regimen and making lifestyle modifications as recommended by his healthcare provider.
+
+### History of Present Illness
+The patient reports that he was first diagnosed with hypertension approximately 5 years ago. Since then, he has been managed with a combination of lifestyle modifications, including dietary changes and regular exercise, as well as pharmacological therapy. However, over the past few months, he has noticed that his blood pressure readings have been consistently higher than expected, with systolic readings often exceeding 140 mmHg and diastolic readings exceeding 90 mmHg.
+
+### Past Medical History
+The patient has a past medical history significant for hypertension, hyperlipidemia, and a family history of cardiovascular disease. He denies any history of diabetes, kidney disease, or liver disease.
+
+### Medications
+The patient is currently taking the following medications:
+- Amlodipine 10mg daily for blood pressure management
+- Atorvastatin 20mg daily for cholesterol management
+- Aspirin 81mg daily for cardiovascular risk reduction
+
+### Allergies
+The patient reports no known drug allergies.
+
+### Social History
+The patient is a non-smoker and consumes alcohol in moderation. He works as an office administrator and reports a sedentary lifestyle, although he attempts to exercise for at least 30 minutes, 3 times a week.
+
+### Family History
+The patient's family history is significant for cardiovascular disease, with both his father and brother having suffered myocardial infarctions in their early 50s.
+
+### Review of Systems
+- **Cardiovascular:** The patient denies any symptoms of chest pain, shortness of breath, or palpitations.
+- **Neurological:** The patient denies any symptoms of dizziness, weakness, or numbness.
+- **Gastrointestinal:** The patient reports no abdominal pain, nausea, or changes in bowel habits.
+
+### Physical Examination
+- **Vital Signs:** Blood pressure 148/92 mmHg, heart rate 88 bpm, respiratory rate 16 breaths/min, oxygen saturation 98% on room air.
+- **General Appearance:** The patient appears well, with no signs of distress.
+- **Cardiovascular Exam:** Regular rate and rhythm, no murmurs or gallops.
+- **Neurological Exam:** No focal neurological deficits.
+
+### Laboratory Results
+- **Complete Blood Count (CBC):** Within normal limits.
+- **Basic Metabolic Panel (BMP):** Shows slightly elevated creatinine at 1.2 mg/dL, otherwise within normal limits.
+- **Lipid Panel:** Total cholesterol 200 mg/dL, LDL 120 mg/dL, HDL 40 mg/dL, triglycerides 150 mg/dL.
+
+### Assessment and Plan
+The patient's elevated blood pressure readings despite current management suggest the need for adjustment of his antihypertensive regimen. Given his history of hyperlipidemia and family history of cardiovascular disease, it is also important to optimize his lipid profile.
+
+1. **Medication Adjustment:** Increase Amlodipine to 15mg daily and consider adding a second antihypertensive agent if blood pressure goals are not met within the next 6 weeks.
+2. **Lifestyle Modifications:** Encourage increased physical activity to at least 150 minutes of moderate-intensity exercise per week, and refer to a dietitian for personalized dietary advice to manage blood pressure and cholesterol.
+3. **Follow-Up:** Schedule a follow-up appointment in 6 weeks to reassess blood pressure control and adjust the treatment plan as necessary.
+
+### Conclusion
+The patient's case highlights the importance of regular monitoring and adjustment of treatment plans for chronic conditions like hypertension. By optimizing his antihypertensive regimen and encouraging lifestyle modifications, we aim to reduce his cardiovascular risk and improve his overall health outcomes.
