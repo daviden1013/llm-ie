@@ -2,7 +2,7 @@ import sys
 sys.path.insert(0, r"/home/daviden1013/David_projects/llm-ie/src")
 
 from llm_ie.engines import OllamaInferenceEngine
-from llm_ie.extractors import BasicFrameExtractor
+from llm_ie.extractors import SentenceFrameExtractor
 from llm_ie.prompt_editor import PromptEditor
 
 
@@ -17,17 +17,17 @@ llm = OllamaInferenceEngine(model_name="llama3.1:8b-instruct-q8_0")
 prompt_draft = "Extract diagnosis from the clinical note. Make sure to include diagnosis date and status."
 
 # Use LLM to generrate a prompt template
-editor = PromptEditor(llm, BasicFrameExtractor)
+editor = PromptEditor(llm, SentenceFrameExtractor)
 prompt_template = editor.rewrite(prompt_draft)
 
 # Alternatively, you can chat with the AI editor
 editor.chat()
 
 # Define extractor
-extractor = BasicFrameExtractor(llm, prompt_template)
+extractor = SentenceFrameExtractor(llm, prompt_template)
 
 # Extract
-frames =  extractor.extract_frames(note_text, entity_key="Diagnosis", stream=True)
+frames =  extractor.extract_frames(note_text, entity_key="Diagnosis", concurrent=True)
 
 # Check extractions
 len(frames)

@@ -22,6 +22,7 @@ An LLM-powered tool that transforms everyday language into robust information ex
 - [v0.4.0](https://github.com/daviden1013/llm-ie/releases/tag/v0.4.0) (Jan 4, 2025): 
     - Concurrent LLM inferencing to speed up frame and relation extraction. 
     - Support for LiteLLM.
+- [v0.4.1](https://github.com/daviden1013/llm-ie/releases/tag/v0.4.1) (Jan 25, 2025): Added filters, table view, and some new features to visualization tool (make sure to update [ie-viz](https://github.com/daviden1013/ie-viz)).
 
 ## Table of Contents
 - [Overview](#overview)
@@ -141,12 +142,12 @@ We start with a casual description:
 
 Define the AI prompt editor.
 ```python
-from llm_ie import OllamaInferenceEngine, PromptEditor, BasicFrameExtractor
+from llm_ie import OllamaInferenceEngine, PromptEditor, SentenceFrameExtractor
 
 # Define a LLM inference engine
 inference_engine = OllamaInferenceEngine(model_name="llama3.1:8b-instruct-q8_0")
 # Define LLM prompt editor
-editor = PromptEditor(inference_engine, BasicFrameExtractor)
+editor = PromptEditor(inference_engine, SentenceFrameExtractor)
 # Start chat
 editor.chat()
 ```
@@ -155,7 +156,7 @@ This opens an interactive session:
 <div align="left"><img src=doc_asset/readme_img/terminal_chat.PNG width=1000 ></div>
 
 
-The ```PromptEditor``` drafts a prompt template following the schema required by the ```BasicFrameExtractor```:
+The ```PromptEditor``` drafts a prompt template following the schema required by the ```SentenceFrameExtractor```:
 
 ```
 # Task description
@@ -193,10 +194,13 @@ with open("./demo/document/synthesized_note.txt", 'r') as f:
     note_text = f.read()
 
 # Define extractor
-extractor = BasicFrameExtractor(inference_engine, prompt_template)
+extractor = SentenceFrameExtractor(inference_engine, prompt_template)
 
 # Extract
-frames =  extractor.extract_frames(note_text, entity_key="Diagnosis", stream=True)
+# To stream the extraction process, use concurrent=False, stream=True:
+frames =  extractor.extract_frames(note_text, entity_key="Diagnosis", concurrent=False, stream=True)
+# For faster extraction, use concurrent=True to enable asynchronous prompting
+frames =  extractor.extract_frames(note_text, entity_key="Diagnosis", concurrent=True)
 
 # Check extractions
 for frame in frames:
@@ -205,10 +209,17 @@ for frame in frames:
 The output is a list of frames. Each frame has a ```entity_text```, ```start```, ```end```, and a dictionary of ```attr```. 
 
 ```python
-{'frame_id': '0', 'start': 537, 'end': 549, 'entity_text': 'Hypertension', 'attr': {'Datetime': '2010', 'Status': 'history'}}
-{'frame_id': '1', 'start': 551, 'end': 565, 'entity_text': 'Hyperlipidemia', 'attr': {'Datetime': '2015', 'Status': 'history'}}
-{'frame_id': '2', 'start': 571, 'end': 595, 'entity_text': 'Type 2 Diabetes Mellitus', 'attr': {'Datetime': '2018', 'Status': 'history'}}
-{'frame_id': '3', 'start': 2402, 'end': 2431, 'entity_text': 'Acute Coronary Syndrome (ACS)', 'attr': {'Datetime': 'July 20, 2024', 'Status': 'present'}}
+{'frame_id': '0', 'start': 537, 'end': 549, 'entity_text': 'hypertension', 'attr': {'Date': '2010-01-01', 'Status': 'Active'}}
+{'frame_id': '1', 'start': 551, 'end': 565, 'entity_text': 'hyperlipidemia', 'attr': {'Date': '2015-01-01', 'Status': 'Active'}}
+{'frame_id': '2', 'start': 571, 'end': 595, 'entity_text': 'Type 2 diabetes mellitus', 'attr': {'Date': '2018-01-01', 'Status': 'Active'}}
+{'frame_id': '3', 'start': 660, 'end': 670, 'entity_text': 'chest pain', 'attr': {'Date': 'July 18, 2024'}}
+{'frame_id': '4', 'start': 991, 'end': 1003, 'entity_text': 'Hypertension', 'attr': {'Date': '2010-01-01'}}
+{'frame_id': '5', 'start': 1026, 'end': 1040, 'entity_text': 'Hyperlipidemia', 'attr': {'Date': '2015-01-01'}}
+{'frame_id': '6', 'start': 1063, 'end': 1087, 'entity_text': 'Type 2 Diabetes Mellitus', 'attr': {'Date': '2018-01-01'}}
+{'frame_id': '7', 'start': 1926, 'end': 1947, 'entity_text': 'ST-segment depression', 'attr': None}
+{'frame_id': '8', 'start': 2049, 'end': 2066, 'entity_text': 'acute infiltrates', 'attr': None}
+{'frame_id': '9', 'start': 2117, 'end': 2150, 'entity_text': 'Mild left ventricular hypertrophy', 'attr': None}
+{'frame_id': '10', 'start': 2402, 'end': 2425, 'entity_text': 'acute coronary syndrome', 'attr': {'Date': 'July 20, 2024', 'Status': 'Active'}}
 ```
 
 We can save the frames to a document object for better management. The document holds ```text``` and ```frames```. The ```add_frame()``` method performs validation and (if passed) adds a frame to the document.
@@ -1057,6 +1068,9 @@ relations = extractor.extract_relations(doc, concurrent=False, stream=True)
 </details>
 
 ### Visualization
+
+<div align="center"><img src="doc_asset/readme_img/visualization.PNG" width=95% ></div>
+
 The `LLMInformationExtractionDocument` class supports named entity, entity attributes, and relation visualization. The implementation is through our plug-in package [ie-viz](https://github.com/daviden1013/ie-viz). Check the example Jupyter Notebook [NER + RE for Drug, Strength, Frequency](demo/medication_relation_extraction.ipynb) for a working demo.
 
 ```cmd
