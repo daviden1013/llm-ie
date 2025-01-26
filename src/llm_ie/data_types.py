@@ -1,5 +1,6 @@
 from typing import List, Dict, Tuple, Iterable, Callable
 import importlib.util
+import warnings
 import json
 
 
@@ -306,7 +307,7 @@ class LLMInformationExtractionDocument:
         return entities, relations
 
 
-    def viz_serve(self, host: str = '0.0.0.0', port: int = 5000, theme:str = "light", 
+    def viz_serve(self, host: str = '0.0.0.0', port: int = 5000, theme:str = "light", title:str="Frames Visualization",
                   color_attr_key:str=None, color_map_func:Callable=None):
         """
         This method serves a visualization App of the document.
@@ -319,6 +320,8 @@ class LLMInformationExtractionDocument:
             The port number to run the server on.
         theme : str, Optional
             The theme of the visualization. Must be either "light" or "dark".
+        title : str, Optional
+            the title of the HTML.
         color_attr_key : str, Optional
             The attribute key to be used for coloring the entities.
         color_map_func : Callable, Optional
@@ -328,17 +331,29 @@ class LLMInformationExtractionDocument:
         entities, relations = self._viz_preprocess()
         from ie_viz import serve
 
-        serve(text=self.text,
-              entities=entities,
-              relations=relations,
-              host=host,
-              port=port,
-              theme=theme,
-              color_attr_key=color_attr_key,
-              color_map_func=color_map_func)
-        
+        try:
+            serve(text=self.text,
+                    entities=entities,
+                    relations=relations,
+                    host=host,
+                    port=port,
+                    theme=theme,
+                    title=title,
+                    color_attr_key=color_attr_key,
+                    color_map_func=color_map_func)
+        except TypeError:
+            warnings.warn("The version of ie_viz is not the latest. Please update to the latest version (pip install --upgrade ie-viz) for complete features.", UserWarning)
+            serve(text=self.text,
+                    entities=entities,
+                    relations=relations,
+                    host=host,
+                    port=port,
+                    theme=theme,
+                    color_attr_key=color_attr_key,
+                    color_map_func=color_map_func)
     
-    def viz_render(self, theme:str = "light", color_attr_key:str=None, color_map_func:Callable=None) -> str:
+    def viz_render(self, theme:str = "light", color_attr_key:str=None, color_map_func:Callable=None,
+                   title:str="Frames Visualization") -> str:
         """
         This method renders visualization html of the document.
 
@@ -351,13 +366,25 @@ class LLMInformationExtractionDocument:
         color_map_func : Callable, Optional
             The function to be used for mapping the entity attributes to colors. When provided, the color_attr_key and 
             theme will be overwritten. The function must take an entity dictionary as input and return a color string (hex).
+        title : str, Optional
+            the title of the HTML.
         """
         entities, relations = self._viz_preprocess()
         from ie_viz import render
 
-        return render(text=self.text,
-                      entities=entities,
-                      relations=relations,
-                      theme=theme,
-                      color_attr_key=color_attr_key,
-                      color_map_func=color_map_func)
+        try:
+            return render(text=self.text,
+                        entities=entities,
+                        relations=relations,
+                        theme=theme,
+                        title=title,
+                        color_attr_key=color_attr_key,
+                        color_map_func=color_map_func)
+        except TypeError:
+                warnings.warn("The version of ie_viz is not the latest. Please update to the latest version (pip install --upgrade ie-viz) for complete features.", UserWarning)
+                return render(text=self.text,
+                        entities=entities,
+                        relations=relations,
+                        theme=theme,
+                        color_attr_key=color_attr_key,
+                        color_map_func=color_map_func)
