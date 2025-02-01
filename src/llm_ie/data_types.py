@@ -204,7 +204,7 @@ class LLMInformationExtractionDocument:
         # Add frame
         frame_clone = frame.copy()
         if create_id:
-            frame_clone.doc_id = f"{self.doc_id}_{len(self.frames)}"
+            frame_clone.frame_id = str(len(self.frames))
 
         self.frames.append(frame_clone)
         return True
