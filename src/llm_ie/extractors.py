@@ -59,7 +59,7 @@ class Extractor:
         text_content : Union[str, Dict[str,str]]
             the input text content to put in prompt template. 
             If str, the prompt template must has only 1 placeholder {{<placeholder name>}}, regardless of placeholder name.
-            If dict, all the keys must be included in the prompt template placeholder {{<placeholder name>}}.
+            If dict, all the keys must be included in the prompt template placeholder {{<placeholder name>}}. All values must be str.
 
         Returns : str
             a user prompt.
@@ -73,6 +73,10 @@ class Extractor:
             prompt = pattern.sub(text, self.prompt_template)
 
         elif isinstance(text_content, dict):
+            # Check if all values are str
+            if not all([isinstance(v, str) for v in text_content.values()]):
+                raise ValueError("All values in text_content must be str.")
+            # Check if all keys are in the prompt template
             placeholders = pattern.findall(self.prompt_template)
             if len(placeholders) != len(text_content):
                 raise ValueError(f"Expect text_content ({len(text_content)}) and prompt template placeholder ({len(placeholders)}) to have equal size.")
@@ -422,6 +426,13 @@ class BasicFrameExtractor(FrameExtractor):
         Return : str
             a list of frames.
         """
+        if isinstance(text_content, str):
+            text = text_content
+        elif isinstance(text_content, dict):
+            if document_key is None:
+                raise ValueError("document_key must be provided when text_content is dict.")
+            text = text_content[document_key]
+        
         frame_list = []
         gen_text = self.extract(text_content=text_content, 
                                 max_new_tokens=max_new_tokens, 
@@ -435,11 +446,6 @@ class BasicFrameExtractor(FrameExtractor):
                 entity_json.append(entity)
             else:
                 warnings.warn(f'Extractor output "{entity}" does not have entity_key ("{entity_key}"). This frame will be dropped.', RuntimeWarning)
-                
-        if isinstance(text_content, str):
-            text = text_content
-        elif isinstance(text_content, dict):
-            text = text_content[document_key]
 
         spans = self._find_entity_spans(text=text, 
                                         entities=[e[entity_key] for e in entity_json], 
@@ -645,6 +651,8 @@ class SentenceFrameExtractor(FrameExtractor):
         if isinstance(text_content, str):
             sentences = self._get_sentences(text_content)
         elif isinstance(text_content, dict):
+            if document_key is None:
+                raise ValueError("document_key must be provided when text_content is dict.")
             sentences = self._get_sentences(text_content[document_key])
         # construct chat messages
         messages = []
@@ -715,6 +723,8 @@ class SentenceFrameExtractor(FrameExtractor):
         if isinstance(text_content, str):
             sentences = self._get_sentences(text_content)
         elif isinstance(text_content, dict):
+            if document_key is None:
+                raise ValueError("document_key must be provided when text_content is dict.")
             sentences = self._get_sentences(text_content[document_key])
         # construct chat messages
         base_messages = []
@@ -933,6 +943,8 @@ class SentenceReviewFrameExtractor(SentenceFrameExtractor):
         if isinstance(text_content, str):
             sentences = self._get_sentences(text_content)
         elif isinstance(text_content, dict):
+            if document_key is None:
+                raise ValueError("document_key must be provided when text_content is dict.")
             sentences = self._get_sentences(text_content[document_key])
         # construct chat messages
         messages = []
@@ -1025,6 +1037,8 @@ class SentenceReviewFrameExtractor(SentenceFrameExtractor):
         if isinstance(text_content, str):
             sentences = self._get_sentences(text_content)
         elif isinstance(text_content, dict):
+            if document_key is None:
+                raise ValueError("document_key must be provided when text_content is dict.")
             sentences = self._get_sentences(text_content[document_key])
         # construct chat messages
         base_messages = []
