@@ -84,6 +84,20 @@ inference_engine = OpenAIInferenceEngine(model="gpt-4o-mini")
 </details>
 
 <details>
+<summary><img src=doc_asset/readme_img/Azure_icon.png width=32 /> Azure OpenAI API</summary>
+
+Follow the [Azure AI Services Quickstart](https://learn.microsoft.com/en-us/azure/ai-services/openai/quickstart?tabs=command-line%2Ckeyless%2Ctypescript-keyless%2Cpython-new&pivots=programming-language-python) to set up Endpoint and API key.
+
+```python
+from llm_ie.engines import AzureOpenAIInferenceEngine
+
+inference_engine = AzureOpenAIInferenceEngine(model="gpt-4o-mini", 
+                                              api_version="<your api version>")
+```
+
+</details>
+
+<details>
 <summary>🤗 Huggingface_hub</summary>
 
 ```python
@@ -306,6 +320,22 @@ For more parameters, see [OpenAI API reference](https://platform.openai.com/docs
 from llm_ie.engines import OpenAIInferenceEngine
 
 inference_engine = OpenAIInferenceEngine(model="gpt-4o-mini")
+```
+
+#### <img src=doc_asset/readme_img/Azure_icon.png width=32 /> Azure OpenAI API
+In bash, save the endpoint name and API key to environmental variables `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_API_KEY`.
+```
+export AZURE_OPENAI_API_KEY="<your_API_key>"
+export AZURE_OPENAI_ENDPOINT="<your_enpoint>"
+```
+
+In Python, create inference engine and specify model name. For the available models, refer to [OpenAI webpage](https://platform.openai.com/docs/models). 
+For more parameters, see [Azure OpenAI reference](https://learn.microsoft.com/en-us/azure/ai-services/openai/quickstart).
+
+```python
+from llm_ie.engines import AzureOpenAIInferenceEngine
+
+inference_engine = AzureOpenAIInferenceEngine(model="gpt-4o-mini")
 ```
 
 #### 🤗 huggingface_hub
