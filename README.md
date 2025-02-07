@@ -23,6 +23,7 @@ An LLM-powered tool that transforms everyday language into robust information ex
     - Concurrent LLM inferencing to speed up frame and relation extraction. 
     - Support for LiteLLM.
 - [v0.4.1](https://github.com/daviden1013/llm-ie/releases/tag/v0.4.1) (Jan 25, 2025): Added filters, table view, and some new features to visualization tool (make sure to update [ie-viz](https://github.com/daviden1013/ie-viz)).
+- [v0.4.3](https://github.com/daviden1013/llm-ie/releases/tag/v0.4.3) (Feb 7, 2025): Added Azure OpenAI support. 
 
 ## Table of Contents
 - [Overview](#overview)
