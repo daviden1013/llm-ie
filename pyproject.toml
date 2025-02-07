@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "llm-ie"
-version = "0.4.2"
+version = "0.4.3"
 description = "An LLM-powered tool that transforms everyday language into robust information extraction pipelines."
 authors = ["Enshuo (David) Hsu"]
 license = "MIT"
@@ -16,6 +16,7 @@ python = "^3.11"
 nltk = "^3.8"
 colorama = "^0.4.6"
 json_repair = "^0.30"
+nest_asyncio = "^0.1.6"
 
 
 [build-system]
