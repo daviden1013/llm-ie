@@ -327,7 +327,7 @@ inference_engine = OpenAIInferenceEngine(model="gpt-4o-mini")
 In bash, save the endpoint name and API key to environmental variables `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_API_KEY`.
 ```
 export AZURE_OPENAI_API_KEY="<your_API_key>"
-export AZURE_OPENAI_ENDPOINT="<your_enpoint>"
+export AZURE_OPENAI_ENDPOINT="<your_endpoint>"
 ```
 
 In Python, create inference engine and specify model name. For the available models, refer to [OpenAI webpage](https://platform.openai.com/docs/models). 
