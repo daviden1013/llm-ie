@@ -313,6 +313,93 @@ class OpenAIInferenceEngine(InferenceEngine):
         
         return response.choices[0].message.content
     
+
+class AzureOpenAIInferenceEngine(InferenceEngine):
+    def __init__(self, model:str, azure_endpoint:str, api_key:str, api_version:str, **kwrs):
+        """
+        The Azure OpenAI API inference engine.
+        For parameters and documentation, refer to https://azure.microsoft.com/en-us/products/ai-services/openai-service
+
+        Parameters:
+        ----------
+        model : str
+            model name as described in https://platform.openai.com/docs/models
+        azure_endpoint : str
+            the Azure OpenAI endpoint
+        api_key : str
+            the Azure OpenAI API key
+        api_version : str
+            the Azure OpenAI API version
+        """
+        if importlib.util.find_spec("openai") is None:
+            raise ImportError("OpenAI Python API library not found. Please install OpanAI (```pip install openai```).")
+        
+        from openai import AzureOpenAI, AsyncAzureOpenAI
+        self.model = model
+        self.azure_endpoint = azure_endpoint
+        self.api_key = api_key 
+        self.api_version = api_version
+        self.client = AzureOpenAI(azure_endpoint=self.azure_endpoint, 
+                                  api_key=self.api_key, 
+                                  api_version=self.api_version, 
+                                  **kwrs)
+        self.async_client = AsyncAzureOpenAI(azure_endpoint=self.azure_endpoint, 
+                                             api_key=self.api_key, 
+                                             api_version=self.api_version, 
+                                             **kwrs)
+
+    def chat(self, messages:List[Dict[str,str]], max_new_tokens:int=2048, temperature:float=0.0, stream:bool=False, **kwrs) -> str:
+        """
+        This method inputs chat messages and outputs LLM generated text.
+
+        Parameters:
+        ----------
+        messages : List[Dict[str,str]]
+            a list of dict with role and content. role must be one of {"system", "user", "assistant"}
+        max_new_tokens : str, Optional
+            the max number of new tokens LLM can generate. 
+        temperature : float, Optional
+            the temperature for token sampling. 
+        stream : bool, Optional
+            if True, LLM generated text will be printed in terminal in real-time. 
+        """
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            max_tokens=max_new_tokens,
+            temperature=temperature,
+            stream=stream,
+            **kwrs
+        )
+
+        if stream:
+            res = ''
+            for chunk in response:
+                if len(chunk.choices) > 0:
+                    if chunk.choices[0].delta.content is not None:
+                        res += chunk.choices[0].delta.content
+                        print(chunk.choices[0].delta.content, end="", flush=True)
+            return res
+        
+        return response.choices[0].message.content
+    
+
+    async def chat_async(self, messages:List[Dict[str,str]], max_new_tokens:int=2048, temperature:float=0.0, **kwrs) -> str:
+        """
+        Async version of chat method. Streaming is not supported.
+        """
+        response = await self.async_client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            max_tokens=max_new_tokens,
+            temperature=temperature,
+            stream=False,
+            **kwrs
+        )
+        
+        return response.choices[0].message.content
+
+    
 class LiteLLMInferenceEngine(InferenceEngine):
     def __init__(self, model:str=None, base_url:str=None, api_key:str=None):
         """
