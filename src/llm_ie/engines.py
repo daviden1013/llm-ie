@@ -290,9 +290,10 @@ class OpenAIInferenceEngine(InferenceEngine):
         if stream:
             res = ''
             for chunk in response:
-                if chunk.choices[0].delta.content is not None:
-                    res += chunk.choices[0].delta.content
-                    print(chunk.choices[0].delta.content, end="", flush=True)
+                if len(chunk.choices) > 0:
+                    if chunk.choices[0].delta.content is not None:
+                        res += chunk.choices[0].delta.content
+                        print(chunk.choices[0].delta.content, end="", flush=True)
             return res
         
         return response.choices[0].message.content
@@ -315,19 +316,17 @@ class OpenAIInferenceEngine(InferenceEngine):
     
 
 class AzureOpenAIInferenceEngine(InferenceEngine):
-    def __init__(self, model:str, azure_endpoint:str, api_key:str, api_version:str, **kwrs):
+    def __init__(self, model:str, api_version:str, **kwrs):
         """
         The Azure OpenAI API inference engine.
-        For parameters and documentation, refer to https://azure.microsoft.com/en-us/products/ai-services/openai-service
-
+        For parameters and documentation, refer to 
+        - https://azure.microsoft.com/en-us/products/ai-services/openai-service
+        - https://learn.microsoft.com/en-us/azure/ai-services/openai/quickstart
+        
         Parameters:
         ----------
         model : str
             model name as described in https://platform.openai.com/docs/models
-        azure_endpoint : str
-            the Azure OpenAI endpoint
-        api_key : str
-            the Azure OpenAI API key
         api_version : str
             the Azure OpenAI API version
         """
@@ -336,16 +335,10 @@ class AzureOpenAIInferenceEngine(InferenceEngine):
         
         from openai import AzureOpenAI, AsyncAzureOpenAI
         self.model = model
-        self.azure_endpoint = azure_endpoint
-        self.api_key = api_key 
         self.api_version = api_version
-        self.client = AzureOpenAI(azure_endpoint=self.azure_endpoint, 
-                                  api_key=self.api_key, 
-                                  api_version=self.api_version, 
+        self.client = AzureOpenAI(api_version=self.api_version, 
                                   **kwrs)
-        self.async_client = AsyncAzureOpenAI(azure_endpoint=self.azure_endpoint, 
-                                             api_key=self.api_key, 
-                                             api_version=self.api_version, 
+        self.async_client = AsyncAzureOpenAI(api_version=self.api_version, 
                                              **kwrs)
 
     def chat(self, messages:List[Dict[str,str]], max_new_tokens:int=2048, temperature:float=0.0, stream:bool=False, **kwrs) -> str:
