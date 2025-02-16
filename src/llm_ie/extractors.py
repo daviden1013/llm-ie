@@ -13,7 +13,6 @@ from typing import Set, List, Dict, Tuple, Union, Callable
 from llm_ie.data_types import LLMInformationExtractionFrame, LLMInformationExtractionDocument
 from llm_ie.engines import InferenceEngine
 from colorama import Fore, Style
-from nltk.tokenize import RegexpTokenizer
 
 
 class Extractor:
@@ -139,6 +138,7 @@ class Extractor:
     
 
 class FrameExtractor(Extractor):
+    from nltk.tokenize import RegexpTokenizer
     def __init__(self, inference_engine:InferenceEngine, prompt_template:str, system_prompt:str=None, **kwrs):
         """
         This is the abstract class for frame extraction.
@@ -157,7 +157,8 @@ class FrameExtractor(Extractor):
                          prompt_template=prompt_template,
                          system_prompt=system_prompt,
                          **kwrs)
-        self.tokenizer = RegexpTokenizer(r'\w+|[^\w\s]')
+        
+        self.tokenizer = self.RegexpTokenizer(r'\w+|[^\w\s]')
 
 
     def _jaccard_score(self, s1:Set[str], s2:Set[str]) -> float:
@@ -569,7 +570,8 @@ class ReviewFrameExtractor(BasicFrameExtractor):
 
 class SentenceFrameExtractor(FrameExtractor):
     from nltk.tokenize.punkt import PunktSentenceTokenizer
-    def __init__(self, inference_engine:InferenceEngine, prompt_template:str, system_prompt:str=None, **kwrs):
+    def __init__(self, inference_engine:InferenceEngine, prompt_template:str, system_prompt:str=None,
+                 context_sentences:Union[str, int]="all", **kwrs):
         """
         This class performs sentence-by-sentence information extraction.
         The process is as follows:
@@ -590,10 +592,26 @@ class SentenceFrameExtractor(FrameExtractor):
             prompt template with "{{<placeholder name>}}" placeholder.
         system_prompt : str, Optional
             system prompt.
+        context_sentences : Union[str, int], Optional
+            number of sentences before and after the given sentence to provide additional context. 
+            if "all", the full text will be provided in the prompt as context. 
+            if 0, no additional context will be provided.
+                This is good for tasks that does not require context beyond the given sentence. 
+            if > 0, the number of sentences before and after the given sentence to provide as context.
+                This is good for tasks that require context beyond the given sentence. 
         """
         super().__init__(inference_engine=inference_engine, prompt_template=prompt_template, 
                          system_prompt=system_prompt, **kwrs)
         
+        if not isinstance(context_sentences, int) and context_sentences != "all":
+            raise ValueError('context_sentences must be an integer (>= 0) or "all".')
+        
+        if isinstance(context_sentences, int) and context_sentences < 0:
+            raise ValueError("context_sentences must be a positive integer.")
+            
+        self.context_sentences =context_sentences
+        
+
     def _get_sentences(self, text:str) -> List[Dict[str,str]]:
         """
         This method sentence tokenize the input text into a list of sentences 
@@ -614,9 +632,24 @@ class SentenceFrameExtractor(FrameExtractor):
                             "end": end})    
         return sentences
     
+
+    def _get_context_sentences(self, text_content, i:int, sentences:List[Dict[str, str]], document_key:str=None) -> str:
+        """
+        This function returns the context sentences for the current sentence of interest (i). 
+        """
+        if self.context_sentences == "all":
+            context = text_content if isinstance(text_content, str) else text_content[document_key]
+        elif self.context_sentences == 0:
+            context = ""
+        else:
+            start = max(0, i - self.context_sentences)
+            end = min(i + 1 + self.context_sentences, len(sentences))   
+            context = " ".join([s['sentence_text'] for s in sentences[start:end]])
+        return context
+    
     
     def extract(self, text_content:Union[str, Dict[str,str]], max_new_tokens:int=512, 
-                document_key:str=None, multi_turn:bool=False, temperature:float=0.0, stream:bool=False, **kwrs) -> List[Dict[str,str]]:
+                document_key:str=None, temperature:float=0.0, stream:bool=False, **kwrs) -> List[Dict[str,str]]:
         """
         This method inputs a text and outputs a list of outputs per sentence. 
 
@@ -631,12 +664,6 @@ class SentenceFrameExtractor(FrameExtractor):
         document_key : str, Optional
             specify the key in text_content where document text is. 
             If text_content is str, this parameter will be ignored.
-        multi_turn : bool, Optional
-            multi-turn conversation prompting. 
-            If True, sentences and LLM outputs will be appended to the input message and carry-over. 
-            If False, only the current sentence is prompted. 
-            For LLM inference engines that supports prompt cache (e.g., Llama.Cpp, Ollama), use multi-turn conversation prompting
-            can better utilize the KV caching. 
         temperature : float, Optional
             the temperature for token sampling.
         stream : bool, Optional
@@ -654,19 +681,32 @@ class SentenceFrameExtractor(FrameExtractor):
             if document_key is None:
                 raise ValueError("document_key must be provided when text_content is dict.")
             sentences = self._get_sentences(text_content[document_key])
-        # construct chat messages
-        messages = []
-        if self.system_prompt:
-            messages.append({'role': 'system', 'content': self.system_prompt})
-
-        messages.append({'role': 'user', 'content': self._get_user_prompt(text_content)})
-        messages.append({'role': 'assistant', 'content': 'Sure, please start with the first sentence.'})
 
         # generate sentence by sentence
-        for sent in sentences:
-            messages.append({'role': 'user', 'content': sent['sentence_text']})
+        for i, sent in enumerate(sentences):
+            # construct chat messages
+            messages = []
+            if self.system_prompt:
+                messages.append({'role': 'system', 'content': self.system_prompt})
+
+            context = self._get_context_sentences(text_content, i, sentences, document_key)
+            
+            if self.context_sentences == 0:
+                # no context, just place sentence of interest
+                messages.append({'role': 'user', 'content': self._get_user_prompt(sent['sentence_text'])})
+            else:
+                # insert context
+                messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
+                # simulate conversation
+                messages.append({'role': 'assistant', 'content': 'Sure, please provide the sentence of interest.'})
+                # place sentence of interest
+                messages.append({'role': 'user', 'content': sent['sentence_text']})
+
             if stream:
-                print(f"\n\n{Fore.GREEN}Sentence: {Style.RESET_ALL}\n{sent['sentence_text']}\n")
+                print(f"\n\n{Fore.GREEN}Sentence {i}:{Style.RESET_ALL}\n{sent['sentence_text']}\n")
+                if isinstance(self.context_sentences, int) and self.context_sentences > 0:
+                    print(f"{Fore.YELLOW}Context:{Style.RESET_ALL}\n{context}\n")
+                
                 print(f"{Fore.BLUE}Extraction:{Style.RESET_ALL}")
 
             gen_text = self.inference_engine.chat(
@@ -676,19 +716,13 @@ class SentenceFrameExtractor(FrameExtractor):
                             stream=stream,
                             **kwrs
                         )
-            
-            if multi_turn:
-                # update chat messages with LLM outputs
-                messages.append({'role': 'assistant', 'content': gen_text})
-            else:
-                # delete sentence so that message is reset
-                del messages[-1]
 
             # add to output
             output.append({'sentence_start': sent['start'],
                             'sentence_end': sent['end'],
                             'sentence_text': sent['sentence_text'],
                             'gen_text': gen_text})
+            
         return output
     
 
@@ -726,21 +760,31 @@ class SentenceFrameExtractor(FrameExtractor):
             if document_key is None:
                 raise ValueError("document_key must be provided when text_content is dict.")
             sentences = self._get_sentences(text_content[document_key])
-        # construct chat messages
-        base_messages = []
-        if self.system_prompt:
-            base_messages.append({'role': 'system', 'content': self.system_prompt})
-
-        base_messages.append({'role': 'user', 'content': self._get_user_prompt(text_content)})
-        base_messages.append({'role': 'assistant', 'content': 'Sure, please start with the first sentence.'})
 
         # generate sentence by sentence
         tasks = []
         for i in range(0, len(sentences), concurrent_batch_size):
             batch = sentences[i:i + concurrent_batch_size]
-            for sent in batch:
-                messages = copy.deepcopy(base_messages)
-                messages.append({'role': 'user', 'content': sent['sentence_text']})
+            for j, sent in enumerate(batch):
+                # construct chat messages
+                messages = []
+                if self.system_prompt:
+                    messages.append({'role': 'system', 'content': self.system_prompt})
+
+                context = self._get_context_sentences(text_content, i + j, sentences, document_key)
+                
+                if self.context_sentences == 0:
+                    # no context, just place sentence of interest
+                    messages.append({'role': 'user', 'content': self._get_user_prompt(sent['sentence_text'])})
+                else:
+                    # insert context
+                    messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
+                    # simulate conversation
+                    messages.append({'role': 'assistant', 'content': 'Sure, please provide the sentence of interest.'})
+                    # place sentence of interest
+                    messages.append({'role': 'user', 'content': sent['sentence_text']})
+                
+                # add to tasks
                 task = asyncio.create_task(
                     self.inference_engine.chat_async(
                                 messages=messages, 
@@ -764,10 +808,10 @@ class SentenceFrameExtractor(FrameExtractor):
     
 
     def extract_frames(self, text_content:Union[str, Dict[str,str]], entity_key:str, max_new_tokens:int=512, 
-                            document_key:str=None, multi_turn:bool=False, temperature:float=0.0, stream:bool=False, 
-                            concurrent:bool=False, concurrent_batch_size:int=32,
-                            case_sensitive:bool=False, fuzzy_match:bool=True, fuzzy_buffer_size:float=0.2, fuzzy_score_cutoff:float=0.8,
-                            **kwrs) -> List[LLMInformationExtractionFrame]:
+                        document_key:str=None, temperature:float=0.0, stream:bool=False, 
+                        concurrent:bool=False, concurrent_batch_size:int=32,
+                        case_sensitive:bool=False, fuzzy_match:bool=True, fuzzy_buffer_size:float=0.2, fuzzy_score_cutoff:float=0.8,
+                        **kwrs) -> List[LLMInformationExtractionFrame]:
         """
         This method inputs a text and outputs a list of LLMInformationExtractionFrame
         It use the extract() method and post-process outputs into frames.
@@ -785,12 +829,6 @@ class SentenceFrameExtractor(FrameExtractor):
         document_key : str, Optional
             specify the key in text_content where document text is. 
             If text_content is str, this parameter will be ignored.
-        multi_turn : bool, Optional
-            multi-turn conversation prompting. 
-            If True, sentences and LLM outputs will be appended to the input message and carry-over. 
-            If False, only the current sentence is prompted. 
-            For LLM inference engines that supports prompt cache (e.g., Llama.Cpp, Ollama), use multi-turn conversation prompting
-            can better utilize the KV caching. 
         temperature : float, Optional
             the temperature for token sampling.
         stream : bool, Optional
@@ -815,8 +853,6 @@ class SentenceFrameExtractor(FrameExtractor):
         if concurrent:
             if stream:
                 warnings.warn("stream=True is not supported in concurrent mode.", RuntimeWarning)
-            if multi_turn:
-                warnings.warn("multi_turn=True is not supported in concurrent mode.", RuntimeWarning)
 
             nest_asyncio.apply() # For Jupyter notebook. Terminal does not need this.
             llm_output_sentences = asyncio.run(self.extract_async(text_content=text_content, 
@@ -830,7 +866,6 @@ class SentenceFrameExtractor(FrameExtractor):
             llm_output_sentences = self.extract(text_content=text_content, 
                                             max_new_tokens=max_new_tokens, 
                                             document_key=document_key,
-                                            multi_turn=multi_turn, 
                                             temperature=temperature, 
                                             stream=stream,
                                             **kwrs)
@@ -866,7 +901,8 @@ class SentenceFrameExtractor(FrameExtractor):
 
 class SentenceReviewFrameExtractor(SentenceFrameExtractor):
     def __init__(self, inference_engine:InferenceEngine, prompt_template:str,  
-                 review_mode:str, review_prompt:str=None, system_prompt:str=None, **kwrs):
+                 review_mode:str, review_prompt:str=None, system_prompt:str=None,
+                 context_sentences:Union[str, int]="all", **kwrs):
         """
         This class adds a review step after the SentenceFrameExtractor.
         For each sentence, the review process asks LLM to review its output and:
@@ -888,9 +924,16 @@ class SentenceReviewFrameExtractor(SentenceFrameExtractor):
             addition mode only ask LLM to add new frames, while revision mode ask LLM to regenerate.
         system_prompt : str, Optional
             system prompt.
+        context_sentences : Union[str, int], Optional
+            number of sentences before and after the given sentence to provide additional context. 
+            if "all", the full text will be provided in the prompt as context. 
+            if 0, no additional context will be provided.
+                This is good for tasks that does not require context beyond the given sentence. 
+            if > 0, the number of sentences before and after the given sentence to provide as context.
+                This is good for tasks that require context beyond the given sentence. 
         """
         super().__init__(inference_engine=inference_engine, prompt_template=prompt_template, 
-                         system_prompt=system_prompt, **kwrs)
+                         system_prompt=system_prompt, context_sentences=context_sentences, **kwrs)
 
         if review_mode not in {"addition", "revision"}: 
             raise ValueError('review_mode must be one of {"addition", "revision"}.')
@@ -908,7 +951,7 @@ class SentenceReviewFrameExtractor(SentenceFrameExtractor):
 
 
     def extract(self, text_content:Union[str, Dict[str,str]], max_new_tokens:int=512, 
-                document_key:str=None, multi_turn:bool=False, temperature:float=0.0, stream:bool=False, **kwrs) -> List[Dict[str,str]]:
+                document_key:str=None, temperature:float=0.0, stream:bool=False, **kwrs) -> List[Dict[str,str]]:
         """
         This method inputs a text and outputs a list of outputs per sentence. 
 
@@ -923,12 +966,6 @@ class SentenceReviewFrameExtractor(SentenceFrameExtractor):
         document_key : str, Optional
             specify the key in text_content where document text is. 
             If text_content is str, this parameter will be ignored.
-        multi_turn : bool, Optional
-            multi-turn conversation prompting. 
-            If True, sentences and LLM outputs will be appended to the input message and carry-over. 
-            If False, only the current sentence is prompted. 
-            For LLM inference engines that supports prompt cache (e.g., Llama.Cpp, Ollama), use multi-turn conversation prompting
-            can better utilize the KV caching. 
         temperature : float, Optional
             the temperature for token sampling.
         stream : bool, Optional
@@ -946,19 +983,31 @@ class SentenceReviewFrameExtractor(SentenceFrameExtractor):
             if document_key is None:
                 raise ValueError("document_key must be provided when text_content is dict.")
             sentences = self._get_sentences(text_content[document_key])
-        # construct chat messages
-        messages = []
-        if self.system_prompt:
-            messages.append({'role': 'system', 'content': self.system_prompt})
-
-        messages.append({'role': 'user', 'content': self._get_user_prompt(text_content)})
-        messages.append({'role': 'assistant', 'content': 'Sure, please start with the first sentence.'})
-
+        
         # generate sentence by sentence
-        for sent in sentences:
-            messages.append({'role': 'user', 'content': sent['sentence_text']})
+        for i, sent in enumerate(sentences):
+            # construct chat messages
+            messages = []
+            if self.system_prompt:
+                messages.append({'role': 'system', 'content': self.system_prompt})
+
+            context = self._get_context_sentences(text_content, i, sentences, document_key)
+            
+            if self.context_sentences == 0:
+                # no context, just place sentence of interest
+                messages.append({'role': 'user', 'content': self._get_user_prompt(sent['sentence_text'])})
+            else:
+                # insert context
+                messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
+                # simulate conversation
+                messages.append({'role': 'assistant', 'content': 'Sure, please provide the sentence of interest.'})
+                # place sentence of interest
+                messages.append({'role': 'user', 'content': sent['sentence_text']})
+
             if stream:
-                print(f"\n\n{Fore.GREEN}Sentence: {Style.RESET_ALL}\n{sent['sentence_text']}\n")
+                print(f"\n\n{Fore.GREEN}Sentence {i}: {Style.RESET_ALL}\n{sent['sentence_text']}\n")
+                if isinstance(self.context_sentences, int) and self.context_sentences > 0:
+                    print(f"{Fore.YELLOW}Context:{Style.RESET_ALL}\n{context}\n")
                 print(f"{Fore.BLUE}Initial Output:{Style.RESET_ALL}")
 
             initial = self.inference_engine.chat(
@@ -988,13 +1037,6 @@ class SentenceReviewFrameExtractor(SentenceFrameExtractor):
                 gen_text = review
             elif self.review_mode == "addition":
                 gen_text = initial + '\n' + review
-            
-            if multi_turn:
-                # update chat messages with LLM outputs
-                messages.append({'role': 'assistant', 'content': review})
-            else:
-                # delete sentence and review so that message is reset
-                del messages[-3:]
 
             # add to output
             output.append({'sentence_start': sent['start'],
@@ -1040,24 +1082,33 @@ class SentenceReviewFrameExtractor(SentenceFrameExtractor):
             if document_key is None:
                 raise ValueError("document_key must be provided when text_content is dict.")
             sentences = self._get_sentences(text_content[document_key])
-        # construct chat messages
-        base_messages = []
-        if self.system_prompt:
-            base_messages.append({'role': 'system', 'content': self.system_prompt})
-
-        base_messages.append({'role': 'user', 'content': self._get_user_prompt(text_content)})
-        base_messages.append({'role': 'assistant', 'content': 'Sure, please start with the first sentence.'})
 
         # generate initial outputs sentence by sentence
-        initials = []
         tasks = []
-        message_list = []
+        messages_list = []
         for i in range(0, len(sentences), concurrent_batch_size):
             batch = sentences[i:i + concurrent_batch_size]
-            for sent in batch:
-                messages = copy.deepcopy(base_messages)
-                messages.append({'role': 'user', 'content': sent['sentence_text']})
-                message_list.append(messages)
+            for j, sent in enumerate(batch):
+                # construct chat messages
+                messages = []
+                if self.system_prompt:
+                    messages.append({'role': 'system', 'content': self.system_prompt})
+
+                context = self._get_context_sentences(text_content, i + j, sentences, document_key)
+                
+                if self.context_sentences == 0:
+                    # no context, just place sentence of interest
+                    messages.append({'role': 'user', 'content': self._get_user_prompt(sent['sentence_text'])})
+                else:
+                    # insert context
+                    messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
+                    # simulate conversation
+                    messages.append({'role': 'assistant', 'content': 'Sure, please provide the sentence of interest.'})
+                    # place sentence of interest
+                    messages.append({'role': 'user', 'content': sent['sentence_text']})
+
+                messages_list.append(messages)
+
                 task = asyncio.create_task(
                     self.inference_engine.chat_async(
                                 messages=messages, 
@@ -1071,15 +1122,15 @@ class SentenceReviewFrameExtractor(SentenceFrameExtractor):
         # Wait until the batch is done, collect results and move on to next batch
         responses = await asyncio.gather(*tasks)
         # Collect initials
-        for gen_text, sent, message in zip(responses, sentences, message_list):
+        initials = []
+        for gen_text, sent, messages in zip(responses, sentences, messages_list):
             initials.append({'sentence_start': sent['start'],
                             'sentence_end': sent['end'],
                             'sentence_text': sent['sentence_text'],
                             'gen_text': gen_text,
-                            'messages': message})
-            
+                            'messages': messages})
+
         # Review
-        reviews = []
         tasks = []
         for i in range(0, len(initials), concurrent_batch_size):
             batch = initials[i:i + concurrent_batch_size]
@@ -1101,6 +1152,7 @@ class SentenceReviewFrameExtractor(SentenceFrameExtractor):
             responses = await asyncio.gather(*tasks)
 
         # Collect reviews
+        reviews = []
         for gen_text, sent in zip(responses, sentences):
             reviews.append({'sentence_start': sent['start'],
                             'sentence_end': sent['end'],
@@ -1123,7 +1175,8 @@ class SentenceReviewFrameExtractor(SentenceFrameExtractor):
 
 class SentenceCoTFrameExtractor(SentenceFrameExtractor):
     from nltk.tokenize.punkt import PunktSentenceTokenizer
-    def __init__(self, inference_engine:InferenceEngine, prompt_template:str, system_prompt:str=None, **kwrs):
+    def __init__(self, inference_engine:InferenceEngine, prompt_template:str, system_prompt:str=None, 
+                 context_sentences:Union[str, int]="all", **kwrs):
         """
         This class performs sentence-based Chain-of-thoughts (CoT) information extraction.
         A simulated chat follows this process:
@@ -1145,13 +1198,20 @@ class SentenceCoTFrameExtractor(SentenceFrameExtractor):
             prompt template with "{{<placeholder name>}}" placeholder.
         system_prompt : str, Optional
             system prompt.
+        context_sentences : Union[str, int], Optional
+            number of sentences before and after the given sentence to provide additional context. 
+            if "all", the full text will be provided in the prompt as context. 
+            if 0, no additional context will be provided.
+                This is good for tasks that does not require context beyond the given sentence. 
+            if > 0, the number of sentences before and after the given sentence to provide as context.
+                This is good for tasks that require context beyond the given sentence. 
         """
         super().__init__(inference_engine=inference_engine, prompt_template=prompt_template, 
-                         system_prompt=system_prompt, **kwrs)
+                         system_prompt=system_prompt, context_sentences=context_sentences, **kwrs)
         
 
     def extract(self, text_content:Union[str, Dict[str,str]], max_new_tokens:int=512, 
-                document_key:str=None, multi_turn:bool=False, temperature:float=0.0, stream:bool=False, **kwrs) -> List[Dict[str,str]]:
+                document_key:str=None, temperature:float=0.0, stream:bool=False, **kwrs) -> List[Dict[str,str]]:
         """
         This method inputs a text and outputs a list of outputs per sentence. 
 
@@ -1166,12 +1226,6 @@ class SentenceCoTFrameExtractor(SentenceFrameExtractor):
         document_key : str, Optional
             specify the key in text_content where document text is. 
             If text_content is str, this parameter will be ignored.
-        multi_turn : bool, Optional
-            multi-turn conversation prompting. 
-            If True, sentences and LLM outputs will be appended to the input message and carry-over. 
-            If False, only the current sentence is prompted. 
-            For LLM inference engines that supports prompt cache (e.g., Llama.Cpp, Ollama), use multi-turn conversation prompting
-            can better utilize the KV caching. 
         temperature : float, Optional
             the temperature for token sampling.
         stream : bool, Optional
@@ -1187,19 +1241,31 @@ class SentenceCoTFrameExtractor(SentenceFrameExtractor):
             sentences = self._get_sentences(text_content)
         elif isinstance(text_content, dict):
             sentences = self._get_sentences(text_content[document_key])
-        # construct chat messages
-        messages = []
-        if self.system_prompt:
-            messages.append({'role': 'system', 'content': self.system_prompt})
-
-        messages.append({'role': 'user', 'content': self._get_user_prompt(text_content)})
-        messages.append({'role': 'assistant', 'content': 'Sure, please start with the first sentence.'})
 
         # generate sentence by sentence
-        for sent in sentences:
-            messages.append({'role': 'user', 'content': sent['sentence_text']})
+        for i, sent in enumerate(sentences):
+            # construct chat messages
+            messages = []
+            if self.system_prompt:
+                messages.append({'role': 'system', 'content': self.system_prompt})
+
+            context = self._get_context_sentences(text_content, i, sentences, document_key)
+            
+            if self.context_sentences == 0:
+                # no context, just place sentence of interest
+                messages.append({'role': 'user', 'content': self._get_user_prompt(sent['sentence_text'])})
+            else:
+                # insert context
+                messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
+                # simulate conversation
+                messages.append({'role': 'assistant', 'content': 'Sure, please provide the sentence of interest.'})
+                # place sentence of interest
+                messages.append({'role': 'user', 'content': sent['sentence_text']})
+
             if stream:
                 print(f"\n\n{Fore.GREEN}Sentence: {Style.RESET_ALL}\n{sent['sentence_text']}\n")
+                if isinstance(self.context_sentences, int) and self.context_sentences > 0:
+                    print(f"{Fore.YELLOW}Context:{Style.RESET_ALL}\n{context}\n")
                 print(f"{Fore.BLUE}CoT:{Style.RESET_ALL}")
 
             gen_text = self.inference_engine.chat(
@@ -1209,13 +1275,6 @@ class SentenceCoTFrameExtractor(SentenceFrameExtractor):
                             stream=stream,
                             **kwrs
                         )
-            
-            if multi_turn:
-                # update chat messages with LLM outputs
-                messages.append({'role': 'assistant', 'content': gen_text})
-            else:
-                # delete sentence so that message is reset
-                del messages[-1]
 
             # add to output
             output.append({'sentence_start': sent['start'],
