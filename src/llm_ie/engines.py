@@ -333,7 +333,7 @@ class OpenAIInferenceEngine(InferenceEngine):
             if temperature != 0.0:
                 warnings.warn("Reasoning models do not support temperature parameter. Will be ignored.", UserWarning)
             
-            response = await self.client.chat.completions.create(
+            response = await self.async_client.chat.completions.create(
                 model=self.model,
                 messages=messages,
                 max_completion_tokens=max_new_tokens,
@@ -453,7 +453,7 @@ class AzureOpenAIInferenceEngine(InferenceEngine):
             if temperature != 0.0:
                 warnings.warn("Reasoning models do not support temperature parameter. Will be ignored.", UserWarning)
             
-            response = await self.client.chat.completions.create(
+            response = await self.async_client.chat.completions.create(
                 model=self.model,
                 messages=messages,
                 max_completion_tokens=max_new_tokens,
