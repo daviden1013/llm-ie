@@ -1,4 +1,5 @@
 import abc
+import warnings
 import importlib
 from typing import List, Dict, Union
 
@@ -242,7 +243,7 @@ class HuggingFaceHubInferenceEngine(InferenceEngine):
         
 
 class OpenAIInferenceEngine(InferenceEngine):
-    def __init__(self, model:str, **kwrs):
+    def __init__(self, model:str, reasoning_model:bool=False, **kwrs):
         """
         The OpenAI API inference engine. Supports OpenAI models and OpenAI compatible servers:
         - vLLM OpenAI compatible server (https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html)
@@ -254,6 +255,8 @@ class OpenAIInferenceEngine(InferenceEngine):
         ----------
         model_name : str
             model name as described in https://platform.openai.com/docs/models
+        reasoning_model : bool, Optional
+            indicator for OpenAI reasoning models (o1, o3).
         """
         if importlib.util.find_spec("openai") is None:
             raise ImportError("OpenAI Python API library not found. Please install OpanAI (```pip install openai```).")
@@ -262,6 +265,7 @@ class OpenAIInferenceEngine(InferenceEngine):
         self.client = OpenAI(**kwrs)
         self.async_client = AsyncOpenAI(**kwrs)
         self.model = model
+        self.reasoning_model = reasoning_model
 
     def chat(self, messages:List[Dict[str,str]], max_new_tokens:int=2048, temperature:float=0.0, stream:bool=False, **kwrs) -> str:
         """
@@ -278,14 +282,27 @@ class OpenAIInferenceEngine(InferenceEngine):
         stream : bool, Optional
             if True, LLM generated text will be printed in terminal in real-time. 
         """
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            max_tokens=max_new_tokens,
-            temperature=temperature,
-            stream=stream,
-            **kwrs
-        )
+        if self.reasoning_model:
+            if temperature != 0.0:
+                warnings.warn("Reasoning models do not support temperature parameter. Will be ignored.", UserWarning)
+            
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                max_completion_tokens=max_new_tokens,
+                stream=stream,
+                **kwrs
+            )
+
+        else:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                max_tokens=max_new_tokens,
+                temperature=temperature,
+                stream=stream,
+                **kwrs
+            )
 
         if stream:
             res = ''
@@ -294,8 +311,17 @@ class OpenAIInferenceEngine(InferenceEngine):
                     if chunk.choices[0].delta.content is not None:
                         res += chunk.choices[0].delta.content
                         print(chunk.choices[0].delta.content, end="", flush=True)
+                    if chunk.choices[0].finish_reason == "length":
+                        warnings.warn("Model stopped generating due to context length limit.", RuntimeWarning)
+                        if self.reasoning_model:
+                            warnings.warn("max_new_tokens includes reasoning tokens and output tokens.", UserWarning)
             return res
         
+        if response.choices[0].finish_reason == "length":
+            warnings.warn("Model stopped generating due to context length limit.", RuntimeWarning)
+            if self.reasoning_model:
+                warnings.warn("max_new_tokens includes reasoning tokens and output tokens.", UserWarning)
+            
         return response.choices[0].message.content
     
 
@@ -303,20 +329,37 @@ class OpenAIInferenceEngine(InferenceEngine):
         """
         Async version of chat method. Streaming is not supported.
         """
-        response = await self.async_client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            max_tokens=max_new_tokens,
-            temperature=temperature,
-            stream=False,
-            **kwrs
-        )
+        if self.reasoning_model:
+            if temperature != 0.0:
+                warnings.warn("Reasoning models do not support temperature parameter. Will be ignored.", UserWarning)
+            
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                max_completion_tokens=max_new_tokens,
+                stream=False,
+                **kwrs
+            )
+        else:
+            response = await self.async_client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                max_tokens=max_new_tokens,
+                temperature=temperature,
+                stream=False,
+                **kwrs
+            )
         
+        if response.choices[0].finish_reason == "length":
+            warnings.warn("Model stopped generating due to context length limit.", RuntimeWarning)
+            if self.reasoning_model:
+                warnings.warn("max_new_tokens includes reasoning tokens and output tokens.", UserWarning)
+
         return response.choices[0].message.content
     
 
 class AzureOpenAIInferenceEngine(InferenceEngine):
-    def __init__(self, model:str, api_version:str, **kwrs):
+    def __init__(self, model:str, api_version:str, reasoning_model:bool=False, **kwrs):
         """
         The Azure OpenAI API inference engine.
         For parameters and documentation, refer to 
@@ -329,6 +372,8 @@ class AzureOpenAIInferenceEngine(InferenceEngine):
             model name as described in https://platform.openai.com/docs/models
         api_version : str
             the Azure OpenAI API version
+        reasoning_model : bool, Optional
+            indicator for reasoning models.
         """
         if importlib.util.find_spec("openai") is None:
             raise ImportError("OpenAI Python API library not found. Please install OpanAI (```pip install openai```).")
@@ -340,6 +385,7 @@ class AzureOpenAIInferenceEngine(InferenceEngine):
                                   **kwrs)
         self.async_client = AsyncAzureOpenAI(api_version=self.api_version, 
                                              **kwrs)
+        self.reasoning_model = reasoning_model
 
     def chat(self, messages:List[Dict[str,str]], max_new_tokens:int=2048, temperature:float=0.0, stream:bool=False, **kwrs) -> str:
         """
@@ -356,14 +402,27 @@ class AzureOpenAIInferenceEngine(InferenceEngine):
         stream : bool, Optional
             if True, LLM generated text will be printed in terminal in real-time. 
         """
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            max_tokens=max_new_tokens,
-            temperature=temperature,
-            stream=stream,
-            **kwrs
-        )
+        if self.reasoning_model:
+            if temperature != 0.0:
+                warnings.warn("Reasoning models do not support temperature parameter. Will be ignored.", UserWarning)
+            
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                max_completion_tokens=max_new_tokens,
+                stream=stream,
+                **kwrs
+            )
+
+        else:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                max_tokens=max_new_tokens,
+                temperature=temperature,
+                stream=stream,
+                **kwrs
+            )
 
         if stream:
             res = ''
@@ -372,8 +431,17 @@ class AzureOpenAIInferenceEngine(InferenceEngine):
                     if chunk.choices[0].delta.content is not None:
                         res += chunk.choices[0].delta.content
                         print(chunk.choices[0].delta.content, end="", flush=True)
+                    if chunk.choices[0].finish_reason == "length":
+                        warnings.warn("Model stopped generating due to context length limit.", RuntimeWarning)
+                        if self.reasoning_model:
+                            warnings.warn("max_new_tokens includes reasoning tokens and output tokens.", UserWarning)
             return res
         
+        if response.choices[0].finish_reason == "length":
+            warnings.warn("Model stopped generating due to context length limit.", RuntimeWarning)
+            if self.reasoning_model:
+                warnings.warn("max_new_tokens includes reasoning tokens and output tokens.", UserWarning)
+
         return response.choices[0].message.content
     
 
@@ -381,15 +449,32 @@ class AzureOpenAIInferenceEngine(InferenceEngine):
         """
         Async version of chat method. Streaming is not supported.
         """
-        response = await self.async_client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            max_tokens=max_new_tokens,
-            temperature=temperature,
-            stream=False,
-            **kwrs
-        )
+        if self.reasoning_model:
+            if temperature != 0.0:
+                warnings.warn("Reasoning models do not support temperature parameter. Will be ignored.", UserWarning)
+            
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                max_completion_tokens=max_new_tokens,
+                stream=False,
+                **kwrs
+            )
+        else:
+            response = await self.async_client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                max_tokens=max_new_tokens,
+                temperature=temperature,
+                stream=False,
+                **kwrs
+            )
         
+        if response.choices[0].finish_reason == "length":
+            warnings.warn("Model stopped generating due to context length limit.", RuntimeWarning)
+            if self.reasoning_model:
+                warnings.warn("max_new_tokens includes reasoning tokens and output tokens.", UserWarning)
+
         return response.choices[0].message.content
 
     
