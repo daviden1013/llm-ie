@@ -61,8 +61,8 @@ Example 1 (single entity type with attributes):
     If there is no specific arm, just omit the "Arm" key. If the percentage is not reported, just omit the "Percentage" key. The "Evidence" should always be provided.
 
     # Input placeholder
-    Below is the Adverse reactions section for your reference. I will feed you with sentences from it one by one. 
-    {{input}}
+    Below is the Adverse reactions section:
+    "{{input}}"
 
 
 Example 2 (multiple entity types):
@@ -121,7 +121,7 @@ Example 2 (multiple entity types):
         </Outputs>
 
     # Input placeholder
-    Below is the medical note for your reference. I will feed you with sentences from it one by one.
+    Below is the medical note:
     "{{input}}"
 
 
@@ -213,5 +213,5 @@ Example 3 (multiple entity types with corresponding attributes):
         </Outputs>
 
     # Input placeholder
-    Below is the entire medical note for your reference. I will feed you with sentences from it one by one.
+    Below is the medical note:
     "{{input}}"
