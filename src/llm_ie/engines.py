@@ -256,7 +256,7 @@ class OpenAIInferenceEngine(InferenceEngine):
         model_name : str
             model name as described in https://platform.openai.com/docs/models
         reasoning_model : bool, Optional
-            indicator for OpenAI reasoning models (o1, o3).
+            indicator for OpenAI reasoning models ("o" series).
         """
         if importlib.util.find_spec("openai") is None:
             raise ImportError("OpenAI Python API library not found. Please install OpanAI (```pip install openai```).")
@@ -373,7 +373,7 @@ class AzureOpenAIInferenceEngine(InferenceEngine):
         api_version : str
             the Azure OpenAI API version
         reasoning_model : bool, Optional
-            indicator for reasoning models.
+            indicator for OpenAI reasoning models ("o" series).
         """
         if importlib.util.find_spec("openai") is None:
             raise ImportError("OpenAI Python API library not found. Please install OpanAI (```pip install openai```).")
