@@ -24,6 +24,10 @@ An LLM-powered tool that transforms everyday language into robust information ex
     - Support for LiteLLM.
 - [v0.4.1](https://github.com/daviden1013/llm-ie/releases/tag/v0.4.1) (Jan 25, 2025): Added filters, table view, and some new features to visualization tool (make sure to update [ie-viz](https://github.com/daviden1013/ie-viz)).
 - [v0.4.3](https://github.com/daviden1013/llm-ie/releases/tag/v0.4.3) (Feb 7, 2025): Added Azure OpenAI support. 
+- [v0.4.5](https://github.com/daviden1013/llm-ie/releases/tag/v0.4.5) (Feb 16, 2025): 
+    - Added option to adjust number of context sentences in sentence-based extractors.
+    - Added support for OpenAI reasoning models ("o" series).
+
 
 ## Table of Contents
 - [Overview](#overview)
@@ -323,6 +327,14 @@ from llm_ie.engines import OpenAIInferenceEngine
 inference_engine = OpenAIInferenceEngine(model="gpt-4o-mini")
 ```
 
+For reasoning models ("o" series), use the `reasoning_model=True` flag. The `max_completion_tokens` will be used instead of the `max_tokens`. `temperature` will be ignored.
+
+```python
+from llm_ie.engines import OpenAIInferenceEngine
+
+inference_engine = OpenAIInferenceEngine(model="o1-mini", reasoning_model=True)
+```
+
 #### <img src=doc_asset/readme_img/Azure_icon.png width=32 /> Azure OpenAI API
 In bash, save the endpoint name and API key to environmental variables `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_API_KEY`.
 ```
@@ -337,6 +349,14 @@ For more parameters, see [Azure OpenAI reference](https://learn.microsoft.com/en
 from llm_ie.engines import AzureOpenAIInferenceEngine
 
 inference_engine = AzureOpenAIInferenceEngine(model="gpt-4o-mini")
+```
+
+For reasoning models ("o" series), use the `reasoning_model=True` flag. The `max_completion_tokens` will be used instead of the `max_tokens`. `temperature` will be ignored. 
+
+```python
+from llm_ie.engines import AzureOpenAIInferenceEngine
+
+inference_engine = AzureOpenAIInferenceEngine(model="o1-mini", reasoning_model=True)
 ```
 
 #### 🤗 huggingface_hub
@@ -766,7 +786,7 @@ frames = extractor.extract_frames(text_content=text, entity_key="Diagnosis", str
 
 The ```SentenceFrameExtractor``` instructs the LLM to extract sentence by sentence. The reason is to ensure the accuracy of frame spans. It also prevents LLMs from overseeing sections/ sentences. Empirically, this extractor results in better recall than the ```BasicFrameExtractor``` in complex tasks. 
 
-For concurrent extraction (recommended), the `async/ await` feature is used to speed up inferencing. The `concurrent_batch_size` sets the batch size of sentences to be processed in cocurrent.
+For concurrent extraction (recommended), the `async/await` feature is used to speed up inferencing. The `concurrent_batch_size` sets the batch size of sentences to be processed in cocurrent.
 
 ```python
 from llm_ie.extractors import SentenceFrameExtractor
@@ -775,14 +795,28 @@ extractor = SentenceFrameExtractor(inference_engine, prompt_temp)
 frames = extractor.extract_frames(text_content=text, entity_key="Diagnosis", case_sensitive=False, fuzzy_match=True, concurrent=True, concurrent_batch_size=32)
 ```
 
-The ```multi_turn``` parameter specifies multi-turn conversation for prompting. If True, sentences and LLM outputs will be appended to the input message and carry-over. If False, only the current sentence is prompted. For LLM inference engines that supports prompt cache (e.g., Llama.Cpp, Ollama), use multi-turn conversation prompting can better utilize the KV caching and results in faster inferencing. But for vLLM with [Automatic Prefix Caching (APC)](https://docs.vllm.ai/en/latest/automatic_prefix_caching/apc.html), multi-turn conversation is not necessary.
+The `context_sentences` sets number of sentences before and after the sentence of interest to provide additional context. When `context_sentences=2`, 2 sentences before and 2 sentences after are included in the user prompt as context. When `context_sentences="all"`, the entire document is included as context. When `context_sentences=0`, no context is provided and LLM will only extract based on the current sentence of interest.
 
 ```python
 from llm_ie.extractors import SentenceFrameExtractor
 
-extractor = SentenceFrameExtractor(inference_engine, prompt_temp)
-frames = extractor.extract_frames(text_content=text, entity_key="Diagnosis", multi_turn=False, case_sensitive=False, fuzzy_match=True, stream=True)
+extractor = SentenceFrameExtractor(inference_engine=inference_engine, 
+                                   prompt_template=prompt_temp, 
+                                   context_sentences=2)
+frames = extractor.extract_frames(text_content=text, entity_key="Diagnosis", case_sensitive=False, fuzzy_match=True, stream=True)
 ```
+
+For the sentence:
+
+*The patient has a history of hypertension, hyperlipidemia, and Type 2 diabetes mellitus.*
+
+The context is "previous sentence 2" "previous sentence 1" "the sentence of interest" "proceeding sentence 1" "proceeding sentence 2":
+
+*Emily Brown, MD (Cardiology), Dr. Michael Green, MD (Pulmonology)
+
+*#### Reason for Admission*
+*John Doe, a 49-year-old male, was admitted to the hospital with complaints of chest pain, shortness of breath, and dizziness. The patient has a history of hypertension, hyperlipidemia, and Type 2 diabetes mellitus. #### History of Present Illness*
+*The patient reported that the chest pain started two days prior to admission. The pain was described as a pressure-like sensation in the central chest, radiating to the left arm and jaw.*
 
 </details>
 
