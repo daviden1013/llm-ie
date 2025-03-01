@@ -224,7 +224,8 @@ class FrameExtractor(Extractor):
 
 
     def _find_entity_spans(self, text: str, entities: List[str], case_sensitive:bool=False, 
-                           fuzzy_match:bool=True, fuzzy_buffer_size:float=0.2, fuzzy_score_cutoff:float=0.8) -> List[Tuple[int]]:
+                           fuzzy_match:bool=True, fuzzy_buffer_size:float=0.2, fuzzy_score_cutoff:float=0.8,
+                           allow_overlap_entities:bool=False) -> List[Tuple[int]]:
         """
         This function inputs a text and a list of entity text, 
         outputs a list of spans (2-tuple) for each entity.
@@ -245,6 +246,8 @@ class FrameExtractor(Extractor):
         fuzzy_score_cutoff : float, Optional
             the Jaccard score cutoff for fuzzy matching. 
             Matched entity text must have a score higher than this value or a None will be returned.
+        allow_overlap_entities : bool, Optional
+            if True, entities can overlap in the text. 
         """
         # Handle case sensitivity
         if not case_sensitive:
@@ -264,15 +267,17 @@ class FrameExtractor(Extractor):
             if match and entity:
                 start, end = match.span()
                 entity_spans.append((start, end))
-                # Replace the found entity with spaces to avoid finding the same instance again
-                text = text[:start] + ' ' * (end - start) + text[end:]
+                if not allow_overlap_entities:
+                    # Replace the found entity with spaces to avoid finding the same instance again
+                    text = text[:start] + ' ' * (end - start) + text[end:]
             # Fuzzy match
             elif fuzzy_match:
                 closest_substring_span, best_score = self._get_closest_substring(text, entity, buffer_size=fuzzy_buffer_size)
                 if closest_substring_span and best_score >= fuzzy_score_cutoff:
                     entity_spans.append(closest_substring_span)
-                    # Replace the found entity with spaces to avoid finding the same instance again
-                    text = text[:closest_substring_span[0]] + ' ' * (closest_substring_span[1] - closest_substring_span[0]) + text[closest_substring_span[1]:]
+                    if not allow_overlap_entities:
+                        # Replace the found entity with spaces to avoid finding the same instance again
+                        text = text[:closest_substring_span[0]] + ' ' * (closest_substring_span[1] - closest_substring_span[0]) + text[closest_substring_span[1]:]
                 else:
                     entity_spans.append(None)
 
@@ -391,7 +396,7 @@ class BasicFrameExtractor(FrameExtractor):
     def extract_frames(self, text_content:Union[str, Dict[str,str]], entity_key:str, max_new_tokens:int=2048, 
                        temperature:float=0.0, document_key:str=None, stream:bool=False,
                        case_sensitive:bool=False, fuzzy_match:bool=True, fuzzy_buffer_size:float=0.2, 
-                       fuzzy_score_cutoff:float=0.8, **kwrs) -> List[LLMInformationExtractionFrame]:
+                       fuzzy_score_cutoff:float=0.8, allow_overlap_entities:bool=False, **kwrs) -> List[LLMInformationExtractionFrame]:
         """
         This method inputs a text and outputs a list of LLMInformationExtractionFrame
         It use the extract() method and post-process outputs into frames.
@@ -422,6 +427,9 @@ class BasicFrameExtractor(FrameExtractor):
         fuzzy_score_cutoff : float, Optional
             the Jaccard score cutoff for fuzzy matching. 
             Matched entity text must have a score higher than this value or a None will be returned.
+        allow_overlap_entities : bool, Optional
+            if True, entities can overlap in the text. 
+            Note that this can cause multiple frames to be generated on the same entity span if they have same entity text.
 
         Return : str
             a list of frames.
@@ -452,7 +460,8 @@ class BasicFrameExtractor(FrameExtractor):
                                         case_sensitive=case_sensitive,
                                         fuzzy_match=fuzzy_match,
                                         fuzzy_buffer_size=fuzzy_buffer_size,
-                                        fuzzy_score_cutoff=fuzzy_score_cutoff)
+                                        fuzzy_score_cutoff=fuzzy_score_cutoff,
+                                        allow_overlap_entities=allow_overlap_entities)
         
         for i, (ent, span) in enumerate(zip(entity_json, spans)):
             if span is not None:
@@ -761,8 +770,8 @@ class SentenceFrameExtractor(FrameExtractor):
             sentences = self._get_sentences(text_content[document_key])
 
         # generate sentence by sentence
-        tasks = []
         for i in range(0, len(sentences), concurrent_batch_size):
+            tasks = []
             batch = sentences[i:i + concurrent_batch_size]
             for j, sent in enumerate(batch):
                 # construct chat messages
@@ -797,12 +806,12 @@ class SentenceFrameExtractor(FrameExtractor):
             # Wait until the batch is done, collect results and move on to next batch
             responses = await asyncio.gather(*tasks)
 
-        # Collect outputs
-        for gen_text, sent in zip(responses, sentences):
-            output.append({'sentence_start': sent['start'],
-                            'sentence_end': sent['end'],
-                            'sentence_text': sent['sentence_text'],
-                            'gen_text': gen_text})
+            # Collect outputs
+            for gen_text, sent in zip(responses, batch):
+                output.append({'sentence_start': sent['start'],
+                                'sentence_end': sent['end'],
+                                'sentence_text': sent['sentence_text'],
+                                'gen_text': gen_text})
         return output
     
 
@@ -810,7 +819,7 @@ class SentenceFrameExtractor(FrameExtractor):
                         document_key:str=None, temperature:float=0.0, stream:bool=False, 
                         concurrent:bool=False, concurrent_batch_size:int=32,
                         case_sensitive:bool=False, fuzzy_match:bool=True, fuzzy_buffer_size:float=0.2, fuzzy_score_cutoff:float=0.8,
-                        **kwrs) -> List[LLMInformationExtractionFrame]:
+                        allow_overlap_entities:bool=False, **kwrs) -> List[LLMInformationExtractionFrame]:
         """
         This method inputs a text and outputs a list of LLMInformationExtractionFrame
         It use the extract() method and post-process outputs into frames.
@@ -845,6 +854,9 @@ class SentenceFrameExtractor(FrameExtractor):
         fuzzy_score_cutoff : float, Optional
             the Jaccard score cutoff for fuzzy matching. 
             Matched entity text must have a score higher than this value or a None will be returned.
+        allow_overlap_entities : bool, Optional
+            if True, entities can overlap in the text. 
+            Note that this can cause multiple frames to be generated on the same entity span if they have same entity text.
 
         Return : str
             a list of frames.
@@ -882,7 +894,8 @@ class SentenceFrameExtractor(FrameExtractor):
                                             case_sensitive=case_sensitive,
                                             fuzzy_match=fuzzy_match,
                                             fuzzy_buffer_size=fuzzy_buffer_size,
-                                            fuzzy_score_cutoff=fuzzy_score_cutoff)
+                                            fuzzy_score_cutoff=fuzzy_score_cutoff,
+                                            allow_overlap_entities=allow_overlap_entities)
             for ent, span in zip(entity_json, spans):
                 if span is not None:
                     start, end = span
@@ -1083,9 +1096,10 @@ class SentenceReviewFrameExtractor(SentenceFrameExtractor):
             sentences = self._get_sentences(text_content[document_key])
 
         # generate initial outputs sentence by sentence
-        tasks = []
-        messages_list = []
         for i in range(0, len(sentences), concurrent_batch_size):
+            messages_list = []
+            init_tasks = []
+            review_tasks = []
             batch = sentences[i:i + concurrent_batch_size]
             for j, sent in enumerate(batch):
                 # construct chat messages
@@ -1116,24 +1130,21 @@ class SentenceReviewFrameExtractor(SentenceFrameExtractor):
                                 **kwrs
                             )
                 )
-                tasks.append(task)
+                init_tasks.append(task)
 
-        # Wait until the batch is done, collect results and move on to next batch
-        responses = await asyncio.gather(*tasks)
-        # Collect initials
-        initials = []
-        for gen_text, sent, messages in zip(responses, sentences, messages_list):
-            initials.append({'sentence_start': sent['start'],
-                            'sentence_end': sent['end'],
-                            'sentence_text': sent['sentence_text'],
-                            'gen_text': gen_text,
-                            'messages': messages})
+            # Wait until the batch is done, collect results and move on to next batch
+            init_responses = await asyncio.gather(*init_tasks)
+            # Collect initials
+            initials = []
+            for gen_text, sent, messages in zip(init_responses, batch, messages_list):
+                initials.append({'sentence_start': sent['start'],
+                                'sentence_end': sent['end'],
+                                'sentence_text': sent['sentence_text'],
+                                'gen_text': gen_text,
+                                'messages': messages})
 
-        # Review
-        tasks = []
-        for i in range(0, len(initials), concurrent_batch_size):
-            batch = initials[i:i + concurrent_batch_size]
-            for init in batch:
+            # Review
+            for init in initials:
                 messages = init["messages"]
                 initial = init["gen_text"]
                 messages.append({'role': 'assistant', 'content': initial})
@@ -1146,29 +1157,29 @@ class SentenceReviewFrameExtractor(SentenceFrameExtractor):
                                 **kwrs
                                 )
                             )
-                tasks.append(task) 
+                review_tasks.append(task) 
             
-            responses = await asyncio.gather(*tasks)
+            review_responses = await asyncio.gather(*review_tasks)
 
-        # Collect reviews
-        reviews = []
-        for gen_text, sent in zip(responses, sentences):
-            reviews.append({'sentence_start': sent['start'],
-                            'sentence_end': sent['end'],
-                            'sentence_text': sent['sentence_text'],
-                            'gen_text': gen_text})
+            # Collect reviews
+            reviews = []
+            for gen_text, sent in zip(review_responses, batch):
+                reviews.append({'sentence_start': sent['start'],
+                                'sentence_end': sent['end'],
+                                'sentence_text': sent['sentence_text'],
+                                'gen_text': gen_text})
 
-        for init, rev in zip(initials, reviews):
-            if self.review_mode == "revision":
-                gen_text = rev['gen_text']
-            elif self.review_mode == "addition":
-                gen_text = init['gen_text'] + '\n' + rev['gen_text']
+            for init, rev in zip(initials, reviews):
+                if self.review_mode == "revision":
+                    gen_text = rev['gen_text']
+                elif self.review_mode == "addition":
+                    gen_text = init['gen_text'] + '\n' + rev['gen_text']
 
-            # add to output
-            output.append({'sentence_start': init['sentence_start'],
-                            'sentence_end': init['sentence_end'],
-                            'sentence_text': init['sentence_text'],
-                            'gen_text': gen_text})
+                # add to output
+                output.append({'sentence_start': init['sentence_start'],
+                                'sentence_end': init['sentence_end'],
+                                'sentence_text': init['sentence_text'],
+                                'gen_text': gen_text})
         return output
         
 
