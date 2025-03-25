@@ -1189,10 +1189,14 @@ We benchmarked the frame and relation extractors on biomedical information extra
 ## Citation
 For more information and benchmarks, please check our paper:
 ```bibtex
-@article{hsu2024llm,
-  title={LLM-IE: A Python Package for Generative Information Extraction with Large Language Models},
+@article{hsu2025llm,
+  title={LLM-IE: a python package for biomedical generative information extraction with large language models},
   author={Hsu, Enshuo and Roberts, Kirk},
-  journal={arXiv preprint arXiv:2411.11779},
-  year={2024}
+  journal={JAMIA open},
+  volume={8},
+  number={2},
+  pages={ooaf012},
+  year={2025},
+  publisher={Oxford University Press}
 }
 ```
