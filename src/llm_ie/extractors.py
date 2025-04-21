@@ -736,10 +736,20 @@ class SentenceFrameExtractor(FrameExtractor):
             
             if self.context_sentences == 0:
                 # no context, just place sentence of interest
-                messages.append({'role': 'user', 'content': self._get_user_prompt(sent['sentence_text'])})
+                if isinstance(text_content, str):
+                    messages.append({'role': 'user', 'content': self._get_user_prompt(sent['sentence_text'])})
+                else:
+                    sentence_content = text_content.copy()
+                    sentence_content[document_key] = sent['sentence_text']
+                    messages.append({'role': 'user', 'content': self._get_user_prompt(sentence_content)})
             else:
                 # insert context
-                messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
+                if isinstance(text_content, str):
+                    messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
+                else:
+                    context_content = text_content.copy()
+                    context_content[document_key] = context
+                    messages.append({'role': 'user', 'content': self._get_user_prompt(context_content)})
                 # simulate conversation
                 messages.append({'role': 'assistant', 'content': 'Sure, please provide the sentence of interest.'})
                 # place sentence of interest
@@ -835,10 +845,20 @@ class SentenceFrameExtractor(FrameExtractor):
                 
                 if self.context_sentences == 0:
                     # no context, just place sentence of interest
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(sent['sentence_text'])})
+                    if isinstance(text_content, str):
+                        messages.append({'role': 'user', 'content': self._get_user_prompt(sent['sentence_text'])})
+                    else:
+                        sentence_content = text_content.copy()
+                        sentence_content[document_key] = sent['sentence_text']
+                        messages.append({'role': 'user', 'content': self._get_user_prompt(sentence_content)})
                 else:
                     # insert context
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
+                    if isinstance(text_content, str):
+                        messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
+                    else:
+                        context_content = text_content.copy()
+                        context_content[document_key] = context
+                        messages.append({'role': 'user', 'content': self._get_user_prompt(context_content)})
                     # simulate conversation
                     messages.append({'role': 'assistant', 'content': 'Sure, please provide the sentence of interest.'})
                     # place sentence of interest
@@ -1083,10 +1103,20 @@ class SentenceReviewFrameExtractor(SentenceFrameExtractor):
             
             if self.context_sentences == 0:
                 # no context, just place sentence of interest
-                messages.append({'role': 'user', 'content': self._get_user_prompt(sent['sentence_text'])})
+                if isinstance(text_content, str):
+                    messages.append({'role': 'user', 'content': self._get_user_prompt(sent['sentence_text'])})
+                else:
+                    sentence_content = text_content.copy()
+                    sentence_content[document_key] = sent['sentence_text']
+                    messages.append({'role': 'user', 'content': self._get_user_prompt(sentence_content)})
             else:
                 # insert context
-                messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
+                if isinstance(text_content, str):
+                    messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
+                else:
+                    context_content = text_content.copy()
+                    context_content[document_key] = context
+                    messages.append({'role': 'user', 'content': self._get_user_prompt(context_content)})
                 # simulate conversation
                 messages.append({'role': 'assistant', 'content': 'Sure, please provide the sentence of interest.'})
                 # place sentence of interest
@@ -1201,10 +1231,20 @@ class SentenceReviewFrameExtractor(SentenceFrameExtractor):
                 
                 if self.context_sentences == 0:
                     # no context, just place sentence of interest
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(sent['sentence_text'])})
+                    if isinstance(text_content, str):
+                        messages.append({'role': 'user', 'content': self._get_user_prompt(sent['sentence_text'])})
+                    else:
+                        sentence_content = text_content.copy()
+                        sentence_content[document_key] = sent['sentence_text']
+                        messages.append({'role': 'user', 'content': self._get_user_prompt(sentence_content)})
                 else:
                     # insert context
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
+                    if isinstance(text_content, str):
+                        messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
+                    else:
+                        context_content = text_content.copy()
+                        context_content[document_key] = context
+                        messages.append({'role': 'user', 'content': self._get_user_prompt(context_content)})
                     # simulate conversation
                     messages.append({'role': 'assistant', 'content': 'Sure, please provide the sentence of interest.'})
                     # place sentence of interest
@@ -1366,10 +1406,20 @@ class SentenceCoTFrameExtractor(SentenceFrameExtractor):
             
             if self.context_sentences == 0:
                 # no context, just place sentence of interest
-                messages.append({'role': 'user', 'content': self._get_user_prompt(sent['sentence_text'])})
+                if isinstance(text_content, str):
+                    messages.append({'role': 'user', 'content': self._get_user_prompt(sent['sentence_text'])})
+                else:
+                    sentence_content = text_content.copy()
+                    sentence_content[document_key] = sent['sentence_text']
+                    messages.append({'role': 'user', 'content': self._get_user_prompt(sentence_content)})
             else:
                 # insert context
-                messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
+                if isinstance(text_content, str):
+                    messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
+                else:
+                    context_content = text_content.copy()
+                    context_content[document_key] = context
+                    messages.append({'role': 'user', 'content': self._get_user_prompt(context_content)})
                 # simulate conversation
                 messages.append({'role': 'assistant', 'content': 'Sure, please provide the sentence of interest.'})
                 # place sentence of interest
