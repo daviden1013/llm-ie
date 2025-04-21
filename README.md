@@ -28,6 +28,7 @@ An LLM-powered tool that transforms everyday language into robust information ex
     - Added option to adjust number of context sentences in sentence-based extractors.
     - Added support for OpenAI reasoning models ("o" series).
 - [v0.4.6](https://github.com/daviden1013/llm-ie/releases/tag/v0.4.6) (Mar 1, 2025): Allow LLM to output overlapping frames.
+- [v0.4.7](https://github.com/daviden1013/llm-ie/releases/tag/v0.4.7) (Apr 21, 2025): return prompting message logs.
 
 ## Table of Contents
 - [Overview](#overview)
