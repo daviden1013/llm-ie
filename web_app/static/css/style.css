@@ -1,0 +1,323 @@
+/* static/css/style.css */
+
+/* --- General Layout & Base Styles --- */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh; /* Ensures body takes at least full viewport height */
+    background-color: #f8f9fa;
+    color: #212529;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+h1 { font-size: 2.0rem; }
+h2 { font-size: 1.5rem; }
+
+button { /* General button reset - apply specific styles later */
+    cursor: pointer;
+    font-size: 1rem;
+    /* Avoid setting global background/border here if specific buttons need to differ significantly */
+    /* background: none; */
+    /* border: none; */
+    /* padding: 0; */
+}
+
+/* --- Header & Navigation --- */
+header {
+    background-color: #e9ecef;
+    padding: 10px 30px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+#header-logo {
+    height: 50px; /* Example: Set a fixed height, width will adjust proportionally */
+    /* Or use max-height, max-width depending on your needs */
+    /*width: auto; */
+    margin-right: 10px; /* Add some space between the logo and the navigation */
+}
+
+header h1 {
+    margin: 0;
+    display: inline-block;
+    color: #495057;
+}
+
+nav {
+    display: inline-block;
+    margin-left: 20px;
+}
+
+nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+nav ul li {
+    display: inline-block;
+    margin-right: 20px;
+}
+
+nav ul li a {
+    text-decoration: none;
+    color: #007bff;
+    padding: 8px 15px;
+    border-radius: 5px;
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+
+nav ul li a.active {
+    background-color: #007bff;
+    color: white;
+    font-weight: 500;
+}
+
+nav ul li a:hover:not(.active) {
+    background-color: #f1f1f1;
+    color: #0056b3;
+}
+
+/* --- Main Content Area --- */
+main {
+    display: flex;
+    flex-grow: 1;
+}
+.tab-container {
+    display: flex;
+    width: 100%;
+    height: 85vh;
+    overflow: hidden;
+    box-sizing: border-box;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* --- Control Panel (Shared) --- */
+.control-panel {
+    width: 30%; /* Default expanded width */
+    flex-shrink: 0;
+    padding: 20px;
+    padding-top: 50px; /* Increased top padding for the button */
+    border-right: 1px solid #dee2e6;
+    overflow-y: auto;
+    background-color: #f8f9fa;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    transition: width 0.3s ease, padding-left 0.3s ease, padding-right 0.3s ease;
+    position: relative; /* For absolute positioning of the toggle button */
+}
+
+.control-panel h2 {
+    margin-bottom: 15px;
+    color: #495057;
+    border-bottom: 1px solid #ced4da;
+    padding-bottom: 10px;
+}
+
+.control-panel label {
+    font-weight: 500;
+    margin-bottom: 5px;
+    display: block;
+    color: #495057;
+}
+
+.control-panel input[type="text"],
+.control-panel input[type="number"],
+.control-panel select,
+.control-panel textarea {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 5px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 0.95rem;
+}
+
+.control-panel textarea {
+     resize: vertical;
+     min-height: 80px;
+}
+
+/* Styles for regular buttons WITHIN the control panel, EXCLUDING the toggle button */
+.control-panel button:not(.panel-toggle-button) {
+     padding: 10px 15px;
+     background-color: #007bff;
+     color: white;
+     border: none;
+     border-radius: 4px;
+     transition: background-color 0.2s ease;
+     align-self: flex-start;
+     margin-top: 5px;
+}
+
+.control-panel button:not(.panel-toggle-button):hover {
+     background-color: #0056b3;
+}
+
+/* Specific types of regular buttons */
+.control-panel button[id^="clear-"]:not(.panel-toggle-button),
+.control-panel button[id$="-btn-secondary"]:not(.panel-toggle-button) {
+    background-color: #6c757d;
+}
+.control-panel button[id^="clear-"]:not(.panel-toggle-button):hover,
+.control-panel button[id$="-btn-secondary"]:not(.panel-toggle-button):hover {
+    background-color: #5a6268;
+}
+
+/* --- Panel Toggle Button --- */
+/* More specific selector to override general .control-panel button styles */
+.control-panel .panel-toggle-button {
+    position: absolute;
+    top: 12px;
+    left: 15px;  /* Consistently aligned to the left */
+    right: auto;
+    
+    background: none; /* Remove background */
+    border: none;     /* Remove border */
+    padding: 0;       /* Remove padding for icon-only look */
+    
+    color: #495057; /* Icon color, overrides .control-panel button if it sets color */
+    align-self: auto; /* Reset from .control-panel button */
+    margin-top: 0;    /* Reset from .control-panel button */
+
+    cursor: pointer;
+    z-index: 10;
+    line-height: 1;
+    width: 28px;  /* Define clickable area width */
+    height: 28px; /* Define clickable area height */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.control-panel .panel-toggle-button:hover {
+    color: #007bff; /* Change icon color on hover */
+    background: transparent; /* Ensure no background appears on hover */
+}
+
+.control-panel .panel-toggle-button i {
+    font-size: 1.2em; /* Icon size */
+}
+
+/* --- Minimized Control Panel State --- */
+.control-panel.minimized {
+    width: 60px; /* Minimized width */
+    padding-top: 50px; /* Keep consistent top padding for button */
+    padding-left: 10px; /* Minimal horizontal padding for the panel itself */
+    padding-right: 10px;
+    overflow: hidden;
+}
+
+/* Style for the toggle button when ITS PARENT (.control-panel) is minimized */
+.control-panel.minimized .panel-toggle-button {
+    /* It already inherits position: absolute, top, left, right, background, border, etc.
+       from .control-panel .panel-toggle-button.
+       No transform is needed as it's already left-aligned. */
+    /* The key is that `left: 15px` will now be 15px from the edge of the 60px wide panel. */
+}
+
+/* Hide other content when panel is minimized */
+.control-panel.minimized > *:not(.panel-toggle-button) {
+    display: none;
+}
+
+/* --- Display Area (Shared Base) --- */
+.display-area {
+    flex-grow: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+.display-area h2 {
+    color: #343a40;
+    margin-bottom: 15px;
+}
+
+/* --- Styles for Conditional LLM Options --- */
+.conditional-options {
+    padding: 15px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    border: 1px dashed #ced4da;
+    border-radius: 5px;
+    background-color: #f1f3f5;
+}
+
+.conditional-options h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+    color: #495057;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 8px;
+}
+
+.indented-option {
+    /* margin-left: 15px; */
+}
+
+.form-group {
+     margin-bottom: 10px;
+}
+
+.api-input {
+    font-family: monospace;
+    font-size: 0.9rem;
+}
+
+.form-group input[type="checkbox"] {
+    width: auto;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+.form-group label[for*="-checkbox"],
+.form-group label[for$="-model"] {
+    display: inline-block;
+    font-weight: normal;
+    margin-bottom: 0;
+    vertical-align: middle;
+}
+
+/* --- Input Validation Styling --- */
+.input-error {
+    border: 1px solid #dc3545 !important;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+/* --- Footer --- */
+footer {
+    background-color: #e9ecef;
+    padding: 15px;
+    text-align: center;
+    border-top: 1px solid #dee2e6;
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-top: auto;
+}
+
+/* --- Tab Panes --- */
+.tab-pane {
+    display: none;
+    width: 100%;
+    height: 100%;
+}
+.tab-pane.active-pane {
+    display: flex;
+}

@@ -1,0 +1,64 @@
+/* static/css/result_viewer.css */
+
+.viz-display {
+    height: 100%; /* Ensure it takes full height of its container */
+}
+
+.viz-display #visualization-output {
+     height: 100%;
+     border: 1px solid #e0e0e0;
+     border-radius: 5px;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     background-color: #fdfdfd; /* Light background for the container */
+     color: #6c757d; /* Placeholder text color */
+     overflow: hidden; /* Ensure iframe doesn't overflow */
+}
+
+.viz-display #visualization-output p {
+    text-align: center;
+    padding: 20px;
+}
+
+.viz-display #visualization-output iframe {
+     width: 100%;
+     height: 100%;
+     border: none; /* Remove iframe border */
+}
+
+/* --- LLMIE Upload Area --- */
+.upload-area {
+    border: 2px dashed #ced4da; /* Dashed border */
+    border-radius: 5px;         /* Rounded corners */
+    padding: 20px;              /* Padding inside the area */
+    text-align: center;         /* Center the placeholder text */
+    background-color: #f8f9fa;  /* Light background color */
+    cursor: pointer;            /* Change cursor to pointer on hover */
+    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out; /* Smooth transition for hover */
+    margin-bottom: 10px; /* Space below the upload area */
+}
+
+.upload-area p {
+    margin: 0;
+    color: #495057; /* Text color for the placeholder */
+    font-size: 0.95rem;
+}
+
+.upload-area:hover {
+    background-color: #e9ecef; /* Slightly darker background on hover */
+    border-color: #adb5bd;     /* Darker border on hover */
+}
+
+/* Style for when a file is being dragged over the area */
+.upload-area.dragover {
+    background-color: #e0e7ff; /* A distinct background color for drag over */
+    border-color: #007bff;     /* Highlight border color */
+}
+
+#rv-loaded-filename {
+    font-size: 0.9rem;
+    color: #28a745; /* Green color for success/loaded file */
+    margin-top: 8px;
+    font-style: italic;
+}

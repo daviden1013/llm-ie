@@ -1,0 +1,32 @@
+<div class="tab-container">
+    <div class="control-panel">
+        <button class="panel-toggle-button" aria-label="Toggle Panel" title="Toggle Panel">
+            <i class="fas fa-bars"></i>
+        </button>
+        <h2>Result Viewer Controls</h2>
+
+        <div class="form-group">
+            <label for="rv-upload-llmie">Upload .llmie File:</label>
+            <div id="rv-llmie-upload-area" class="upload-area">
+                <p>Click to choose file or drag and drop</p>
+                <input type="file" id="rv-llmie-file-input" accept=".llmie" style="display: none;">
+            </div>
+            <span id="rv-loaded-filename" style="display: block; margin-top: 5px;"></span>
+        </div>
+
+        <div class="form-group" id="rv-color-key-group" style="display: none;">
+            <label for="rv-color-key-select">Color by Attribute Key:</label>
+            <select id="rv-color-key-select" name="rv_color_key_select">
+                <option value="" disabled selected>-- Select Attribute Key --</option>
+                </select>
+        </div>
+
+        <button id="render-viz-btn">Render Visualization</button>
+    </div>
+    <div class="display-area viz-display">
+        <h2>Visualization</h2>
+        <div id="visualization-output">
+            <p>Upload an .llmie file and click Render.</p>
+        </div>
+    </div>
+</div>

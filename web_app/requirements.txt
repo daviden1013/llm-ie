@@ -1,0 +1,11 @@
+Flask>=2.0
+llm-ie>=1.0.0
+nltk
+ie-viz
+ollama
+openai
+huggingface_hub
+litellm
+json-repair
+colorama
+nest_asyncio 

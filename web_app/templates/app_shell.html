@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LLM-IE Service</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/prompt_editor.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/frame_extraction.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/result_viewer.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+    <style>
+        /* Styles for client-side tab functionality */
+        .tab-pane {
+            display: none; /* Hide all tab content panes by default */
+            width: 100%;   /* Ensure panes can take full width */
+            height: 100%;  /* Ensure panes can take full height of their container (main) */
+        }
+
+        .tab-pane.active-pane {
+            display: flex; /* Show the active pane; using flex because .tab-container is display:flex */
+        }
+
+        /* Ensure main is a flex container so active-pane can fill it */
+        /* This is already in your style.css if main has display:flex and flex-grow:1 */
+        /* main {
+            display: flex;
+            flex-grow: 1;
+        } */
+
+        /* Your existing active class for nav links (from style.css) */
+        /* nav ul li a.active {
+            background-color: #007bff;
+            color: white;
+            font-weight: 500;
+        } */
+    </style>
+</head>
+<body>
+    <header>
+        <img src="{{ url_for('static', filename='images/LLM-IE-0.png') }}" alt="LLM-IE Logo" id="header-logo">
+        <nav>
+            <ul>
+                <li><a href="#prompt-editor" data-tab="promptEditorTabPane" class="tab-nav-link">Prompt Editor</a></li>
+                <li><a href="#frame-extraction" data-tab="frameExtractionTabPane" class="tab-nav-link">Frame Extraction</a></li>
+                <li><a href="#result-viewer" data-tab="resultViewerTabPane" class="tab-nav-link">Result Viewer</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <div id="promptEditorTabPane" class="tab-pane">
+            {% include 'prompt_editor_content.html' %}
+        </div>
+
+        <div id="frameExtractionTabPane" class="tab-pane">
+            {% include 'frame_extraction_content.html' %}
+        </div>
+
+        <div id="resultViewerTabPane" class="tab-pane">
+            {% include 'result_viewer_content.html' %}
+        </div>
+    </main>
+
+    <footer>
+        <p>LLM-IE Service</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/prompt_editor.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/frame_extraction.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/result_viewer.js') }}"></script>
+
+    <script>
+        window.markedReady = false;
+        window.hljsReady = false;
+        window.promptEditorInitialized = false;
+        // Add flags for other tabs if they have initializers
+        // window.frameExtractionInitialized = false;
+        // window.resultViewerInitialized = false;
+    
+        window.scriptLoaded = function(scriptName) {
+            // console.log(scriptName + " script has loaded via window.scriptLoaded.");
+            if (scriptName === 'marked' && typeof marked !== 'undefined') window.markedReady = true;
+            else if (scriptName === 'hljs' && typeof hljs !== 'undefined') window.hljsReady = true;
+            
+            tryInitializeModules();
+        };
+    
+        function tryInitializeModules() {
+            // Check if DOM is ready AND specific dependencies are ready for each module
+    
+            // For Prompt Editor
+            if (document.readyState === 'interactive' || document.readyState === 'complete') {
+                if (window.markedReady && window.hljsReady) {
+                    if (typeof initializePromptEditor === "function" && !window.promptEditorInitialized) {
+                        // console.log("DOM & Dependencies ready, calling initializePromptEditor()");
+                        initializePromptEditor();
+                        window.promptEditorInitialized = true;
+                    }
+                }
+            }
+        };
+
+        function setupPanelToggleListeners() {
+            const mainElement = document.querySelector('main'); // Event delegation from main
+
+            if (!mainElement) {
+                console.error("Main element not found for panel toggle listeners.");
+                return;
+            }
+
+            mainElement.addEventListener('click', function(event) {
+                const toggleButton = event.target.closest('.panel-toggle-button');
+                if (!toggleButton) return;
+
+                const controlPanel = toggleButton.closest('.control-panel');
+                if (!controlPanel) return;
+                
+                // Toggle the state
+                controlPanel.classList.toggle('minimized');
+                const nowMinimized = controlPanel.classList.contains('minimized');
+
+                toggleButton.setAttribute('aria-label', nowMinimized ? 'Expand Panel' : 'Collapse Panel');
+                toggleButton.setAttribute('title', nowMinimized ? 'Expand Panel' : 'Collapse Panel');
+
+                // Store state in localStorage
+                localStorage.setItem('controlPanelGlobalState', nowMinimized ? 'minimized' : 'expanded');
+            });
+        }
+
+        function applyInitialPanelState() {
+            const savedState = localStorage.getItem('controlPanelGlobalState');
+            const controlPanels = document.querySelectorAll('.control-panel'); // Get all control panels
+
+            controlPanels.forEach(panel => {
+                const toggleButton = panel.querySelector('.panel-toggle-button');
+                // Ensure toggleButton and icon exist before trying to modify them
+                const icon = toggleButton ? toggleButton.querySelector('i') : null;
+
+                if (savedState === 'minimized') {
+                    panel.classList.add('minimized');
+                    if (toggleButton) {
+                        toggleButton.setAttribute('aria-label', 'Expand Panel');
+                        toggleButton.setAttribute('title', 'Expand Panel');
+                    }
+                } else { // Default to expanded
+                    panel.classList.remove('minimized');
+                    if (toggleButton) {
+                        toggleButton.setAttribute('aria-label', 'Collapse Panel');
+                        toggleButton.setAttribute('title', 'Collapse Panel');
+                    }
+                }
+            });
+        }
+    
+        document.addEventListener('DOMContentLoaded', () => {
+            // console.log("app_shell.html: DOMContentLoaded");
+    
+            // Tab switching logic (as previously defined and refined)
+            const navLinks = document.querySelectorAll('header nav a.tab-nav-link');
+            const tabPanes = document.querySelectorAll('main .tab-pane');
+            let currentActiveTabPaneId = null;
+    
+            function activateTab(targetPaneId) { /* ... your activateTab logic ... */
+                if (!targetPaneId || !document.getElementById(targetPaneId)) { /* ... */ return; }
+                if (currentActiveTabPaneId === targetPaneId && document.getElementById(targetPaneId).classList.contains('active-pane')) return;
+                tabPanes.forEach(pane => pane.classList.toggle('active-pane', pane.id === targetPaneId));
+                navLinks.forEach(link => link.classList.toggle('active', link.dataset.tab === targetPaneId));
+                currentActiveTabPaneId = targetPaneId;
+            }
+    
+            function handleNavigation(isInitialLoad = false) { /* ... your handleNavigation logic ... */
+                let targetPaneId = 'promptEditorTabPane';
+                if (window.location.hash && window.location.hash !== '#') { /* ... find matchedLink ... */ }
+                activateTab(targetPaneId);
+                if (isInitialLoad && !window.location.hash && targetPaneId === 'promptEditorTabPane' && history.replaceState) {
+                     history.replaceState(null, '', '#' + targetPaneId.replace(/TabPane$/, '').toLowerCase());
+                }
+            }
+    
+            navLinks.forEach(link => {
+                link.addEventListener('click', (event) => { /* ... your click logic ... */
+                    event.preventDefault();
+                    const targetPaneId = link.dataset.tab;
+                    if (targetPaneId && targetPaneId !== currentActiveTabPaneId) {
+                        activateTab(targetPaneId);
+                        const newHash = '#' + targetPaneId.replace(/TabPane$/, '').toLowerCase();
+                        if (window.location.hash !== newHash) {
+                            if (history.pushState) history.pushState({ tab: targetPaneId }, "", newHash);
+                            else window.location.hash = newHash;
+                        }
+                    }
+                });
+            });
+            window.addEventListener('hashchange', () => handleNavigation(false));
+            
+            // Initial check for cached scripts
+            if (typeof marked !== 'undefined' && !window.markedReady) window.markedReady = true;
+            if (typeof hljs !== 'undefined' && !window.hljsReady) window.hljsReady = true;
+            
+            tryInitializeModules(); // Attempt to initialize after DOM is ready & cached scripts checked
+            handleNavigation(true); // Show initial tab AFTER modules (esp. prompt editor) might have been initialized
+                                    // or, ensure activateTab doesn't break if JS for it isn't ready.
+                                    // It's better if activateTab just shows/hides DOM, and then JS for that tab initializes.
+                                    // For now, this order is fine, as initializePromptEditor should find its elements.
+            // Initialize panel toggle functionality
+            setupPanelToggleListeners();
+            applyInitialPanelState(); // Apply saved state on page load
+        });
+    </script>
+    <script id="marked-lib" src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" onload="scriptLoaded('marked')"></script>
+    <script id="hljs-lib" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" onload="scriptLoaded('hljs')"></script>
+
+</body>
+</html>

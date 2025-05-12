@@ -1,0 +1,171 @@
+<div class="tab-container">
+    <div class="control-panel">
+        <button class="panel-toggle-button" aria-label="Toggle Panel" title="Toggle Panel">
+            <i class="fas fa-bars"></i>
+        </button>
+        <h2>Frame Extraction Controls</h2>
+
+        <form id="fe-llm-config-form">
+            <div class="form-group">
+                <label for="fe-llm-api-select">Choose LLM API:</label>
+                <select id="fe-llm-api-select" name="fe_llm_api" required>
+                    <option value="" disabled selected>-- Select LLM API --</option>
+                    {% for api in llm_api_options %}
+                        <option value="{{ api.value }}">{{ api.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div id="fe-openai_compatible-options" class="conditional-options indented-option" style="display: none;">
+                <h3>OpenAI Compatible Options</h3>
+                <div class="form-group">
+                    <label for="fe-openai-compatible-api-key">API Key:</label>
+                    <input type="password" id="fe-openai-compatible-api-key" name="fe_openai_compatible_api_key" placeholder="Usually 'EMPTY' or your key" class="api-input">
+                </div>
+                <div class="form-group">
+                    <label for="fe-llm-base-url">Base URL:</label>
+                    <input type="url" id="fe-llm-base-url" name="fe_llm_base_url" placeholder="e.g., http://localhost:8000/v1" class="api-input">
+                </div>
+                <div class="form-group">
+                    <label for="fe-llm-model-openai-comp">Model Name:</label>
+                    <input type="text" id="fe-llm-model-openai-comp" name="fe_llm_model_openai_comp" placeholder="Model name used by the server" class="api-input">
+                </div>
+            </div>
+
+            <div id="fe-ollama-options" class="conditional-options indented-option" style="display: none;">
+                 <h3>Ollama Options</h3>
+                <div class="form-group">
+                    <label for="fe-ollama-host">Host:</label>
+                    <input type="url" id="fe-ollama-host" name="fe_ollama_host" placeholder="Default: http://localhost:11434" value="http://localhost:11434" class="api-input">
+                </div>
+                <div class="form-group">
+                    <label for="fe-ollama-model">Model Name:</label>
+                    <input type="text" id="fe-ollama-model" name="fe_ollama_model" placeholder="e.g., llama3.1:8b-instruct-q8_0" class="api-input">
+                </div>
+                 <div class="form-group">
+                    <label for="fe-ollama-num-ctx">Context Size (num_ctx):</label>
+                    <input type="number" id="fe-ollama-num-ctx" name="fe_ollama_num_ctx" placeholder="e.g., 4096" value="4096" min="0" step="1" class="api-input">
+                </div>
+            </div>
+
+            <div id="fe-huggingface_hub-options" class="conditional-options indented-option" style="display: none;">
+                 <h3>HuggingFace Hub/Endpoint Options</h3>
+                 <div class="form-group">
+                    <label for="fe-hf-token">HuggingFace Token (Optional):</label>
+                    <input type="password" id="fe-hf-token" name="fe_hf_token" placeholder="Your HF Read/Write Token" class="api-input">
+                </div>
+                 <div class="form-group">
+                    <label for="fe-hf-model-or-endpoint">Model Repo ID or Endpoint URL:</label>
+                    <input type="text" id="fe-hf-model-or-endpoint" name="fe_hf_model_or_endpoint" placeholder="e.g., meta-llama/Meta-Llama-3.1-8B-Instruct OR https://..." class="api-input">
+                </div>
+            </div>
+
+            <div id="fe-openai-options" class="conditional-options indented-option" style="display: none;">
+                 <h3>OpenAI Options</h3>
+                 <div class="form-group">
+                    <label for="fe-openai-api-key">OpenAI API Key:</label>
+                    <input type="password" id="fe-openai-api-key" name="fe_openai_api_key" placeholder="Enter your OpenAI API key (sk-...)" class="api-input">
+                </div>
+                <div class="form-group">
+                    <label for="fe-openai-model">Model Name:</label>
+                    <input type="text" id="fe-openai-model" name="fe_openai_model" placeholder="e.g., gpt-4o-mini, o1-mini" class="api-input">
+                </div>
+                <div class="form-group">
+                     <input type="checkbox" id="fe-openai-reasoning-model" name="fe_openai_reasoning_model" style="width: auto; margin-right: 5px;">
+                    <label for="fe-openai-reasoning-model" style="display: inline; font-weight: normal;">Is Reasoning Model ('o1' series)?</label>
+                </div>
+            </div>
+
+            <div id="fe-azure_openai-options" class="conditional-options indented-option" style="display: none;">
+                 <h3>Azure OpenAI Options</h3>
+                <div class="form-group">
+                    <label for="fe-azure-openai-api-key">Azure API Key:</label>
+                    <input type="password" id="fe-azure-openai-api-key" name="fe_azure_openai_api_key" placeholder="Enter your Azure API key" class="api-input">
+                </div>
+                <div class="form-group">
+                    <label for="fe-azure-endpoint">Azure OpenAI Endpoint:</label>
+                    <input type="url" id="fe-azure-endpoint" name="fe_azure_endpoint" placeholder="e.g., https://YOUR_RESOURCE.openai.azure.com/" class="api-input">
+                </div>
+                 <div class="form-group">
+                    <label for="fe-azure-api-version">Azure API Version:</label>
+                    <input type="text" id="fe-azure-api-version" name="fe_azure_api_version" placeholder="e.g., 2024-02-01" class="api-input">
+                 </div>
+                <div class="form-group">
+                    <label for="fe-azure-deployment-name">Model Deployment Name:</label>
+                    <input type="text" id="fe-azure-deployment-name" name="fe_azure_deployment_name" placeholder="Your Azure deployment name" class="api-input">
+                </div>
+                 <div class="form-group">
+                     <input type="checkbox" id="fe-azure-reasoning-model" name="fe_azure_reasoning_model" style="width: auto; margin-right: 5px;">
+                    <label for="fe-azure-reasoning-model" style="display: inline; font-weight: normal;">Is Reasoning Model ('o1' series)?</label>
+                </div>
+            </div>
+
+            <div id="fe-litellm-options" class="conditional-options indented-option" style="display: none;">
+                 <h3>LiteLLM Options</h3>
+                 <div class="form-group">
+                    <label for="fe-litellm-model">Model String:</label>
+                    <input type="text" id="fe-litellm-model" name="fe_litellm_model" placeholder="e.g., openai/gpt-4o-mini, ollama/llama3" class="api-input">
+                 </div>
+                  <div class="form-group">
+                    <label for="fe-litellm-api-key">API Key (If Required):</label>
+                    <input type="password" id="fe-litellm-api-key" name="fe_litellm_api_key" placeholder="API Key for the target service" class="api-input">
+                 </div>
+                  <div class="form-group">
+                    <label for="fe-litellm-base-url">Base URL (If Required):</label>
+                    <input type="url" id="fe-litellm-base-url" name="fe_litellm_base_url" placeholder="Base URL for the target service" class="api-input">
+                 </div>
+            </div>
+        </form>
+
+        <hr style="margin: 20px 0;">
+
+        <label for="fe-input-text">Input Text:</label>
+        <textarea id="fe-input-text" rows="10" placeholder="Paste your document text here..."></textarea>
+
+        <label for="fe-prompt-template">Prompt Template:</label>
+        <textarea id="fe-prompt-template" rows="15" placeholder="Enter your prompt template for the extractor..."></textarea>
+
+        <label for="fe-extraction-unit">Extraction Unit:</label>
+        <select id="fe-extraction-unit">
+            <option value="WholeDocument" selected>Whole document</option>
+            <option value="Sentence">Sentence</option>
+            <option value="TextLine">Text line</option>
+        </select>
+
+        <label for="fe-context">Context:</label>
+        <select id="fe-context">
+            <option value="NoContext" selected>No context</option>
+            <option value="WholeDocument">Whole document</option>
+            <option value="SlideWindow">Slide window</option>
+        </select>
+
+        <label for="fe-temperature">Temperature:</label>
+        <input type="number" id="fe-temperature" name="fe_temperature" min="0" max="2" step="0.1" value="0.0">
+
+        <label for="fe-max-tokens">Max Tokens (per unit):</label>
+        <input type="number" id="fe-max-tokens" name="fe_max_tokens" min="1" step="1" value="512">
+
+        <div class="form-group">
+            <input type="checkbox" id="fe-fuzzy-match" name="fe_fuzzy_match" checked style="width: auto; margin-right: 5px; vertical-align: middle;">
+            <label for="fe-fuzzy-match" style="display: inline; font-weight: normal; vertical-align: middle;">Fuzzy Match</label>
+        </div>
+
+        <button id="start-extraction-btn">Start Extraction</button>
+        <button id="clear-extraction-btn" class="fe-btn-secondary">Clear Output</button>
+    </div>
+    <div class="display-area extraction-display">
+         <div class="column">
+             <h2>Input Text</h2>
+             <div id="display-input-text"></div>
+         </div>
+         <div class="column">
+            <div class="column-header-flex-container"> 
+                <h2 style="margin-bottom: 0;">Extraction Process / Results</h2> 
+                <button id="download-frames-btn" class="icon-button" title="Download Extracted Frames (.llmie)" disabled>
+                    <i class="fas fa-download"></i>
+                </button>
+            </div>
+            <pre id="extraction-output"></pre>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,154 @@
+/* static/css/frame_extraction.css */
+
+.extraction-display {
+    flex-direction: row; /* Side-by-side columns */
+    gap: 20px;
+    height: 100%; /* Fill vertical space */
+}
+.extraction-display .column {
+    width: 50%;
+    overflow-y: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    padding: 15px;
+    background-color: #fdfdfd;
+    display: flex;
+    flex-direction: column; /* Stack title and content */
+}
+
+.extraction-display .column h2 {
+     flex-shrink: 0; /* Prevent title from shrinking */
+     padding-bottom: 10px;
+     border-bottom: 1px solid #e0e0e0;
+     margin-bottom: 10px;
+}
+
+.extraction-display #display-input-text,
+.extraction-display #extraction-output {
+    white-space: pre-wrap; /* Wrap text and preserve whitespace */
+    word-wrap: break-word;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.9em;
+    line-height: 1.4;
+    flex-grow: 1; /* Allow content to take space and enable scrolling */
+    overflow-y: auto; /* Ensure scrolling within the pre/div */
+}
+
+/* Color coding for terminal-like output */
+/* Basic ANSI color mappings */
+.term-fg-black { color: #2e3440; }
+.term-fg-red { color: #bf616a; }
+.term-fg-green { color: #a3be8c; }
+.term-fg-yellow { color: #ebcb8b; }
+.term-fg-blue { color: #81a1c1; }
+.term-fg-magenta { color: #b48ead; }
+.term-fg-cyan { color: #88c0d0; }
+.term-fg-white { color: #e5e9f0; }
+
+/* Bright versions (optional, add if needed) */
+.term-fg-bright-black { color: #4c566a; }
+.term-fg-bright-red { color: #bf616a; }
+.term-fg-bright-green { color: #a3be8c; }
+.term-fg-bright-yellow { color: #ebcb8b; }
+.term-fg-bright-blue { color: #81a1c1; }
+.term-fg-bright-magenta { color: #b48ead; }
+.term-fg-bright-cyan { color: #8fbcbb; }
+.term-fg-bright-white { color: #eceff4; }
+
+/* Basic style reset */
+.term-style-reset {
+    color: inherit;
+    font-weight: normal;
+    font-style: normal;
+    text-decoration: none;
+    /* Add resets for background etc. if used */
+}
+
+/* Basic bold */
+.term-style-bold {
+    font-weight: bold;
+}
+
+.text-snippet-content {
+    white-space: pre-wrap; /* Preserves whitespace (like newlines) from the source but wraps text */
+    word-wrap: break-word;   /* Breaks words if they are too long to fit, preventing overflow */
+    /* You might also want to ensure it doesn't break in the middle of a word too aggressively */
+    /* word-break: break-all; /* Use with caution: can break words mid-character */
+    /* overflow-wrap: break-word; /* This is the more modern version of word-wrap */
+}
+
+/* Optional: Style the header for the text snippet as well */
+.text-snippet-header {
+    font-weight: normal; /* If you don't want it to inherit strong from parent */
+    margin-bottom: 4px;
+    color: #555; /* A slightly subdued color */
+}
+
+/* Optional: General styling for unit blocks if you haven't already */
+.unit-block {
+    margin-bottom: 15px; /* Add some space between unit blocks */
+    padding-bottom: 10px; /* Padding within the unit block before the <hr> */
+    /* border-bottom: 1px dashed #ccc; /* Alternative to <hr> if you prefer */
+}
+
+.unit-header {
+    margin-top: 0; /* Remove default top margin from h4 if the <hr> provides separation */
+    margin-bottom: 8px;
+}
+
+.unit-context pre,
+.llm-output-content { /* Target the <pre> tag inside unit-llm-output-container */
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background-color: #f9f9f9; /* Slight background to distinguish these blocks */
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #eee;
+    margin-top: 4px;
+}
+
+.llm-output-header {
+    margin-right: 5px; /* Space between "LLM Output:" and the actual output */
+}
+
+/* Styling for error messages in the stream */
+.stream-error-message {
+    color: red;
+    font-weight: bold;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    padding: 5px;
+    border: 1px solid red;
+    background-color: #ffe0e0;
+    border-radius: 4px;
+}
+
+/* Styling for info messages */
+.info-message {
+    color: #00529B; /* Dark blue */
+    background-color: #BDE5F8; /* Light blue background */
+    border: 1px solid #A9D5E9;
+    padding: 8px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    border-radius: 4px;
+}
+
+/* Styling for the final JSON result block */
+pre.final-result-json {
+    background-color: #f9f9f9; /* Dark background similar to some code editors */
+    padding: 15px;
+    border-radius: 5px;
+    border: 1px solid #444;
+    white-space: pre-wrap; /* Wrap lines */
+    word-wrap: break-word;   /* Break long words */
+}
+
+/* Styles for specific elements in Frame Extraction */
+#fe-prompt-template {
+    min-height: 50%; /* Set a larger default minimum height */
+    flex-grow: 1;    /* Allow the textarea to grow and take available vertical space */
+    /* The .control-panel is already display:flex, flex-direction:column,
+       so flex-grow will work on its children. */
+    /* resize: vertical; is already in global styles for textareas */
+}
