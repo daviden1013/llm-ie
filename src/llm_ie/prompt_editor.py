@@ -1,5 +1,5 @@
 import sys
-from typing import Dict
+from typing import List, Dict, Generator
 import importlib.resources
 from llm_ie.engines import InferenceEngine
 from llm_ie.extractors import FrameExtractor
@@ -208,3 +208,36 @@ class PromptEditor:
             self._IPython_chat(**kwrs)
         else:
             self._terminal_chat(**kwrs)
+
+    def chat_stream(self, messages: List[Dict[str, str]], **kwrs) -> Generator[str, None, None]:
+        """
+        This method processes messages and yields response chunks from the inference engine.
+        This is for frontend App.
+
+        Parameters:
+        ----------
+        messages : List[Dict[str, str]]
+            List of message dictionaries (e.g., [{"role": "user", "content": "Hi"}]).
+
+        Yields:
+        -------
+            Chunks of the assistant's response.
+        """
+        # Validate messages
+        if not isinstance(messages, list) or not all(isinstance(m, dict) and 'role' in m and 'content' in m for m in messages):
+             raise ValueError("Messages must be a list of dictionaries with 'role' and 'content' keys.")
+        
+        # Always append system prompt and initial user message
+        file_path = importlib.resources.files('llm_ie.asset.PromptEditor_prompts').joinpath('chat.txt')
+        with open(file_path, 'r') as f:
+            chat_prompt_template = f.read()
+
+        prompt = self._apply_prompt_template(text_content={"prompt_guideline": self.prompt_guide}, 
+                                            prompt_template=chat_prompt_template)
+
+        messages = [{"role": "system", "content": self.system_prompt},
+                    {"role": "user", "content": prompt}] + messages
+        
+
+        stream_generator = self.inference_engine.chat(messages, stream=True, **kwrs)
+        yield from stream_generator
