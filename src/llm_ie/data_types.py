@@ -1,9 +1,83 @@
+from dataclasses import dataclass
 from typing import List, Dict, Tuple, Iterable, Callable
 import importlib.util
 import warnings
 import json
 
 
+@dataclass
+class FrameExtractionUnit:
+    def __init__(self, start:int, end:int, text:str):
+        """
+        This class holds the unit text for frame extraction, for example, a sentence. 
+        FrameExtractor prompt it one at a time to extract frames. 
+        
+        Parameters
+        ----------
+        start : int
+            start character position of the unit text, relative to the whole document
+        end : int
+            end character position of the unit text, relative to the whole document
+        text : str
+            the unit text. Should be the exact string by [start:end]
+        """
+        self.start = start
+        self.end = end
+        self.text = text
+
+    def __eq__(self, other):
+            if not isinstance(other, FrameExtractionUnit):
+                return NotImplemented
+            return (self.start == other.start and self.end == other.end)
+
+    def __hash__(self):
+        return hash((self.start, self.end))
+        
+    def __lt__(self, other):
+        if not isinstance(other, FrameExtractionUnit):
+            return NotImplemented
+        return self.start < other.start
+        
+    def __repr__(self):
+        return f"FrameExtractionUnit(start={self.start}, end={self.end}, text='{self.text[:100]}...')"
+
+
+@dataclass
+class FrameExtractionUnitResult:
+    def __init__(self, start:int, end:int, text:str, gen_text:str):
+        """
+        This class holds the unit text for frame extraction, for example, a sentence. 
+        FrameExtractor prompt it one at a time to extract frames. 
+        
+        Parameters
+        ----------
+        start : int
+            start character position of the unit text, relative to the whole document
+        end : int
+            end character position of the unit text, relative to the whole document
+        text : str
+            the unit text. Should be the exact string by [start:end]
+        gen_text : str
+            the generated text by LLM (ideally) following '[{"entity_text": "xxx", "attr": {"key": "value"}}]' format. Does not contain spans (start/end).
+        """
+        self.start = start
+        self.end = end
+        self.text = text
+        self.gen_text = gen_text
+        
+    def __eq__(self, other):
+            if not isinstance(other, FrameExtractionUnit):
+                return NotImplemented
+            return (self.start == other.start and self.end == other.end and self.text == other.text and self.gen_text == other.gen_text)
+
+    def __hash__(self):
+        return hash((self.start, self.end, self.text, self.gen_text))
+
+    def __repr__(self):
+        return f"FrameExtractionUnitResult(start={self.start}, end={self.end}, text='{self.text[:100]}...', gen_text='{self.gen_text[:100]}...')"
+    
+
+@dataclass
 class LLMInformationExtractionFrame:
     def __init__(self, frame_id:str, start:int, end:int, entity_text:str, attr:Dict[str,str]=None):
         """

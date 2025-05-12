@@ -100,7 +100,7 @@ Example 2 (multiple entity types):
 Example 3 (multiple entity types with corresponding attributes):
 
     ### Task description
-    This is a named entity recognition task. Given a sentence from a medical note, annotate the events (EVENT) and time expressions (TIMEX3):
+    This is a named entity recognition task. Given a unit text from a medical note, annotate the events (EVENT) and time expressions (TIMEX3):
 
     ### Schema definition
     Your output should contain: 
