@@ -1,0 +1,2 @@
+Review the input text and your output carefully. If you find any omissions or errors, correct them by generating a revised output following the defined output formats.
+Your output should strictly adheres to the defined output formats. 

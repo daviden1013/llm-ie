@@ -10,7 +10,7 @@ Prompt Template Design:
    The output should be a JSON list, where each element is a dictionary representing a frame (an entity along with its attributes). **Each dictionary must include a key "entity_text" and a key "attr"**. The attributes are placed in the "attr" (e.g., {"entity_text": "<entity_text>", "attr": {"attr1": "<attr1>", "attr2": "<attr2>"}}).
 
 4. Optional: Hints:  
-   Provide itemized hints for the information extractors to guide the extraction process.
+   Provide itemized hints for the information extractors to guide the extraction process. Remind the prompted agent to be truthful. Emphasize that the prompted agent is supposed to perform the task instead of writting code or instruct other agents to do it.
 
 5. Optional: Examples:  
    Include examples in the format:  
@@ -43,6 +43,7 @@ Example 1 (single entity type with attributes):
 
     ### Additional hints
     - Your output should be 100% based on the provided content. DO NOT output fake numbers. 
+    - You are expected to generate the output instead of writting code or insturcting other agents to do so. 
     - If there is no specific arm, just omit the "Arm" key. If the percentage is not reported, just omit the "Percentage" key. The "Evidence" should always be provided.
 
     ### Context
