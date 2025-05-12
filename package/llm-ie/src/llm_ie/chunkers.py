@@ -3,7 +3,7 @@ from typing import Set, List, Dict, Tuple, Union, Callable
 from llm_ie.data_types import FrameExtractionUnit
 
 
-class FrameExtractionUnitChunker(abc.ABC):
+class UnitChunker(abc.ABC):
     def __init__(self):
         """
         This is the abstract class for frame extraction unit chunker.
@@ -21,7 +21,7 @@ class FrameExtractionUnitChunker(abc.ABC):
         return NotImplemented
 
 
-class WholeDocumentUnitChunker(FrameExtractionUnitChunker):
+class WholeDocumentUnitChunker(UnitChunker):
     def __init__(self):
         """
         This class chunks the whole document into a single unit (no chunking).
@@ -42,7 +42,7 @@ class WholeDocumentUnitChunker(FrameExtractionUnitChunker):
         )]
     
 
-class SentenceUnitChunker(FrameExtractionUnitChunker):
+class SentenceUnitChunker(UnitChunker):
     from nltk.tokenize.punkt import PunktSentenceTokenizer
     def __init__(self):
         """
@@ -67,7 +67,7 @@ class SentenceUnitChunker(FrameExtractionUnitChunker):
         return sentences
     
 
-class TextLineUnitChunker(FrameExtractionUnitChunker):
+class TextLineUnitChunker(UnitChunker):
     def __init__(self):
         """
         This class chunks a document into lines.
