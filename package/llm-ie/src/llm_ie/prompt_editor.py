@@ -79,7 +79,7 @@ class PromptEditor:
                                              prompt_template=rewrite_prompt_template)
         messages = [{"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": prompt}]
-        res = self.inference_engine.chat(messages, stream=True, **kwrs)
+        res = self.inference_engine.chat(messages, verbose=True, **kwrs)
         return res
     
     def comment(self, draft:str, **kwrs) -> str:
@@ -94,7 +94,7 @@ class PromptEditor:
                                              prompt_template=comment_prompt_template)
         messages = [{"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": prompt}]
-        res = self.inference_engine.chat(messages, stream=True, **kwrs)
+        res = self.inference_engine.chat(messages, verbose=True, **kwrs)
         return res
     
 
@@ -126,7 +126,7 @@ class PromptEditor:
             # Chat
             messages.append({"role": "user", "content": user_input})
             print(f"{Fore.BLUE}Assistant: {Style.RESET_ALL}", end="")
-            response = self.inference_engine.chat(messages, stream=True, **kwrs)
+            response = self.inference_engine.chat(messages, verbose=True, **kwrs)
             messages.append({"role": "assistant", "content": response})
             
 
@@ -186,7 +186,7 @@ class PromptEditor:
 
             # Get assistant's response and append it to conversation
             print("Assistant: ", end="")
-            response = self.inference_engine.chat(messages, stream=True, **kwrs)
+            response = self.inference_engine.chat(messages, verbose=True, **kwrs)
             messages.append({"role": "assistant", "content": response})
 
             # Display the assistant's response
