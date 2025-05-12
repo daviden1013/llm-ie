@@ -198,6 +198,8 @@ class FrameExtractor(Extractor):
         self.unit_chunker = unit_chunker
         if context_chunker is None:
             self.context_chunker = NoContextChunker()
+        else:
+            self.context_chunker = context_chunker
         
         self.tokenizer = self.RegexpTokenizer(r'\w+|[^\w\s]')
 
