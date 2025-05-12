@@ -10,7 +10,7 @@ import asyncio
 import nest_asyncio
 from typing import Any, Set, List, Dict, Tuple, Union, Callable, Generator, Optional
 from llm_ie.data_types import FrameExtractionUnit, FrameExtractionUnitResult, LLMInformationExtractionFrame, LLMInformationExtractionDocument
-from llm_ie.chunkers import FrameExtractionUnitChunker, WholeDocumentUnitChunker, SentenceUnitChunker, TextLineUnitChunker
+from llm_ie.chunkers import UnitChunker, WholeDocumentUnitChunker, SentenceUnitChunker
 from llm_ie.chunkers import ContextChunker, NoContextChunker, WholeDocumentContextChunker, SlideWindowContextChunker
 from llm_ie.engines import InferenceEngine
 from colorama import Fore, Style        
@@ -40,15 +40,46 @@ class Extractor:
     def get_prompt_guide(cls) -> str:
         """
         This method returns the pre-defined prompt guideline for the extractor from the package asset.
+        It searches for a guide specific to the current class first, if not found, it will search
+        for the guide in its ancestors by traversing the class's method resolution order (MRO).
         """
-        # Check if the prompt guide is available
-        file_path = importlib.resources.files('llm_ie.asset.prompt_guide').joinpath(f"{cls.__name__}_prompt_guide.txt")
-        try:     
-            with open(file_path, 'r', encoding="utf-8") as f:
-                return f.read()
-        except FileNotFoundError:
-            warnings.warn(f"Prompt guide for {cls.__name__} is not available. Is it a customed extractor?", UserWarning)
-            return None
+        original_class_name = cls.__name__ 
+
+        for current_class_in_mro in cls.__mro__:
+            if current_class_in_mro is object: 
+                continue
+
+            current_class_name = current_class_in_mro.__name__
+            
+            try:
+                file_path_obj = importlib.resources.files('llm_ie.asset.prompt_guide').joinpath(f"{current_class_name}_prompt_guide.txt")
+                
+                with open(file_path_obj, 'r', encoding="utf-8") as f:
+                    prompt_content = f.read()
+                    # If the guide was found for an ancestor, not the original class, issue a warning.
+                    if cls is not current_class_in_mro:
+                        warnings.warn(
+                            f"Prompt guide for '{original_class_name}' not found. "
+                            f"Using guide from ancestor: '{current_class_name}_prompt_guide.txt'.",
+                            UserWarning
+                        )
+                    return prompt_content
+            except FileNotFoundError:
+                pass
+
+            except Exception as e:
+                warnings.warn(
+                    f"Error attempting to read prompt guide for '{current_class_name}' "
+                    f"from '{str(file_path_obj)}': {e}. Trying next in MRO.",
+                    UserWarning
+                )
+                continue 
+
+        # If the loop completes, no prompt guide was found for the original class or any of its ancestors.
+        raise FileNotFoundError(
+            f"Prompt guide for '{original_class_name}' not found in the package asset. "
+            f"Is it a custom extractor?"
+        )
 
     def _get_user_prompt(self, text_content:Union[str, Dict[str,str]]) -> str:
         """
@@ -140,7 +171,8 @@ class Extractor:
 
 class FrameExtractor(Extractor):
     from nltk.tokenize import RegexpTokenizer
-    def __init__(self, inference_engine:InferenceEngine, prompt_template:str, system_prompt:str=None, **kwrs):
+    def __init__(self, inference_engine:InferenceEngine, unit_chunker:UnitChunker, 
+                 prompt_template:str, system_prompt:str=None, context_chunker:ContextChunker=None, **kwrs):
         """
         This is the abstract class for frame extraction.
         Input LLM inference engine, system prompt (optional), prompt template (with instruction, few-shot examples).
@@ -149,15 +181,23 @@ class FrameExtractor(Extractor):
         ----------
         inference_engine : InferenceEngine
             the LLM inferencing engine object. Must implements the chat() method.
+        unit_chunker : UnitChunker
+            the unit chunker object that determines how to chunk the document text into units.
         prompt_template : str
             prompt template with "{{<placeholder name>}}" placeholder.
         system_prompt : str, Optional
             system prompt.
+        context_chunker : ContextChunker
+            the context chunker object that determines how to get context for each unit.
         """
         super().__init__(inference_engine=inference_engine,
                          prompt_template=prompt_template,
                          system_prompt=system_prompt,
                          **kwrs)
+                
+        self.unit_chunker = unit_chunker
+        if context_chunker is None:
+            self.context_chunker = NoContextChunker()
         
         self.tokenizer = self.RegexpTokenizer(r'\w+|[^\w\s]')
 
@@ -341,32 +381,32 @@ class FrameExtractor(Extractor):
     
 
 class DirectFrameExtractor(FrameExtractor):
-    def __init__(self, unit_chunker:FrameExtractionUnitChunker, context_chunker:ContextChunker, 
-                 inference_engine:InferenceEngine, prompt_template:str, system_prompt:str=None, **kwrs):
+    def __init__(self, inference_engine:InferenceEngine, unit_chunker:UnitChunker, 
+                 prompt_template:str, system_prompt:str=None, context_chunker:ContextChunker=None, **kwrs):
         """
         This class is for general unit-context frame extraction.
         Input LLM inference engine, system prompt (optional), prompt template (with instruction, few-shot examples).
 
         Parameters:
         ----------
-        unit_chunker : FrameExtractionUnitChunker
-            the unit chunker object that determines how to chunk the document text into units.
-        context_chunker : ContextChunker
-            the context chunker object that determines how to get context for each unit.
         inference_engine : InferenceEngine
             the LLM inferencing engine object. Must implements the chat() method.
+        unit_chunker : UnitChunker
+            the unit chunker object that determines how to chunk the document text into units.
         prompt_template : str
             prompt template with "{{<placeholder name>}}" placeholder.
         system_prompt : str, Optional
             system prompt.
+        context_chunker : ContextChunker
+            the context chunker object that determines how to get context for each unit.
         """
         super().__init__(inference_engine=inference_engine,
+                         unit_chunker=unit_chunker,
                          prompt_template=prompt_template,
                          system_prompt=system_prompt,
+                         context_chunker=context_chunker,
                          **kwrs)
-        
-        self.unit_chunker = unit_chunker
-        self.context_chunker = context_chunker
+
 
     def extract(self, text_content:Union[str, Dict[str,str]], max_new_tokens:int=2048, 
                 document_key:str=None, temperature:float=0.0, verbose:bool=False, return_messages_log:bool=False, **kwrs) -> List[FrameExtractionUnitResult]:
@@ -823,10 +863,10 @@ class DirectFrameExtractor(FrameExtractor):
         
 
 class ReviewFrameExtractor(DirectFrameExtractor):
-    def __init__(self, unit_chunker:FrameExtractionUnitChunker, context_chunker:ContextChunker, 
+    def __init__(self, unit_chunker:UnitChunker, context_chunker:ContextChunker, 
                  inference_engine:InferenceEngine, prompt_template:str, review_mode:str, review_prompt:str=None, system_prompt:str=None, **kwrs):
         """
-        This class add a review step after the BasicFrameExtractor.
+        This class add a review step after the DirectFrameExtractor.
         The Review process asks LLM to review its output and:
             1. add more frames while keep current. This is efficient for boosting recall. 
             2. or, regenerate frames (add new and delete existing). 
@@ -834,7 +874,7 @@ class ReviewFrameExtractor(DirectFrameExtractor):
 
         Parameters:
         ----------
-        unit_chunker : FrameExtractionUnitChunker
+        unit_chunker : UnitChunker
             the unit chunker object that determines how to chunk the document text into units.
         context_chunker : ContextChunker
             the context chunker object that determines how to get context for each unit.
@@ -851,11 +891,11 @@ class ReviewFrameExtractor(DirectFrameExtractor):
         system_prompt : str, Optional
             system prompt.
         """
-        super().__init__(unit_chunker=unit_chunker, 
-                         context_chunker=context_chunker,
-                         inference_engine=inference_engine, 
+        super().__init__(inference_engine=inference_engine, 
+                         unit_chunker=unit_chunker, 
                          prompt_template=prompt_template, 
                          system_prompt=system_prompt, 
+                         context_chunker=context_chunker,
                          **kwrs)
         # check review mode
         if review_mode not in {"addition", "revision"}: 
@@ -865,13 +905,36 @@ class ReviewFrameExtractor(DirectFrameExtractor):
         if review_prompt:
             self.review_prompt = review_prompt
         else:
-            file_path = importlib.resources.files('llm_ie.asset.default_prompts').\
-                joinpath(f"{self.__class__.__name__}_{self.review_mode}_review_prompt.txt")
-            with open(file_path, 'r', encoding="utf-8") as f:
-                self.review_prompt = f.read()
+            self.review_prompt = None
+            original_class_name = self.__class__.__name__
 
-    def extract(self, text_content:Union[str, Dict[str,str]], max_new_tokens:int=2048, 
-                document_key:str=None, temperature:float=0.0, verbose:bool=False, return_messages_log:bool=False, **kwrs) -> List[FrameExtractionUnitResult]:
+            current_class_name = original_class_name
+            for current_class_in_mro in self.__class__.__mro__:
+                if current_class_in_mro is object: 
+                    continue
+
+                current_class_name = current_class_in_mro.__name__
+                try:
+                    file_path = importlib.resources.files('llm_ie.asset.default_prompts').\
+                        joinpath(f"{self.__class__.__name__}_{self.review_mode}_review_prompt.txt")
+                    with open(file_path, 'r', encoding="utf-8") as f:
+                        self.review_prompt = f.read()
+                except FileNotFoundError:
+                    pass
+
+                except Exception as e:
+                    warnings.warn(
+                        f"Error attempting to read default review prompt for '{current_class_name}' "
+                        f"from '{str(file_path)}': {e}. Trying next in MRO.",
+                        UserWarning
+                    )
+                    continue 
+            
+        if self.review_prompt is None:
+            raise ValueError(f"Cannot find review prompt for {self.__class__.__name__} in the package. Please provide a review_prompt.")
+
+    def extract(self, text_content:Union[str, Dict[str,str]], max_new_tokens:int=2048, document_key:str=None, 
+                temperature:float=0.0, verbose:bool=False, return_messages_log:bool=False, **kwrs) -> List[FrameExtractionUnitResult]:
         """
         This method inputs a text and outputs a list of outputs per unit.
 
@@ -1351,11 +1414,11 @@ class BasicFrameExtractor(DirectFrameExtractor):
         system_prompt : str, Optional
             system prompt.
         """
-        super().__init__(unit_chunker=WholeDocumentUnitChunker(),
-                         context_chunker=NoContextChunker(),
-                         inference_engine=inference_engine, 
+        super().__init__(inference_engine=inference_engine, 
+                         unit_chunker=WholeDocumentUnitChunker(),
                          prompt_template=prompt_template, 
                          system_prompt=system_prompt, 
+                         context_chunker=NoContextChunker(),
                          **kwrs)
         
 class BasicReviewFrameExtractor(ReviewFrameExtractor):
@@ -1382,13 +1445,13 @@ class BasicReviewFrameExtractor(ReviewFrameExtractor):
         system_prompt : str, Optional
             system prompt.
         """
-        super().__init__(unit_chunker=WholeDocumentUnitChunker(),
-                         context_chunker=NoContextChunker(),
-                         inference_engine=inference_engine, 
+        super().__init__(inference_engine=inference_engine, 
+                         unit_chunker=WholeDocumentUnitChunker(),
                          prompt_template=prompt_template, 
                          review_mode=review_mode,
                          review_prompt=review_prompt,
                          system_prompt=system_prompt, 
+                         context_chunker=NoContextChunker(),
                          **kwrs)
         
 
@@ -1402,7 +1465,7 @@ class SentenceFrameExtractor(DirectFrameExtractor):
             2. user prompt with instructions (schema, background, full text, few-shot example...)
             3. feed a sentence (start with first sentence)
             4. LLM extract entities and attributes from the sentence
-            5. repeat #3 and #4
+            5. iterate to the next sentence and repeat steps 3-4 until all sentences are processed.
 
         Input system prompt (optional), prompt template (with user instructions), 
         and specify a LLM.
@@ -1434,11 +1497,12 @@ class SentenceFrameExtractor(DirectFrameExtractor):
         elif context_sentences == "all":
             context_chunker = WholeDocumentContextChunker()
 
-        super().__init__(unit_chunker=SentenceUnitChunker(),
-                        context_chunker=context_chunker,
-                        inference_engine=inference_engine, 
-                        prompt_template=prompt_template, 
-                        system_prompt=system_prompt, **kwrs)
+        super().__init__(inference_engine=inference_engine, 
+                         unit_chunker=SentenceUnitChunker(),
+                         prompt_template=prompt_template, 
+                         system_prompt=system_prompt, 
+                         context_chunker=context_chunker,
+                         **kwrs)
         
 
 class SentenceReviewFrameExtractor(ReviewFrameExtractor):
@@ -1485,13 +1549,14 @@ class SentenceReviewFrameExtractor(ReviewFrameExtractor):
         elif context_sentences == "all":
             context_chunker = WholeDocumentContextChunker()
 
-        super().__init__(unit_chunker=SentenceUnitChunker(),
-                        context_chunker=context_chunker,
-                        inference_engine=inference_engine, 
-                        prompt_template=prompt_template,
-                        review_mode=review_mode,
-                        review_prompt=review_prompt, 
-                        system_prompt=system_prompt, **kwrs)
+        super().__init__(inference_engine=inference_engine, 
+                         unit_chunker=SentenceUnitChunker(),
+                         prompt_template=prompt_template,
+                         review_mode=review_mode,
+                         review_prompt=review_prompt, 
+                         system_prompt=system_prompt, 
+                         context_chunker=context_chunker,
+                         **kwrs)
     
 
 class RelationExtractor(Extractor):
