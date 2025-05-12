@@ -1,6 +1,9 @@
 import warnings
 from llm_ie import DirectFrameExtractor, LLMInformationExtractionFrame
+from llm_ie.engines import InferenceEngine
 from llm_ie.data_types import FrameExtractionUnitResult, FrameExtractionUnit
+from llm_ie.chunkers import UnitChunker, WholeDocumentUnitChunker, SentenceUnitChunker
+from llm_ie.chunkers import ContextChunker, NoContextChunker, WholeDocumentContextChunker, SlideWindowContextChunker
 from typing import Any, Union, Dict, List, Generator, Optional
 import json
 
@@ -25,8 +28,14 @@ class AppDirectFrameExtractor(DirectFrameExtractor):
             system prompt.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, inference_engine:InferenceEngine, unit_chunker:UnitChunker, 
+                 prompt_template:str, system_prompt:str=None, context_chunker:ContextChunker=None, **kwrs):
+        super().__init__(inference_engine=inference_engine,
+                         unit_chunker=unit_chunker,
+                         prompt_template=prompt_template,
+                         system_prompt=system_prompt,
+                         context_chunker=context_chunker,
+                         **kwrs)
 
     def stream(self, text_content: Union[str, Dict[str, str]], max_new_tokens: int = 2048, document_key: str = None, 
                temperature: float = 0.0, qwen_no_think:bool=True, **kwrs) -> Generator[Dict[str, Any], None, List[FrameExtractionUnitResult]]:

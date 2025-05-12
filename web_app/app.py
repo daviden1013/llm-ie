@@ -3,8 +3,7 @@ import os
 from flask import Flask, render_template, request, Response, jsonify, stream_with_context, current_app, send_file
 import json
 import time
-import io # Keep for BytesIO in case other parts might use it, though not for doc.save()
-import tempfile # Crucial for this fix and the new endpoint
+import tempfile 
 from llm_ie.prompt_editor import PromptEditor
 from llm_ie.extractors import DirectFrameExtractor
 from utils.extractors import AppDirectFrameExtractor
@@ -16,11 +15,10 @@ from llm_ie.chunkers import (
     SlideWindowContextChunker
 )
 from llm_ie.engines import (
-    InferenceEngine,
-    OllamaInferenceEngine, OpenAIInferenceEngine, AzureOpenAIInferenceEngine,
-    HuggingFaceHubInferenceEngine, LiteLLMInferenceEngine, LlamaCppInferenceEngine
+    InferenceEngine, OllamaInferenceEngine, OpenAIInferenceEngine, AzureOpenAIInferenceEngine,
+    HuggingFaceHubInferenceEngine, LiteLLMInferenceEngine
 )
-from llm_ie.data_types import LLMInformationExtractionDocument, FrameExtractionUnitResult, LLMInformationExtractionFrame
+from llm_ie.data_types import LLMInformationExtractionDocument, LLMInformationExtractionFrame
 import html
 import traceback
 
@@ -30,9 +28,9 @@ app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'your-very-secret-key-in-dev
 
 # --- LLM API Options ---
 LLM_API_OPTIONS = [
-    {"value": "openai_compatible", "name": "OpenAI Compatible (e.g., vLLM, Llama.cpp server)"},
+    {"value": "openai_compatible", "name": "OpenAI Compatible"},
     {"value": "ollama", "name": "Ollama"},
-    {"value": "huggingface_hub", "name": "HuggingFace Hub/Endpoint"},
+    {"value": "huggingface_hub", "name": "HuggingFace Hub"},
     {"value": "openai", "name": "OpenAI"},
     {"value": "azure_openai", "name": "Azure OpenAI"},
     {"value": "litellm", "name": "LiteLLM"},
@@ -413,9 +411,6 @@ def api_results_render():
 # --- Run App ---
 if __name__ == '__main__':
     import logging
-    logging.basicConfig(level=logging.INFO) # Changed to INFO for production, DEBUG can be too verbose
+    logging.basicConfig(level=logging.INFO) 
     app.logger.setLevel(logging.INFO)
-    # For development, you might switch back to DEBUG:
-    # logging.basicConfig(level=logging.DEBUG)
-    # app.logger.setLevel(logging.DEBUG)
     app.run(debug=True, host='0.0.0.0', port=5001)
