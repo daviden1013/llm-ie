@@ -1,4 +1,3 @@
-// static/js/result_viewer.js
 document.addEventListener('DOMContentLoaded', () => {
     // --- UI Element Getters ---
     const llmieUploadArea = document.getElementById('rv-llmie-upload-area');
@@ -17,8 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (llmieFileInput) { // Check if element exists
             llmieFileInput.value = ''; // Clear the file input
         }
-        if (colorKeyGroupDiv) colorKeyGroupDiv.style.display = 'none';
-        if (colorKeySelect) colorKeySelect.innerHTML = '<option value="" disabled selected>-- Select Attribute Key --</option>'; // Reset options
+        // if (colorKeyGroupDiv) colorKeyGroupDiv.style.display = 'none'; // MODIFIED: Keep the group visible
+        if (colorKeySelect) colorKeySelect.innerHTML = '<option value="" disabled selected>-- Upload a file to see options --</option>'; // MODIFIED: Update placeholder
         
         uploadedLlmieData = null;
         
@@ -45,45 +44,44 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData();
         formData.append('llmie_file', file);
 
-        // Ensure this URL matches the endpoint defined in app.py for processing the uploaded file
         fetch('/api/results/process_llmie_data', { 
             method: 'POST',
             body: formData,
         })
         .then(response => {
             if (!response.ok) {
-                return response.json().then(err => { // Try to parse error from JSON response
+                return response.json().then(err => { 
                     throw new Error(err.error || `File upload failed with status: ${response.status}`);
-                }).catch(() => { // Fallback if error response isn't JSON
+                }).catch(() => { 
                     throw new Error(`File upload failed with status: ${response.status} and no error details.`);
                 });
             }
             return response.json();
         })
         .then(data => {
-            // Expecting data: { text: "...", frames: [...], relations: [...], attribute_keys: [...] }
             if (data.text !== undefined && data.frames && data.attribute_keys) {
                 uploadedLlmieData = {
                     text: data.text,
                     frames: data.frames,
-                    relations: data.relations || [], // Relations might be optional or an empty list
+                    relations: data.relations || [], 
                     attribute_keys: data.attribute_keys
                 };
 
-                // Populate color key dropdown
                 if (colorKeySelect) {
-                    colorKeySelect.innerHTML = '<option value="" selected>None (Default Colors)</option>'; // Default option
                     if (uploadedLlmieData.attribute_keys.length > 0) {
+                        colorKeySelect.innerHTML = '<option value="" selected>None (Default Colors)</option>'; 
                         uploadedLlmieData.attribute_keys.forEach(key => {
                             const option = document.createElement('option');
                             option.value = key;
                             option.textContent = key;
                             colorKeySelect.appendChild(option);
                         });
-                        if (colorKeyGroupDiv) colorKeyGroupDiv.style.display = 'block'; // Show the dropdown
                     } else {
-                        if (colorKeyGroupDiv) colorKeyGroupDiv.style.display = 'none'; // Hide if no keys
+                        // MODIFIED: Set placeholder if no keys are available
+                        colorKeySelect.innerHTML = '<option value="" disabled selected>-- No attributes to color by --</option>';
                     }
+                    // MODIFIED: colorKeyGroupDiv should already be visible by HTML default
+                    // if (colorKeyGroupDiv) colorKeyGroupDiv.style.display = 'block'; 
                 }
                 if (vizOutputDiv) vizOutputDiv.innerHTML = '<p>File processed. Click "Render Visualization".</p>';
             } else {
@@ -93,14 +91,13 @@ document.addEventListener('DOMContentLoaded', () => {
         .catch(error => {
             console.error('Error uploading or processing .llmie file:', error);
             resetUploadState(`Error: ${error.message}`);
-            // alert(`Error processing file: ${error.message}`); // Alerting in resetUploadState now
         });
     }
 
     // --- Event Listeners for File Upload ---
     if (llmieUploadArea && llmieFileInput) {
         llmieUploadArea.addEventListener('click', () => {
-            llmieFileInput.click(); // Trigger hidden file input
+            llmieFileInput.click(); 
         });
 
         llmieFileInput.addEventListener('change', (event) => {
@@ -108,7 +105,6 @@ document.addEventListener('DOMContentLoaded', () => {
             handleFile(file);
         });
 
-        // Drag and Drop
         llmieUploadArea.addEventListener('dragover', (event) => {
             event.preventDefault(); 
             llmieUploadArea.classList.add('dragover');
@@ -141,10 +137,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const payload = {
                 text: text,
-                frames: frames, // These are lists of dictionaries
-                relations: relations, // This is a list of dictionaries
+                frames: frames, 
+                relations: relations, 
                 vizOptions: {
-                    color_attr_key: colorKey || null // Send null if empty or "None" selected
+                    color_attr_key: colorKey || null 
                 }
             };
 
@@ -181,7 +177,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (error) {
                 console.error('Error rendering visualization:', error);
-                // Don't resetUploadState here unless desired, as the file is still "loaded"
                 if (vizOutputDiv) vizOutputDiv.innerHTML = `<p style="color: red;">Error rendering visualization: ${error.message}</p>`;
             }
         });
@@ -190,5 +185,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Initial reset when the page loads
-    resetUploadState();
+    resetUploadState(); 
+    // Ensure rv-color-key-group is visible if it was hidden by CSS and not inline style
+    if (colorKeyGroupDiv && getComputedStyle(colorKeyGroupDiv).display === 'none') {
+        colorKeyGroupDiv.style.display = 'block'; // Or 'flex' or appropriate display type
+    }
 });
