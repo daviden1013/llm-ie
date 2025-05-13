@@ -66,21 +66,18 @@ def create_llm_engine(config: dict) -> InferenceEngine:
         elif api_type == "openai":
             model = config.get('openai_model')
             api_key = config.get('openai_api_key') or None
-            reasoning_model = config.get('openai_reasoning_model', False)
             if not model:
                  raise ValueError("Missing 'model' for OpenAI.")
-            return OpenAIInferenceEngine(model=model, api_key=api_key, reasoning_model=reasoning_model)
+            return OpenAIInferenceEngine(model=model, api_key=api_key)
         elif api_type == "azure_openai":
             deployment = config.get('azure_deployment_name')
             api_key = config.get('azure_openai_api_key') or None
             endpoint = config.get('azure_endpoint') or None
             api_version = config.get('azure_api_version') or None
-            reasoning_model = config.get('azure_reasoning_model', False)
             if not deployment or not api_version:
                  raise ValueError("Missing 'deployment_name' or 'api_version' for Azure OpenAI.")
             return AzureOpenAIInferenceEngine(
-                model=deployment, api_key=api_key, azure_endpoint=endpoint,
-                api_version=api_version, reasoning_model=reasoning_model
+                model=deployment, api_key=api_key, azure_endpoint=endpoint, api_version=api_version
             )
         elif api_type == "litellm":
             model_str = config.get('litellm_model')
