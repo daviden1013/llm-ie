@@ -222,14 +222,6 @@ main {
     overflow: hidden;
 }
 
-/* Style for the toggle button when ITS PARENT (.control-panel) is minimized */
-.control-panel.minimized .panel-toggle-button {
-    /* It already inherits position: absolute, top, left, right, background, border, etc.
-       from .control-panel .panel-toggle-button.
-       No transform is needed as it's already left-aligned. */
-    /* The key is that `left: 15px` will now be 15px from the edge of the 60px wide panel. */
-}
-
 /* Hide other content when panel is minimized */
 .control-panel.minimized > *:not(.panel-toggle-button) {
     display: none;
