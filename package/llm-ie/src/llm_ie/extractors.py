@@ -852,11 +852,15 @@ class DirectFrameExtractor(FrameExtractor):
                     entity_text = res.text[start:end]
                     start += res.start
                     end += res.start
+                    attr = {}
+                    if "attr" in ent and ent["attr"] is not None:
+                        attr = ent["attr"]
+                       
                     frame = LLMInformationExtractionFrame(frame_id=f"{len(frame_list)}", 
                                 start=start,
                                 end=end,
                                 entity_text=entity_text,
-                                attr=ent["attr"] if "attr" in ent else {})
+                                attr=attr)
                     frame_list.append(frame)
 
         if return_messages_log:
