@@ -107,7 +107,7 @@ class LLMInformationExtractionFrame:
         if attr:
             self.attr = attr.copy()
         else:
-            self.attr = None
+            self.attr = {}
 
     def is_equal(self, frame:"LLMInformationExtractionFrame") -> bool:
         """ 
