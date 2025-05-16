@@ -16,6 +16,7 @@ An LLM-powered tool that transforms everyday language into robust information ex
 
 ## 🆕Recent Updates
 - [v1.0.0](https://github.com/daviden1013/llm-ie/releases/tag/v1.0.0) (May 15, 2025): 
+  - 📐**User Guide** is now moved to [Documentation Page](https://daviden1013.github.io/llm-ie/)
   - **Web Application** provides drag-and-drop access to *LLM-IE*.
   - **Refactored `FrameExtractor`** by separating chunking methods (e.g., sentence) and prompting method (e.g., review). Chunking is now defined in `UnitChunker` and `ContextChunker`, while `FrameExtractor` defines prompting method. 
   - **Documentation website**. User guide and API reference is now available on []().
@@ -300,7 +301,7 @@ Stream frame extraction and download outputs.
   - [NER + RE for Drug, Strength, Frequency](demo/medication_relation_extraction.ipynb)
 
 ## 📐User Guide
-The detailed User Guide has been moved to our documentation site: Read the User Guide here
+The detailed User Guide is available on our [Documentation Page](https://daviden1013.github.io/llm-ie/)
 
 ## 📊Benchmarks
 We benchmarked the frame and relation extractors on biomedical information extraction tasks. The results and experiment code is available on [this page](https://github.com/daviden1013/LLM-IE_Benchmark).
