@@ -1,33 +1,55 @@
-import sys
-sys.path.insert(0, r"/home/daviden1013/David_projects/llm-ie/src")
-
-from llm_ie.engines import OllamaInferenceEngine
-from llm_ie.extractors import SentenceFrameExtractor
-from llm_ie.prompt_editor import PromptEditor
-
+import os
+from llm_ie import OpenAIInferenceEngine, DirectFrameExtractor, PromptEditor, SentenceUnitChunker, SlideWindowContextChunker
 
 # Load synthesized medical note
 with open("/home/daviden1013/David_projects/llm-ie/demo/document/synthesized_note.txt", 'r') as f:
     note_text = f.read()
 
 # Define a LLM inference engine
-llm = OllamaInferenceEngine(model_name="llama3.1:8b-instruct-q8_0")
-
-# Describe the task in casual language
-prompt_draft = "Extract diagnosis from the clinical note. Make sure to include diagnosis date and status."
+llm = OpenAIInferenceEngine(base_url="https://openrouter.ai/api/v1", model="meta-llama/llama-4-scout", api_key=os.getenv("OPENROUTER_API_KEY"))
 
 # Use LLM to generrate a prompt template
-editor = PromptEditor(llm, SentenceFrameExtractor)
-prompt_template = editor.rewrite(prompt_draft)
-
-# Alternatively, you can chat with the AI editor
+editor = PromptEditor(llm, DirectFrameExtractor)
 editor.chat()
 
+prompt_template = """
+### Task description
+The paragraph below contains a clinical note with diagnoses listed. Please carefully review it and extract the diagnoses, including the diagnosis date and status.
+
+### Schema definition
+Your output should contain: 
+    "entity_text" which is the diagnosis spelled as it appears in the text,
+    "Date" which is the date when the diagnosis was made,
+    "Status" which is the current status of the diagnosis (e.g. active, resolved, etc.)
+
+### Output format definition
+Your output should follow JSON format, for example:
+[
+    {"entity_text": "<Diagnosis>", "attr": {"Date": "<date in YYYY-MM-DD format>", "Status": "<status>"}},
+    {"entity_text": "<Diagnosis>", "attr": {"Date": "<date in YYYY-MM-DD format>", "Status": "<status>"}}
+]
+
+### Additional hints
+- Your output should be 100% based on the provided content. DO NOT output fake information.
+- If there is no specific date or status, just omit those keys.
+
+### Context
+The text below is from the clinical note:
+"{{input}}"
+"""
+
+# Define unit chunker. Prompt sentences-by-sentence.
+unit_chunker = SentenceUnitChunker()
+# Define context chunker. Provides context for units.
+context_chunker = SlideWindowContextChunker(window_size=2)
 # Define extractor
-extractor = SentenceFrameExtractor(llm, prompt_template)
+extractor = DirectFrameExtractor(inference_engine=llm, 
+                                 unit_chunker=unit_chunker,
+                                 context_chunker=context_chunker,
+                                 prompt_template=prompt_template)
 
 # Extract
-frames =  extractor.extract_frames(note_text, entity_key="Diagnosis", concurrent=True)
+frames =  extractor.extract_frames(note_text, max_new_tokens=4096, concurrent=True)
 
 # Check extractions
 len(frames)

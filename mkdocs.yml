@@ -1,0 +1,45 @@
+site_name: LLM-IE Documentation
+theme:
+    name: material
+
+nav:
+    - 'Home': 'index.md'
+    - 'Quick Start': 'quick_start.md'
+    - 'User Guide': 
+      - 'LLM Inference Engine': 'llm_inference_engine.md'
+      - 'Prompt Templates': 'prompt_templates.md'
+      - 'Prompt Editor': 'prompt_editor.md'
+      - 'Extractors': 'extractors.md'
+      - 'Visualization': 'visualization.md'
+      - 'Web Application': 'web_application.md'
+
+    - 'API Reference': 
+        - 'Engines': 'api/engines.md'
+        - 'Extractors': 'api/extractors.md'
+        - 'Chunkers': 'api/chunkers.md'
+        - 'Prompt Editor': 'api/prompt_editor.md'
+
+plugins:
+    - search 
+    - mkdocstrings:
+        handlers:
+          python:
+            options:
+              docstring_style: numpy # Or numpy, sphinx
+              show_root_heading: true
+              show_source: true # Optional: to show a link to the source code
+              members_order: source # Order members as they appear in source
+              # Separate types for class members for cleaner look (Material theme handles this well)
+              separate_signature: true
+              # Show type hints in signatures and descriptions
+              show_signature_annotations: true
+              show_docstring_annotations: true
+              # Merge constructor docstring with class docstring
+              merge_init_into_class: true
+              # Add more options as needed, see mkdocstrings-python docs
+              # https://mkdocstrings.github.io/python/usage/configuration/
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences

@@ -6,3 +6,6 @@ dist/
 test/
 develop/
 .vscode/
+
+docs/release_notes/
+site/
