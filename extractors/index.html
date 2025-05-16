@@ -1,0 +1,1399 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../prompt_editor/">
+      
+      
+        <link rel="next" href="../visualization/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.14">
+    
+    
+      
+        <title>Extractors - LLM-IE Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.342714a4.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#frameextractor" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="LLM-IE Documentation" class="md-header__button md-logo" aria-label="LLM-IE Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LLM-IE Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Extractors
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="LLM-IE Documentation" class="md-nav__button md-logo" aria-label="LLM-IE Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LLM-IE Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quick_start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Quick Start
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    User Guide
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            User Guide
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../llm_inference_engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LLM Inference Engine
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../prompt_templates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Prompt Templates
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../prompt_editor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Prompt Editor
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Extractors
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Extractors
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#frameextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      FrameExtractor
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="FrameExtractor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#directframeextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      DirectFrameExtractor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reviewframeextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      ReviewFrameExtractor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Post-processing
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Post-processing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#json-repair" class="md-nav__link">
+    <span class="md-ellipsis">
+      JSON repair
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#case-sensitive" class="md-nav__link">
+    <span class="md-ellipsis">
+      Case sensitive
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fussy-match" class="md-nav__link">
+    <span class="md-ellipsis">
+      Fussy match
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#entity-overlap" class="md-nav__link">
+    <span class="md-ellipsis">
+      Entity overlap
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#concurrent-optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Concurrent Optimization
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#convenience-frameextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      Convenience FrameExtractor
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Convenience FrameExtractor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basicframeextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      BasicFrameExtractor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#basicreviewframeextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      BasicReviewFrameExtractor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sentenceframeextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      SentenceFrameExtractor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sentencereviewframeextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      SentenceReviewFrameExtractor
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#relationextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      RelationExtractor
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="RelationExtractor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#binaryrelationextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      BinaryRelationExtractor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiclassrelationextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      MultiClassRelationExtractor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#concurrent-optimization_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Concurrent Optimization
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../visualization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Visualization
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../web_application/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Web Application
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            API Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/engines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Engines
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/extractors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Extractors
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/chunkers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Chunkers
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/prompt_editor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Prompt Editor
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#frameextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      FrameExtractor
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="FrameExtractor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#directframeextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      DirectFrameExtractor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reviewframeextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      ReviewFrameExtractor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Post-processing
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Post-processing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#json-repair" class="md-nav__link">
+    <span class="md-ellipsis">
+      JSON repair
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#case-sensitive" class="md-nav__link">
+    <span class="md-ellipsis">
+      Case sensitive
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fussy-match" class="md-nav__link">
+    <span class="md-ellipsis">
+      Fussy match
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#entity-overlap" class="md-nav__link">
+    <span class="md-ellipsis">
+      Entity overlap
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#concurrent-optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Concurrent Optimization
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#convenience-frameextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      Convenience FrameExtractor
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Convenience FrameExtractor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basicframeextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      BasicFrameExtractor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#basicreviewframeextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      BasicReviewFrameExtractor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sentenceframeextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      SentenceFrameExtractor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sentencereviewframeextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      SentenceReviewFrameExtractor
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#relationextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      RelationExtractor
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="RelationExtractor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#binaryrelationextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      BinaryRelationExtractor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiclassrelationextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      MultiClassRelationExtractor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#concurrent-optimization_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Concurrent Optimization
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+  <h1>Extractors</h1>
+
+<p>An extractor implements a prompting algorithm for information extraction. There are two main extractor families: <code>FrameExtractor</code> and <code>RelationExtractor</code>. 
+The <code>FrameExtractor</code> extracts named entities with attributes ("frames"). The <code>RelationExtractor</code> extracts the relations (and relation types) between frames. Under <code>FrameExtractor</code>, we made pre-packaged extractors that does not require much configuation and are often sufficient for regular use case (<a href="#convenience-frameextractor">Convenience FrameExtractor</a>).</p>
+<h2 id="frameextractor">FrameExtractor</h2>
+<p>Frame extractors in general adopts an <strong>unit-context schema</strong>. The purpose is to avoid having LLM to process long context and suffer from <em>needle in the haystack</em> challenge. We split an input document into multiple units. LLM only process a unit of text at a time. </p>
+<ul>
+<li><strong>Unit:</strong> a text snippet that LLM extrator will process at a time. It could be a sentence, a line of text, or a paragraph. </li>
+<li><strong>Context:</strong> the context around the unit. For exapmle, a slidewindow of 2 sentences before and after. Context is optional. </li>
+</ul>
+<p><img alt="unit-context schema" src="/readme_img/unit_context_schema.png" /></p>
+<h3 id="directframeextractor">DirectFrameExtractor</h3>
+<p>The <code>DirectFrameExtractor</code> implements the unit-context schema. We start by defining the unit using one of the <code>UnitChunker</code>. The <code>SentenceUnitChunker</code> chunks the input document into sentences. Then, we define how context should be provided by choosing one of the <code>ContextChunker</code>. The <code>SlideWindowContextChunker</code> parse 2 units (sentences in this case) before and after each unit as context. For more options, see <a href="../api/chunkers/">Chunkers</a>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span> <span class="nn">llm_ie</span> <span class="kn">import</span> <span class="n">DirectFrameExtractor</span><span class="p">,</span> <span class="n">SentenceUnitChunker</span><span class="p">,</span> <span class="n">SlideWindowContextChunker</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">unit_chunker</span> <span class="o">=</span> <span class="n">SentenceUnitChunker</span><span class="p">()</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">context_chunker</span> <span class="o">=</span> <span class="n">SlideWindowContextChunker</span><span class="p">(</span><span class="n">window_size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">extractor</span> <span class="o">=</span> <span class="n">DirectFrameExtractor</span><span class="p">(</span><span class="n">inference_engine</span><span class="o">=</span><span class="n">llm</span><span class="p">,</span> 
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>                                 <span class="n">unit_chunker</span><span class="o">=</span><span class="n">unit_chunker</span><span class="p">,</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>                                 <span class="n">context_chunker</span><span class="o">=</span><span class="n">context_chunker</span><span class="p">,</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>                                 <span class="n">prompt_template</span><span class="o">=</span><span class="n">prompt_template</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="reviewframeextractor">ReviewFrameExtractor</h3>
+<p>The <code>ReviewFrameExtractor</code> is a child of <code>DirectFrameExtractor</code>. It adds a review step after the initial output.
+There are two review modes:</p>
+<ol>
+<li><strong>Addition mode</strong>: add more frames while keeping current. This is efficient for boosting recall. </li>
+<li><strong>Revision mode</strong>: regenerate frames (add new and delete existing). </li>
+</ol>
+<p>Under the <strong>Addition mode</strong> (<code>review_mode="addition"</code>), the <code>review_prompt</code> needs to instruct the LLM not to regenerate existing extractions:</p>
+<p><em>... You should ONLY add new diagnoses. DO NOT regenerate the entire answer.</em></p>
+<p>Under the <strong>Revision mode</strong> (<code>review_mode="revision"</code>), the <code>review_prompt</code> needs to instruct the LLM to regenerate:</p>
+<p><em>... Regenerate your output.</em></p>
+<p>It is recommended to leave the <code>review_prompt=None</code> and use the default, unless there are special needs. </p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span> <span class="nn">llm_ie</span> <span class="kn">import</span> <span class="n">ReviewFrameExtractor</span><span class="p">,</span> <span class="n">SentenceUnitChunker</span><span class="p">,</span> <span class="n">SlideWindowContextChunker</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">unit_chunker</span> <span class="o">=</span> <span class="n">SentenceUnitChunker</span><span class="p">()</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">context_chunker</span> <span class="o">=</span> <span class="n">SlideWindowContextChunker</span><span class="p">(</span><span class="n">window_size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">extractor</span> <span class="o">=</span> <span class="n">ReviewFrameExtractor</span><span class="p">(</span><span class="n">inference_engine</span><span class="o">=</span><span class="n">llm</span><span class="p">,</span> 
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>                                 <span class="n">unit_chunker</span><span class="o">=</span><span class="n">unit_chunker</span><span class="p">,</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>                                 <span class="n">context_chunker</span><span class="o">=</span><span class="n">context_chunker</span><span class="p">,</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>                                 <span class="n">prompt_template</span><span class="o">=</span><span class="n">prompt_template</span><span class="p">,</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>                                 <span class="n">review_mode</span><span class="o">=</span><span class="s2">&quot;addition&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="post-processing">Post-processing</h3>
+<p>Since the output entity text from LLMs might not be consistent with the original text due to the limitations of LLMs, we apply JSON repair, case-sensitive, fuzzy search, and entity overlap settings in post-processing to find the accurate entity span. </p>
+<h4 id="json-repair">JSON repair</h4>
+<p>Automatically detect and fix broken JSON format with <a href="https://github.com/mangiucugna/json_repair">json_repair</a>.</p>
+<h4 id="case-sensitive">Case sensitive</h4>
+<p>set <code>case_sensitive=False</code> to allow matching even when LLM generates inconsistent upper/lower cases. </p>
+<h4 id="fussy-match">Fussy match</h4>
+<p>In the <code>extract_frames()</code> method, setting parameter <code>fuzzy_match=True</code> applies Jaccard similarity matching. The most likely spans will be returned as entity text.</p>
+<h4 id="entity-overlap">Entity overlap</h4>
+<p>Set <code>allow_overlap_entities=True</code> to cpature overlapping entities. Note that this can cause multiple frames to be generated on the same entity span if they have same entity text.</p>
+<h3 id="concurrent-optimization">Concurrent Optimization</h3>
+<p>For concurrent extraction (recommended), set <code>concurrent=True</code> in <code>FrameExtractor.extract_frames</code>. The <code>concurrent_batch_size</code> sets the batch size of units to be processed in cocurrent.</p>
+<h2 id="convenience-frameextractor">Convenience FrameExtractor</h2>
+<p>The <code>DirectFrameExtractor</code> and <code>ReviewFrameExtractor</code> provide flexible interfaces for all settings. However, in most use cases, simple interface is preferred. We pre-package some common (and high performance) settings for convenience. </p>
+<h3 id="basicframeextractor">BasicFrameExtractor</h3>
+<p>The <code>BasicFrameExtractor</code> prompts LLM with the entire document.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span> <span class="nn">llm_ie</span> <span class="kn">import</span> <span class="n">BasicFrameExtractor</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">extractor</span> <span class="o">=</span> <span class="n">BasicFrameExtractor</span><span class="p">(</span><span class="n">inference_engine</span><span class="p">,</span> <span class="n">prompt_template</span><span class="p">)</span>
+</code></pre></div>
+<p>It is equivalent to:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span> <span class="nn">llm_ie</span> <span class="kn">import</span> <span class="n">DirectFrameExtractor</span><span class="p">,</span> <span class="n">WholeDocumentUnitChunker</span><span class="p">,</span> <span class="n">NoContextChunker</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">unit_chunker</span> <span class="o">=</span> <span class="n">WholeDocumentUnitChunker</span><span class="p">()</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">context_chunker</span> <span class="o">=</span> <span class="n">NoContextChunker</span><span class="p">()</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">extractor</span> <span class="o">=</span> <span class="n">DirectFrameExtractor</span><span class="p">(</span><span class="n">inference_engine</span><span class="o">=</span><span class="n">llm</span><span class="p">,</span> 
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>                                 <span class="n">unit_chunker</span><span class="o">=</span><span class="n">unit_chunker</span><span class="p">,</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>                                 <span class="n">context_chunker</span><span class="o">=</span><span class="n">context_chunker</span><span class="p">,</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>                                 <span class="n">prompt_template</span><span class="o">=</span><span class="n">prompt_template</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="basicreviewframeextractor">BasicReviewFrameExtractor</h3>
+<p>Similar to the <code>BasicFrameExtractor</code>, but adds a revieww step after the initial outputs.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span> <span class="nn">llm_ie</span> <span class="kn">import</span> <span class="n">BasicReviewFrameExtractor</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">extractor</span> <span class="o">=</span> <span class="n">BasicReviewFrameExtractor</span><span class="p">(</span><span class="n">inference_engine</span><span class="p">,</span> <span class="n">prompt_template</span><span class="p">,</span> <span class="n">review_mode</span><span class="o">=</span><span class="s2">&quot;revision&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>This is equivalent to:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span> <span class="nn">llm_ie</span> <span class="kn">import</span> <span class="n">ReviewFrameExtractor</span><span class="p">,</span> <span class="n">WholeDocumentUnitChunker</span><span class="p">,</span> <span class="n">NoContextChunker</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">unit_chunker</span> <span class="o">=</span> <span class="n">WholeDocumentUnitChunker</span><span class="p">()</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">context_chunker</span> <span class="o">=</span> <span class="n">NoContextChunker</span><span class="p">()</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">extractor</span> <span class="o">=</span> <span class="n">ReviewFrameExtractor</span><span class="p">(</span><span class="n">inference_engine</span><span class="o">=</span><span class="n">llm</span><span class="p">,</span> 
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>                                 <span class="n">unit_chunker</span><span class="o">=</span><span class="n">unit_chunker</span><span class="p">,</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>                                 <span class="n">context_chunker</span><span class="o">=</span><span class="n">context_chunker</span><span class="p">,</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>                                 <span class="n">prompt_template</span><span class="o">=</span><span class="n">prompt_template</span><span class="p">,</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>                                 <span class="n">review_mode</span><span class="o">=</span><span class="s2">&quot;revision&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="sentenceframeextractor">SentenceFrameExtractor</h3>
+<p>The <code>SentenceFrameExtractor</code> prompts LLMs to extract sentence-by-sentence. The <code>context_sentences</code> sets number of sentences before and after the sentence of interest to provide additional context. When <code>context_sentences=2</code>, 2 sentences before and 2 sentences after are included in the user prompt as context. When <code>context_sentences="all"</code>, the entire document is included as context. When <code>context_sentences=0</code>, no context is provided and LLM will only extract based on the current sentence of interest.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span> <span class="nn">llm_ie</span> <span class="kn">import</span> <span class="n">SentenceFrameExtractor</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="c1"># slide window of 2 sentences as context</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">extractor</span> <span class="o">=</span> <span class="n">SentenceFrameExtractor</span><span class="p">(</span><span class="n">inference_engine</span><span class="p">,</span> <span class="n">prompt_template</span><span class="p">,</span> <span class="n">context_sentences</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+</code></pre></div>
+<p>It is equivalent to:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span> <span class="nn">llm_ie</span> <span class="kn">import</span> <span class="n">DirectFrameExtractor</span><span class="p">,</span> <span class="n">SentenceUnitChunker</span><span class="p">,</span> <span class="n">SlideWindowContextChunker</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">unit_chunker</span> <span class="o">=</span> <span class="n">SentenceUnitChunker</span><span class="p">()</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">context_chunker</span> <span class="o">=</span> <span class="n">SlideWindowContextChunker</span><span class="p">(</span><span class="n">window_size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="n">extractor</span> <span class="o">=</span> <span class="n">DirectFrameExtractor</span><span class="p">(</span><span class="n">inference_engine</span><span class="o">=</span><span class="n">llm</span><span class="p">,</span> 
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>                                 <span class="n">unit_chunker</span><span class="o">=</span><span class="n">unit_chunker</span><span class="p">,</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>                                 <span class="n">context_chunker</span><span class="o">=</span><span class="n">context_chunker</span><span class="p">,</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>                                 <span class="n">prompt_template</span><span class="o">=</span><span class="n">prompt_template</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="sentencereviewframeextractor">SentenceReviewFrameExtractor</h3>
+<p>The <code>SentenceReviewFrameExtractor</code> performs sentence-level extraction and review. The example below use no context, revision review mode.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span> <span class="nn">llm_ie</span> <span class="kn">import</span> <span class="n">SentenceReviewFrameExtractor</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">extractor</span> <span class="o">=</span> <span class="n">SentenceReviewFrameExtractor</span><span class="p">(</span><span class="n">inference_engine</span><span class="p">,</span> <span class="n">prompt_temp</span><span class="p">,</span> <span class="n">context_sentences</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">review_mode</span><span class="o">=</span><span class="s2">&quot;revision&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>It is equivalent to:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span> <span class="nn">llm_ie</span> <span class="kn">import</span> <span class="n">ReviewFrameExtractor</span><span class="p">,</span> <span class="n">SentenceUnitChunker</span><span class="p">,</span> <span class="n">NoContextChunker</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">unit_chunker</span> <span class="o">=</span> <span class="n">SentenceUnitChunker</span><span class="p">()</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">context_chunker</span> <span class="o">=</span> <span class="n">NoContextChunker</span><span class="p">()</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">extractor</span> <span class="o">=</span> <span class="n">ReviewFrameExtractor</span><span class="p">(</span><span class="n">inference_engine</span><span class="o">=</span><span class="n">llm</span><span class="p">,</span> 
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>                                 <span class="n">unit_chunker</span><span class="o">=</span><span class="n">unit_chunker</span><span class="p">,</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>                                 <span class="n">context_chunker</span><span class="o">=</span><span class="n">context_chunker</span><span class="p">,</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>                                 <span class="n">prompt_template</span><span class="o">=</span><span class="n">prompt_template</span><span class="p">,</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>                                 <span class="n">review_mode</span><span class="o">=</span><span class="s2">&quot;revision&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="relationextractor">RelationExtractor</h2>
+<p>Relation extractors prompt LLM with combinations of two frames from a document (<code>LLMInformationExtractionDocument</code>) and extract relations.
+The <code>BinaryRelationExtractor</code> extracts binary relations (yes/no) between two frames. The <code>MultiClassRelationExtractor</code> extracts relations and assign relation types ("multi-class"). </p>
+<p>An important feature of the relation extractors is that users are required to define a <code>possible_relation_func</code> or <code>possible_relation_types_func</code> function for the extractors. The reason is, there are too many possible combinations of two frames (N choose 2 combinations). The <code>possible_relation_func</code> helps rule out impossible combinations and therefore, reduce the LLM inferencing burden.</p>
+<h3 id="binaryrelationextractor">BinaryRelationExtractor</h3>
+<p>Use the get_prompt_guide() method to inspect the prompt template guideline for BinaryRelationExtractor.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span> <span class="nn">llm_ie.extractors</span> <span class="kn">import</span> <span class="n">BinaryRelationExtractor</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="nb">print</span><span class="p">(</span><span class="n">BinaryRelationExtractor</span><span class="o">.</span><span class="n">get_prompt_guide</span><span class="p">())</span>
+</code></pre></div></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>Prompt Template Design:
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>1. Task description:
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>   Provide a detailed description of the task, including the background and the type of task (e.g., binary relation extraction). Mention the region of interest (ROI) text. 
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>2. Schema definition: 
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>   List the criterion for relation (True) and for no relation (False).
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>3. Output format definition:
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>   The ouptut must be a dictionary with a key &quot;Relation&quot; (i.e., {&quot;Relation&quot;: &quot;&lt;True or False&gt;&quot;}).
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>4. (optional) Hints:
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>   Provide itemized hints for the information extractors to guide the extraction process.
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>5. (optional) Examples:
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>   Include examples in the format:  
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>    Input: ...  
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>    Output: ...
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>6. Entity 1 full information:
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>   Include a placeholder in the format {{&lt;frame_1&gt;}}
+<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a>
+<a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a>7. Entity 2 full information:
+<a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a>   Include a placeholder in the format {{&lt;frame_2&gt;}}
+<a id="__codelineno-11-24" name="__codelineno-11-24" href="#__codelineno-11-24"></a>
+<a id="__codelineno-11-25" name="__codelineno-11-25" href="#__codelineno-11-25"></a>8. Input placeholders:
+<a id="__codelineno-11-26" name="__codelineno-11-26" href="#__codelineno-11-26"></a>   The template must include a placeholder &quot;{{roi_text}}&quot; for the ROI text.
+<a id="__codelineno-11-27" name="__codelineno-11-27" href="#__codelineno-11-27"></a>
+<a id="__codelineno-11-28" name="__codelineno-11-28" href="#__codelineno-11-28"></a>
+<a id="__codelineno-11-29" name="__codelineno-11-29" href="#__codelineno-11-29"></a>Example:
+<a id="__codelineno-11-30" name="__codelineno-11-30" href="#__codelineno-11-30"></a>
+<a id="__codelineno-11-31" name="__codelineno-11-31" href="#__codelineno-11-31"></a>    # Task description
+<a id="__codelineno-11-32" name="__codelineno-11-32" href="#__codelineno-11-32"></a>    This is a binary relation extraction task. Given a region of interest (ROI) text and two entities from a medical note, indicate the relation existence between the two entities.
+<a id="__codelineno-11-33" name="__codelineno-11-33" href="#__codelineno-11-33"></a>
+<a id="__codelineno-11-34" name="__codelineno-11-34" href="#__codelineno-11-34"></a>    # Schema definition
+<a id="__codelineno-11-35" name="__codelineno-11-35" href="#__codelineno-11-35"></a>        True: if there is a relationship between a medication name (one of the entities) and its strength or frequency (the other entity).
+<a id="__codelineno-11-36" name="__codelineno-11-36" href="#__codelineno-11-36"></a>        False: Otherwise.
+<a id="__codelineno-11-37" name="__codelineno-11-37" href="#__codelineno-11-37"></a>
+<a id="__codelineno-11-38" name="__codelineno-11-38" href="#__codelineno-11-38"></a>    # Output format definition
+<a id="__codelineno-11-39" name="__codelineno-11-39" href="#__codelineno-11-39"></a>    Your output should follow the JSON format:
+<a id="__codelineno-11-40" name="__codelineno-11-40" href="#__codelineno-11-40"></a>    {&quot;Relation&quot;: &quot;&lt;True or False&gt;&quot;}
+<a id="__codelineno-11-41" name="__codelineno-11-41" href="#__codelineno-11-41"></a>
+<a id="__codelineno-11-42" name="__codelineno-11-42" href="#__codelineno-11-42"></a>    I am only interested in the content between []. Do not explain your answer. 
+<a id="__codelineno-11-43" name="__codelineno-11-43" href="#__codelineno-11-43"></a>
+<a id="__codelineno-11-44" name="__codelineno-11-44" href="#__codelineno-11-44"></a>    # Hints
+<a id="__codelineno-11-45" name="__codelineno-11-45" href="#__codelineno-11-45"></a>        1. Your input always contains one medication entity and 1) one strength entity or 2) one frequency entity.
+<a id="__codelineno-11-46" name="__codelineno-11-46" href="#__codelineno-11-46"></a>        2. Pay attention to the medication entity and see if the strength or frequency is for it.
+<a id="__codelineno-11-47" name="__codelineno-11-47" href="#__codelineno-11-47"></a>        3. If the strength or frequency is for another medication, output False. 
+<a id="__codelineno-11-48" name="__codelineno-11-48" href="#__codelineno-11-48"></a>        4. If the strength or frequency is for the same medication but at a different location (span), output False.
+<a id="__codelineno-11-49" name="__codelineno-11-49" href="#__codelineno-11-49"></a>
+<a id="__codelineno-11-50" name="__codelineno-11-50" href="#__codelineno-11-50"></a>    # Entity 1 full information:
+<a id="__codelineno-11-51" name="__codelineno-11-51" href="#__codelineno-11-51"></a>    {{frame_1}}
+<a id="__codelineno-11-52" name="__codelineno-11-52" href="#__codelineno-11-52"></a>
+<a id="__codelineno-11-53" name="__codelineno-11-53" href="#__codelineno-11-53"></a>    # Entity 2 full information:
+<a id="__codelineno-11-54" name="__codelineno-11-54" href="#__codelineno-11-54"></a>    {{frame_2}}
+<a id="__codelineno-11-55" name="__codelineno-11-55" href="#__codelineno-11-55"></a>
+<a id="__codelineno-11-56" name="__codelineno-11-56" href="#__codelineno-11-56"></a>    # Input placeholders
+<a id="__codelineno-11-57" name="__codelineno-11-57" href="#__codelineno-11-57"></a>    ROI Text with the two entities annotated with &lt;entity_1&gt; and &lt;entity_2&gt;:
+<a id="__codelineno-11-58" name="__codelineno-11-58" href="#__codelineno-11-58"></a>    &quot;{{roi_text}}&quot;
+</code></pre></div>
+<p>As an example, we define the <code>possible_relation_func</code> function:
+  - if the two frames are &gt; 500 characters apart, we assume no relation (False)
+  - if the two frames are "Medication" and "Strength", or "Medication" and "Frequency", there could be relations (True)</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="k">def</span> <span class="nf">possible_relation_func</span><span class="p">(</span><span class="n">frame_1</span><span class="p">,</span> <span class="n">frame_2</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="sd">    This function pre-process two frames and outputs a bool indicating whether the two frames could be related.</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    <span class="c1"># if the distance between the two frames are &gt; 500 characters, assume no relation.</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">frame_1</span><span class="o">.</span><span class="n">start</span> <span class="o">-</span> <span class="n">frame_2</span><span class="o">.</span><span class="n">start</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">500</span><span class="p">:</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>        <span class="k">return</span> <span class="kc">False</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>    <span class="c1"># if the entity types are &quot;Medication&quot; and &quot;Strength&quot;, there could be relations.</span>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>    <span class="k">if</span> <span class="p">(</span><span class="n">frame_1</span><span class="o">.</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;entity_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Medication&quot;</span> <span class="ow">and</span> <span class="n">frame_2</span><span class="o">.</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;entity_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Strength&quot;</span><span class="p">)</span> <span class="ow">or</span> \
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>        <span class="p">(</span><span class="n">frame_2</span><span class="o">.</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;entity_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Medication&quot;</span> <span class="ow">and</span> <span class="n">frame_1</span><span class="o">.</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;entity_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Strength&quot;</span><span class="p">):</span>
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>        <span class="k">return</span> <span class="kc">True</span>
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>    <span class="c1"># if the entity types are &quot;Medication&quot; and &quot;Frequency&quot;, there could be relations.</span>
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>    <span class="k">if</span> <span class="p">(</span><span class="n">frame_1</span><span class="o">.</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;entity_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Medication&quot;</span> <span class="ow">and</span> <span class="n">frame_2</span><span class="o">.</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;entity_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Frequency&quot;</span><span class="p">)</span> <span class="ow">or</span> \
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>        <span class="p">(</span><span class="n">frame_2</span><span class="o">.</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;entity_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Medication&quot;</span> <span class="ow">and</span> <span class="n">frame_1</span><span class="o">.</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;entity_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Frequency&quot;</span><span class="p">):</span>
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>        <span class="k">return</span> <span class="kc">True</span>
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>
+<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a>    <span class="c1"># Otherwise, no relation.</span>
+<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a>    <span class="k">return</span> <span class="kc">False</span>
+</code></pre></div>
+<p>In the <code>BinaryRelationExtractor</code> constructor, we pass in the prompt template and <code>possible_relation_func</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span> <span class="nn">llm_ie.extractors</span> <span class="kn">import</span> <span class="n">BinaryRelationExtractor</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="n">extractor</span> <span class="o">=</span> <span class="n">BinaryRelationExtractor</span><span class="p">(</span><span class="n">inference_engine</span><span class="p">,</span> <span class="n">prompt_template</span><span class="o">=</span><span class="n">prompt_template</span><span class="p">,</span> <span class="n">possible_relation_func</span><span class="o">=</span><span class="n">possible_relation_func</span><span class="p">)</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="c1"># Extract binary relations with concurrent mode (faster)</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="n">relations</span> <span class="o">=</span> <span class="n">extractor</span><span class="o">.</span><span class="n">extract_relations</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">concurrent</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="c1"># To print out the step-by-step, use the `concurrent=False` and `stream=True` options</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="n">relations</span> <span class="o">=</span> <span class="n">extractor</span><span class="o">.</span><span class="n">extract_relations</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">concurrent</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">stream</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="multiclassrelationextractor">MultiClassRelationExtractor</h3>
+<p>The main difference from <code>BinaryRelationExtractor</code> is that the <code>MultiClassRelationExtractor</code> allows specifying relation types. The prompt template guideline has an additional placeholder for possible relation types <code>{{pos_rel_types}}</code>. </p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="nb">print</span><span class="p">(</span><span class="n">MultiClassRelationExtractor</span><span class="o">.</span><span class="n">get_prompt_guide</span><span class="p">())</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>Prompt Template Design:
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>1. Task description:
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>   Provide a detailed description of the task, including the background and the type of task (e.g., binary relation extraction). Mention the region of interest (ROI) text. 
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>2. Schema definition: 
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>   List the criterion for relation (True) and for no relation (False).
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>3. Output format definition:
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>   This section must include a placeholder &quot;{{pos_rel_types}}&quot; for the possible relation types.
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>   The ouptut must be a dictionary with a key &quot;RelationType&quot; (i.e., {&quot;RelationType&quot;: &quot;&lt;relation type or No Relation&gt;&quot;}).
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>4. (optional) Hints:
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>   Provide itemized hints for the information extractors to guide the extraction process.
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>5. (optional) Examples:
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>   Include examples in the format:  
+<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>    Input: ...  
+<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>    Output: ...
+<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a>
+<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a>6. Entity 1 full information:
+<a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a>   Include a placeholder in the format {{&lt;frame_1&gt;}}
+<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a>
+<a id="__codelineno-15-23" name="__codelineno-15-23" href="#__codelineno-15-23"></a>7. Entity 2 full information:
+<a id="__codelineno-15-24" name="__codelineno-15-24" href="#__codelineno-15-24"></a>   Include a placeholder in the format {{&lt;frame_2&gt;}}
+<a id="__codelineno-15-25" name="__codelineno-15-25" href="#__codelineno-15-25"></a>
+<a id="__codelineno-15-26" name="__codelineno-15-26" href="#__codelineno-15-26"></a>8. Input placeholders:
+<a id="__codelineno-15-27" name="__codelineno-15-27" href="#__codelineno-15-27"></a>   The template must include a placeholder &quot;{{roi_text}}&quot; for the ROI text.
+<a id="__codelineno-15-28" name="__codelineno-15-28" href="#__codelineno-15-28"></a>
+<a id="__codelineno-15-29" name="__codelineno-15-29" href="#__codelineno-15-29"></a>
+<a id="__codelineno-15-30" name="__codelineno-15-30" href="#__codelineno-15-30"></a>
+<a id="__codelineno-15-31" name="__codelineno-15-31" href="#__codelineno-15-31"></a>Example:
+<a id="__codelineno-15-32" name="__codelineno-15-32" href="#__codelineno-15-32"></a>
+<a id="__codelineno-15-33" name="__codelineno-15-33" href="#__codelineno-15-33"></a>    # Task description
+<a id="__codelineno-15-34" name="__codelineno-15-34" href="#__codelineno-15-34"></a>    This is a multi-class relation extraction task. Given a region of interest (ROI) text and two frames from a medical note, classify the relation types between the two frames. 
+<a id="__codelineno-15-35" name="__codelineno-15-35" href="#__codelineno-15-35"></a>
+<a id="__codelineno-15-36" name="__codelineno-15-36" href="#__codelineno-15-36"></a>    # Schema definition
+<a id="__codelineno-15-37" name="__codelineno-15-37" href="#__codelineno-15-37"></a>        Strength-Drug: this is a relationship between the drug strength and its name. 
+<a id="__codelineno-15-38" name="__codelineno-15-38" href="#__codelineno-15-38"></a>        Dosage-Drug: this is a relationship between the drug dosage and its name.
+<a id="__codelineno-15-39" name="__codelineno-15-39" href="#__codelineno-15-39"></a>        Duration-Drug: this is a relationship between a drug duration and its name.
+<a id="__codelineno-15-40" name="__codelineno-15-40" href="#__codelineno-15-40"></a>        Frequency-Drug: this is a relationship between a drug frequency and its name.
+<a id="__codelineno-15-41" name="__codelineno-15-41" href="#__codelineno-15-41"></a>        Form-Drug: this is a relationship between a drug form and its name.
+<a id="__codelineno-15-42" name="__codelineno-15-42" href="#__codelineno-15-42"></a>        Route-Drug: this is a relationship between the route of administration for a drug and its name.
+<a id="__codelineno-15-43" name="__codelineno-15-43" href="#__codelineno-15-43"></a>        Reason-Drug: this is a relationship between the reason for which a drug was administered (e.g., symptoms, diseases, etc.) and a drug name.
+<a id="__codelineno-15-44" name="__codelineno-15-44" href="#__codelineno-15-44"></a>        ADE-Drug: this is a relationship between an adverse drug event (ADE) and a drug name.
+<a id="__codelineno-15-45" name="__codelineno-15-45" href="#__codelineno-15-45"></a>
+<a id="__codelineno-15-46" name="__codelineno-15-46" href="#__codelineno-15-46"></a>    # Output format definition
+<a id="__codelineno-15-47" name="__codelineno-15-47" href="#__codelineno-15-47"></a>    Choose one of the relation types listed below or choose &quot;No Relation&quot;:
+<a id="__codelineno-15-48" name="__codelineno-15-48" href="#__codelineno-15-48"></a>    {{pos_rel_types}}
+<a id="__codelineno-15-49" name="__codelineno-15-49" href="#__codelineno-15-49"></a>
+<a id="__codelineno-15-50" name="__codelineno-15-50" href="#__codelineno-15-50"></a>    Your output should follow the JSON format:
+<a id="__codelineno-15-51" name="__codelineno-15-51" href="#__codelineno-15-51"></a>    {&quot;RelationType&quot;: &quot;&lt;relation type or No Relation&gt;&quot;}
+<a id="__codelineno-15-52" name="__codelineno-15-52" href="#__codelineno-15-52"></a>
+<a id="__codelineno-15-53" name="__codelineno-15-53" href="#__codelineno-15-53"></a>    I am only interested in the content between []. Do not explain your answer. 
+<a id="__codelineno-15-54" name="__codelineno-15-54" href="#__codelineno-15-54"></a>
+<a id="__codelineno-15-55" name="__codelineno-15-55" href="#__codelineno-15-55"></a>    # Hints
+<a id="__codelineno-15-56" name="__codelineno-15-56" href="#__codelineno-15-56"></a>        1. Your input always contains one medication entity and 1) one strength entity or 2) one frequency entity.
+<a id="__codelineno-15-57" name="__codelineno-15-57" href="#__codelineno-15-57"></a>        2. Pay attention to the medication entity and see if the strength or frequency is for it.
+<a id="__codelineno-15-58" name="__codelineno-15-58" href="#__codelineno-15-58"></a>        3. If the strength or frequency is for another medication, output &quot;No Relation&quot;. 
+<a id="__codelineno-15-59" name="__codelineno-15-59" href="#__codelineno-15-59"></a>        4. If the strength or frequency is for the same medication but at a different location (span), output &quot;No Relation&quot;.
+<a id="__codelineno-15-60" name="__codelineno-15-60" href="#__codelineno-15-60"></a>
+<a id="__codelineno-15-61" name="__codelineno-15-61" href="#__codelineno-15-61"></a>    # Entity 1 full information:
+<a id="__codelineno-15-62" name="__codelineno-15-62" href="#__codelineno-15-62"></a>    {{frame_1}}
+<a id="__codelineno-15-63" name="__codelineno-15-63" href="#__codelineno-15-63"></a>
+<a id="__codelineno-15-64" name="__codelineno-15-64" href="#__codelineno-15-64"></a>    # Entity 2 full information:
+<a id="__codelineno-15-65" name="__codelineno-15-65" href="#__codelineno-15-65"></a>    {{frame_2}}
+<a id="__codelineno-15-66" name="__codelineno-15-66" href="#__codelineno-15-66"></a>
+<a id="__codelineno-15-67" name="__codelineno-15-67" href="#__codelineno-15-67"></a>    # Input placeholders
+<a id="__codelineno-15-68" name="__codelineno-15-68" href="#__codelineno-15-68"></a>    ROI Text with the two entities annotated with &lt;entity_1&gt; and &lt;entity_2&gt;:
+<a id="__codelineno-15-69" name="__codelineno-15-69" href="#__codelineno-15-69"></a>    &quot;{{roi_text}}&quot;
+</code></pre></div>
+<p>As an example, we define the <code>possible_relation_types_func</code> :
+  - if the two frames are &gt; 500 characters apart, we assume "No Relation" (output [])
+  - if the two frames are "Medication" and "Strength", the only possible relation types are "Strength-Drug" or "No Relation"
+  - if the two frames are "Medication" and "Frequency", the only possible relation types are "Frequency-Drug" or "No Relation"</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="k">def</span> <span class="nf">possible_relation_types_func</span><span class="p">(</span><span class="n">frame_1</span><span class="p">,</span> <span class="n">frame_2</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>    <span class="c1"># If the two frames are &gt; 500 characters apart, we assume &quot;No Relation&quot;</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">frame_1</span><span class="o">.</span><span class="n">start</span> <span class="o">-</span> <span class="n">frame_2</span><span class="o">.</span><span class="n">start</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">500</span><span class="p">:</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>        <span class="k">return</span> <span class="p">[]</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>    <span class="c1"># If the two frames are &quot;Medication&quot; and &quot;Strength&quot;, the only possible relation types are &quot;Strength-Drug&quot; or &quot;No Relation&quot;</span>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>    <span class="k">if</span> <span class="p">(</span><span class="n">frame_1</span><span class="o">.</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;entity_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Medication&quot;</span> <span class="ow">and</span> <span class="n">frame_2</span><span class="o">.</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;entity_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Strength&quot;</span><span class="p">)</span> <span class="ow">or</span> \
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>        <span class="p">(</span><span class="n">frame_2</span><span class="o">.</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;entity_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Medication&quot;</span> <span class="ow">and</span> <span class="n">frame_1</span><span class="o">.</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;entity_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Strength&quot;</span><span class="p">):</span>
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>        <span class="k">return</span> <span class="p">[</span><span class="s1">&#39;Strength-Drug&#39;</span><span class="p">]</span>
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>    <span class="c1"># If the two frames are &quot;Medication&quot; and &quot;Frequency&quot;, the only possible relation types are &quot;Frequency-Drug&quot; or &quot;No Relation&quot;</span>
+<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a>    <span class="k">if</span> <span class="p">(</span><span class="n">frame_1</span><span class="o">.</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;entity_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Medication&quot;</span> <span class="ow">and</span> <span class="n">frame_2</span><span class="o">.</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;entity_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Frequency&quot;</span><span class="p">)</span> <span class="ow">or</span> \
+<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>        <span class="p">(</span><span class="n">frame_2</span><span class="o">.</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;entity_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Medication&quot;</span> <span class="ow">and</span> <span class="n">frame_1</span><span class="o">.</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;entity_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Frequency&quot;</span><span class="p">):</span>
+<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>        <span class="k">return</span> <span class="p">[</span><span class="s1">&#39;Frequency-Drug&#39;</span><span class="p">]</span>
+<a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a>
+<a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a>    <span class="k">return</span> <span class="p">[]</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kn">from</span> <span class="nn">llm_ie.extractors</span> <span class="kn">import</span> <span class="n">MultiClassRelationExtractor</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="n">extractor</span> <span class="o">=</span> <span class="n">MultiClassRelationExtractor</span><span class="p">(</span><span class="n">inference_engine</span><span class="p">,</span> <span class="n">prompt_template</span><span class="o">=</span><span class="n">re_prompt_template</span><span class="p">,</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>                                        <span class="n">possible_relation_types_func</span><span class="o">=</span><span class="n">possible_relation_types_func</span><span class="p">)</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="c1"># Extract multi-class relations with concurrent mode (faster)</span>
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="n">relations</span> <span class="o">=</span> <span class="n">extractor</span><span class="o">.</span><span class="n">extract_relations</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">concurrent</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a><span class="c1"># To print out the step-by-step, use the `concurrent=False` and `stream=True` options</span>
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a><span class="n">relations</span> <span class="o">=</span> <span class="n">extractor</span><span class="o">.</span><span class="n">extract_relations</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">concurrent</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">stream</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="concurrent-optimization_1">Concurrent Optimization</h3>
+<p>For concurrent extraction (recommended), the <code>async/await</code> feature is used to speed up inferencing. Set <code>concurrent=True</code> in <code>RelationExtractor.extract_relations</code>. The <code>concurrent_batch_size</code> sets the batch size of frame pairs to be processed in cocurrent.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.13a4f30d.min.js"></script>
+      
+    
+  </body>
+</html>
