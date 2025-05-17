@@ -235,6 +235,28 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../web_application/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Web Application
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
     
     
     
@@ -244,10 +266,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
   
@@ -260,8 +282,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             User Guide
           </label>
@@ -382,29 +404,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../web_application/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Web Application
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -427,10 +426,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
             
   
   
@@ -443,8 +442,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             API Reference
           </label>
@@ -584,6 +583,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#documentation-site" class="md-nav__link">
+    <span class="md-ellipsis">
+      Documentation Site
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#web-application" class="md-nav__link">
     <span class="md-ellipsis">
       Web Application
@@ -709,6 +717,8 @@
   <h1>V1.0.0</h1>
 
 <h2 id="highlights">⚡Highlights</h2>
+<h3 id="documentation-site">Documentation Site</h3>
+<p>User guide, API reference, and documentation are moved to a dedicated <a href="https://daviden1013.github.io/llm-ie/">Documentation Page</a>.</p>
 <h3 id="web-application">Web Application</h3>
 <p>We provide a drag-and-drop web Application for no-code access to the <em>LLM-IE</em>. The web Application streamlines the workflow:</p>
 <ol>
@@ -719,13 +729,13 @@
 </ol>
 <h4 id="prompt-editor-tab">Prompt Editor Tab</h4>
 <p>Select an LLM API (e.g., OpenAI, Azure, Ollama, Huggingface Hub) and LLM. Describe your task and the Prompt Editor LLM agent behind the scene will help construct a structured prompt template.</p>
-<p><img alt="web_app_prompt_editor" src="https://github.com/daviden1013/llm-ie/docs/readme_img/web_app_prompt_editor.PNG" /></p>
+<p><img alt="web_app_prompt_editor" src="https://github.com/daviden1013/llm-ie/blob/main/docs/readme_img/web_app_prompt_editor.PNG" /></p>
 <h4 id="frame-extraction-tab">Frame Extraction Tab</h4>
 <p>Select an inferencing API and specify an LLM. In the "Input Text" textbox, paste the document text that you want to process. In the "Prompt Template" textbox, paste the prompt template you obtained from the previous step. Click on the "Start Extraction" button and watch LLM processes unit-by-unit on the right panel. </p>
-<p><img alt="web_app_frame_extractor" src="https://github.com/daviden1013/llm-ie/docs/readme_img/web_app_frame_extraction.PNG" /></p>
+<p><img alt="web_app_frame_extractor" src="https://github.com/daviden1013/llm-ie/blob/main/docs/readme_img/web_app_frame_extraction.PNG" /></p>
 <h4 id="result-viewer-tab">Result Viewer Tab</h4>
 <p>Drop the result file from the previous step. Optionally, select the attribute key in the dropdown for color coding.</p>
-<p><img alt="web_app_result_viewer" src="https://github.com/daviden1013/llm-ie/docs/readme_img/web_app_result_viewer.PNG" /></p>
+<p><img alt="web_app_result_viewer" src="https://github.com/daviden1013/llm-ie/blob/main/docs/readme_img/web_app_result_viewer.PNG" /></p>
 <h3 id="refactored-frame-extractor">Refactored Frame Extractor</h3>
 <p>The <code>FrameExtractor</code> has been developed over time. As new methods been added, we kept adding new classes (e.g., Sentence Review) which is exhausive. The new design separates chunking methods (e.g., while document, sentence, paragraph) and prompting method (e.g., direct and review). Chunking is now defined in <code>UnitChunker</code> and <code>ContextChunker</code>, while <code>FrameExtractor</code> defines prompting method. </p>
 <p>For example, what used to be  <code>SentenceReviewFrameExtractor</code> for sentence-level extraction and review.</p>
