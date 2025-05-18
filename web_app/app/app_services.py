@@ -5,7 +5,6 @@ from llm_ie.engines import (
     InferenceEngine, OllamaInferenceEngine, OpenAIInferenceEngine, AzureOpenAIInferenceEngine,
     HuggingFaceHubInferenceEngine, LiteLLMInferenceEngine
 )
-from llm_ie.extractors import DirectFrameExtractor # Base class for AppDirectFrameExtractor
 from llm_ie.chunkers import (
     SentenceUnitChunker,
     WholeDocumentUnitChunker,

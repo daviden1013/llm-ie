@@ -37,8 +37,7 @@ class AppDirectFrameExtractor(DirectFrameExtractor):
                          context_chunker=context_chunker,
                          **kwrs)
 
-    def stream(self, text_content: Union[str, Dict[str, str]], max_new_tokens: int = 2048, document_key: str = None, 
-               temperature: float = 0.0, qwen_no_think:bool=True, **kwrs) -> Generator[Dict[str, Any], None, List[FrameExtractionUnitResult]]:
+    def stream(self, text_content: Union[str, Dict[str, str]], document_key: str = None) -> Generator[Dict[str, Any], None, List[FrameExtractionUnitResult]]:
         """
         Streams LLM responses per unit with structured event types,
         and returns collected data for post-processing.
@@ -95,33 +94,28 @@ class AppDirectFrameExtractor(DirectFrameExtractor):
                     prompt_input_for_context = context_content_dict
                 messages.append({'role': 'user', 'content': self._get_user_prompt(prompt_input_for_context)})
                 messages.append({'role': 'assistant', 'content': 'Sure, please provide the unit text (e.g., sentence, line, chunk) of interest.'})
-                if qwen_no_think:
-                    messages.append({'role': 'user', 'content': "/no_think" + unit.text})
-                else:
-                    messages.append({'role': 'user', 'content': unit.text})
+                messages.append({'role': 'user', 'content': unit.text})
             else: # No context
                 prompt_input_for_unit = unit.text
                 if isinstance(text_content, dict):
                     unit_content_dict = text_content.copy()
                     unit_content_dict[document_key] = unit.text
                     prompt_input_for_unit = unit_content_dict
-                if qwen_no_think:
-                    messages.append({'role': 'user', 'content': "/no_think" + self._get_user_prompt(prompt_input_for_unit)})
-                else:
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(prompt_input_for_unit)})
+             
+                messages.append({'role': 'user', 'content': self._get_user_prompt(prompt_input_for_unit)})
 
             current_gen_text = ""
 
             response_stream = self.inference_engine.chat(
                 messages=messages,
-                max_new_tokens=max_new_tokens,
-                temperature=temperature,
-                stream=True,
-                **kwrs
+                stream=True
             )
+            # chunk is a generator Dict[str, str]. {"type": "response", "data": <token>} or {"type": "reasoning", "data": <token>}
             for chunk in response_stream:
-                yield {"type": "llm_chunk", "data": chunk}
-                current_gen_text += chunk
+                yield chunk
+                # only collect the response chunks (not reasoning)
+                if chunk.get("type") == "response":
+                    current_gen_text += chunk
            
             # Store the result for this unit
             result_for_unit = FrameExtractionUnitResult(
@@ -137,7 +131,7 @@ class AppDirectFrameExtractor(DirectFrameExtractor):
 
     def post_process_frames(self, extraction_results:List[FrameExtractionUnitResult],
                             case_sensitive:bool=False, fuzzy_match:bool=True, fuzzy_buffer_size:float=0.2, fuzzy_score_cutoff:float=0.8,
-                            allow_overlap_entities:bool=False, return_messages_log:bool=False, **kwrs) -> List[LLMInformationExtractionFrame]:
+                            allow_overlap_entities:bool=False, return_messages_log:bool=False) -> List[LLMInformationExtractionFrame]:
         """
         This method inputs a text and outputs a list of LLMInformationExtractionFrame
         It use the extract() method and post-process outputs into frames.

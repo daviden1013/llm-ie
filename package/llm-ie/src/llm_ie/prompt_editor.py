@@ -67,7 +67,7 @@ class PromptEditor:
         return prompt
     
 
-    def rewrite(self, draft:str, **kwrs) -> str:
+    def rewrite(self, draft:str) -> str:
         """
         This method inputs a prompt draft and rewrites it following the extractor's guideline.
         """
@@ -79,10 +79,10 @@ class PromptEditor:
                                              prompt_template=rewrite_prompt_template)
         messages = [{"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": prompt}]
-        res = self.inference_engine.chat(messages, verbose=True, **kwrs)
+        res = self.inference_engine.chat(messages, verbose=True)
         return res
     
-    def comment(self, draft:str, **kwrs) -> str:
+    def comment(self, draft:str) -> str:
         """
         This method inputs a prompt draft and comment following the extractor's guideline.
         """
@@ -94,11 +94,11 @@ class PromptEditor:
                                              prompt_template=comment_prompt_template)
         messages = [{"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": prompt}]
-        res = self.inference_engine.chat(messages, verbose=True, **kwrs)
+        res = self.inference_engine.chat(messages, verbose=True)
         return res
     
 
-    def _terminal_chat(self, **kwrs):
+    def _terminal_chat(self):
         """
         This method runs an interactive chat session in the terminal to help users write prompt templates.
         """
@@ -126,11 +126,11 @@ class PromptEditor:
             # Chat
             messages.append({"role": "user", "content": user_input})
             print(f"{Fore.BLUE}Assistant: {Style.RESET_ALL}", end="")
-            response = self.inference_engine.chat(messages, verbose=True, **kwrs)
+            response = self.inference_engine.chat(messages, verbose=True)
             messages.append({"role": "assistant", "content": response})
             
 
-    def _IPython_chat(self, **kwrs):
+    def _IPython_chat(self):
         """
         This method runs an interactive chat session in Jupyter/IPython using ipywidgets to help users write prompt templates.
         """
@@ -186,7 +186,7 @@ class PromptEditor:
 
             # Get assistant's response and append it to conversation
             print("Assistant: ", end="")
-            response = self.inference_engine.chat(messages, verbose=True, **kwrs)
+            response = self.inference_engine.chat(messages, verbose=True)
             messages.append({"role": "assistant", "content": response})
 
             # Display the assistant's response
@@ -200,16 +200,16 @@ class PromptEditor:
         display(input_box)
         display(output_area)
 
-    def chat(self, **kwrs):
+    def chat(self):
         """
         External method that detects the environment and calls the appropriate chat method.
         """
         if 'ipykernel' in sys.modules:
-            self._IPython_chat(**kwrs)
+            self._IPython_chat()
         else:
-            self._terminal_chat(**kwrs)
+            self._terminal_chat()
 
-    def chat_stream(self, messages: List[Dict[str, str]], **kwrs) -> Generator[str, None, None]:
+    def chat_stream(self, messages: List[Dict[str, str]]) -> Generator[str, None, None]:
         """
         This method processes messages and yields response chunks from the inference engine.
         This is for frontend App.
@@ -239,5 +239,5 @@ class PromptEditor:
                     {"role": "user", "content": prompt}] + messages
         
 
-        stream_generator = self.inference_engine.chat(messages, stream=True, **kwrs)
+        stream_generator = self.inference_engine.chat(messages, stream=True)
         yield from stream_generator
