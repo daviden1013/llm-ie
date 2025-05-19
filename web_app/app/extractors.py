@@ -48,7 +48,8 @@ class AppDirectFrameExtractor(DirectFrameExtractor):
             - {"type": "info", "data": str_message}: General informational messages.
             - {"type": "unit", "data": dict_unit_info}: Signals start of a new unit. dict_unit_info contains {'id', 'text', 'start', 'end'}
             - {"type": "context", "data": str_context}: Context string for the current unit.
-            - {"type": "llm_chunk", "data": str_chunk}: A raw chunk from the LLM.
+            - {"type": "reasoning", "data": str_chunk}: A reasoning model thinking chunk from the LLM.
+            - {"type": "response", "data": str_chunk}: A response/answer chunk from the LLM.
 
         Returns:
         --------
@@ -112,10 +113,10 @@ class AppDirectFrameExtractor(DirectFrameExtractor):
             )
             # chunk is a generator Dict[str, str]. {"type": "response", "data": <token>} or {"type": "reasoning", "data": <token>}
             for chunk in response_stream:
-                yield chunk
                 # only collect the response chunks (not reasoning)
                 if chunk.get("type") == "response":
-                    current_gen_text += chunk
+                    yield chunk
+                    current_gen_text += chunk.get("data", "")
            
             # Store the result for this unit
             result_for_unit = FrameExtractionUnitResult(

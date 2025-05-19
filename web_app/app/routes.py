@@ -19,6 +19,7 @@ from .app_services import (
 # Data types from your llm_ie library (if needed directly in routes, otherwise services handle them)
 from llm_ie.data_types import LLMInformationExtractionDocument, LLMInformationExtractionFrame
 from llm_ie.prompt_editor import PromptEditor
+from llm_ie.engines import BasicLLMConfig, OpenAIReasoningLLMConfig, Qwen3LLMConfig
 from llm_ie.extractors import DirectFrameExtractor # For PromptEditor type hint
 
 # LLM API Options to pass to the template (could also be managed in app/__init__.py)
@@ -47,42 +48,49 @@ def application_shell():
 
 @main_bp.route('/api/prompt-editor/chat', methods=['POST'])
 def api_prompt_editor_chat():
-    """
-    Handles chat requests for the Prompt Editor.
-    Streams responses from the LLM.
-    """
     data = request.json
     messages = data.get('messages', [])
-    llm_config_from_request = data.get('llmConfig', {}) # Renamed to avoid conflict
+    llm_config_from_request = data.get('llmConfig', {})
 
     if not messages:
         return jsonify({"error": "No messages provided"}), 400
     if not llm_config_from_request or not llm_config_from_request.get('api_type'):
         return jsonify({"error": "LLM API configuration ('api_type') is missing"}), 400
-
+    
     try:
+        # create_llm_engine_from_config now handles temperature and max_tokens via LLMConfig
         engine_to_use = create_llm_engine_from_config(llm_config_from_request)
         current_app.logger.info(f"PromptEditor: Successfully created engine: {type(engine_to_use).__name__}")
-        editor = PromptEditor(engine_to_use, DirectFrameExtractor)
+        # DirectFrameExtractor is a placeholder for the type expected by PromptEditor
+        editor = PromptEditor(engine_to_use, DirectFrameExtractor) 
 
         def generate_chat_stream():
             try:
-                temperature = float(llm_config_from_request.get('temperature', 0.2))
-                max_new_tokens = int(llm_config_from_request.get('max_tokens', 4096))
-
-                # Call the editor's chat_stream method
+                # Temperature and max_new_tokens are now handled by the engine's config
+                # So, they are NOT passed to chat_stream directly anymore
                 stream = editor.chat_stream(
-                    messages=messages,
-                    temperature=temperature,
-                    max_new_tokens=max_new_tokens
+                    messages=messages
                 )
                 for chunk in stream:
-                    yield f"data: {json.dumps({'text': chunk})}\n\n"
+                    # The event stream from chat_stream should be a dict like {"type": "response", "data": chunk_content}
+                    # or {"type": "reasoning", "data": chunk_content}
+                    # Ensure your frontend handles this structure if it's different from just `chunk`.
+                    # Based on your `llm_ie.engines.BasicLLMConfig.postprocess_response` and `OpenAIReasoningLLMConfig.postprocess_response`
+                    # the stream yields dicts like `{'type': 'response', 'data': chunk}` or `{'type': 'reasoning', 'data': chunk}`.
+                    # The original code `yield f"data: {json.dumps({'text': chunk})}\n\n"` might need adjustment
+                    # if `chunk` itself is already a dictionary from the new `chat_stream`.
+                    # Assuming `chunk` from `editor.chat_stream` is now the string content directly:
+                    chunk_token = chunk.get("data", "")
+                    yield f"data: {json.dumps({'text': chunk_token})}\n\n" # If chat_stream yields string chunks
+                    # If chat_stream yields dicts like {'type': 'response', 'data': 'text_chunk'}:
+                    # yield f"data: {json.dumps(chunk)}\n\n"
+
+
             except Exception as e:
                 current_app.logger.error(f"Error during PromptEditor stream generation: {e}\n{traceback.format_exc()}")
                 yield f"data: {json.dumps({'error': f'Stream generation failed: {type(e).__name__} - {str(e)}'})}\n\n"
             finally:
-                yield "event: end\ndata: {}\n\n" # Signal end of stream
+                yield "event: end\ndata: {}\n\n" 
 
         return Response(stream_with_context(generate_chat_stream()), mimetype='text/event-stream')
 
@@ -114,6 +122,7 @@ def api_frame_extraction_stream():
         return jsonify({"error": "LLM API configuration ('api_type') is missing"}), 400
 
     try:
+        # create_llm_engine_from_config now handles temperature and max_tokens via LLMConfig
         engine_to_use = create_llm_engine_from_config(llm_config_from_request)
         current_app.logger.info(f"Frame Extraction: Created engine: {type(engine_to_use).__name__}")
 
@@ -123,34 +132,34 @@ def api_frame_extraction_stream():
         def generate_extraction_stream():
             all_extraction_unit_results = []
             try:
-                stream_temperature = float(llm_config_from_request.get('temperature', 0.0))
-                stream_max_tokens = int(llm_config_from_request.get('max_tokens', 512))
-                qwen_no_think_flag = extractor_config_req.get('qwen_no_think', True)
+                # Temperature and max_new_tokens are now part of the engine's config
+                # qwen_no_think is also removed as it's not a standard InferenceEngine.chat param
+                # If Qwen specific logic is needed, it should be in Qwen3LLMConfig.preprocess_messages
 
-
-                current_app.logger.debug(f"Calling extractor.stream with temp={stream_temperature}, tokens={stream_max_tokens}")
+                current_app.logger.debug(f"Calling AppDirectFrameExtractor.stream...")
+                # The `stream` method in `AppDirectFrameExtractor` itself calls `InferenceEngine.chat`
+                # which now uses the LLMConfig for temperature and max_new_tokens.
+                # So, we don't pass them here.
                 stream_generator = extractor.stream(
-                    text_content=input_text, 
-                    document_key=None, 
-                    temperature=stream_temperature,
-                    max_new_tokens=stream_max_tokens,
-                    qwen_no_think=qwen_no_think_flag
+                    text_content=input_text,
+                    document_key=None # Assuming inputText is the direct document
+                    # temperature, max_new_tokens, qwen_no_think removed from here
                 )
+                # ... (the rest of the stream processing logic for events remains the same) ...
                 while True:
                     try:
-                        event = next(stream_generator)
+                        event = next(stream_generator) # This will yield dicts like {"type": "info", "data": ...}
                         yield f"data: {json.dumps(event)}\n\n"
-                    except StopIteration as e: # The return value of the generator is in e.value
-                        all_extraction_unit_results = e.value
+                    except StopIteration as e: 
+                        all_extraction_unit_results = e.value # This is `collected_results` from your extractor's stream method
                         if not isinstance(all_extraction_unit_results, list):
                             current_app.logger.warning(f"Extractor.stream() did not return a list. Got: {type(all_extraction_unit_results)}. Assuming empty.")
                             all_extraction_unit_results = []
-                        break # Exit the loop once the generator is exhausted
+                        break 
 
                 current_app.logger.info(f"Frame Extraction: Stream finished. Collected {len(all_extraction_unit_results)} unit results.")
 
-                # Post-processing parameters from the request
-                post_process_params = {
+                post_process_params = { # ... (remains the same)
                     "case_sensitive": extractor_config_req.get('case_sensitive', False),
                     "fuzzy_match": extractor_config_req.get('fuzzy_match', True),
                     "allow_overlap_entities": extractor_config_req.get('allow_overlap_entities', False),
@@ -159,7 +168,6 @@ def api_frame_extraction_stream():
                 }
                 current_app.logger.debug(f"Calling extractor.post_process_frames with params: {post_process_params}")
 
-                # Call post_process_frames from AppDirectFrameExtractor
                 final_frames = extractor.post_process_frames(
                     extraction_results=all_extraction_unit_results,
                     **post_process_params
@@ -168,12 +176,12 @@ def api_frame_extraction_stream():
                 yield f"data: {json.dumps({'type': 'result', 'frames': frames_dict_list})}\n\n"
                 current_app.logger.info(f"Frame Extraction: Post-processing complete, {len(final_frames)} frames found.")
 
-            except Exception as e:
+            except Exception as e: # ... (error handling in stream)
                 current_app.logger.error(f"Error during frame extraction stream/processing: {e}\n{traceback.format_exc()}")
                 error_payload = {'type': 'error', 'message': f'Extraction failed: {type(e).__name__} - {str(e)}'}
                 yield f"data: {json.dumps(error_payload)}\n\n"
             finally:
-                yield "event: end\ndata: {}\n\n" # Signal end of stream
+                yield "event: end\ndata: {}\n\n" 
 
         return Response(stream_with_context(generate_extraction_stream()), mimetype='text/event-stream')
 

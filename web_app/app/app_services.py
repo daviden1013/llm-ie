@@ -2,6 +2,7 @@ import os
 import logging
 from typing import Dict, Any
 from llm_ie.engines import (
+    LLMConfig, BasicLLMConfig, OpenAIReasoningLLMConfig, Qwen3LLMConfig,
     InferenceEngine, OllamaInferenceEngine, OpenAIInferenceEngine, AzureOpenAIInferenceEngine,
     HuggingFaceHubInferenceEngine, LiteLLMInferenceEngine
 )
@@ -21,71 +22,121 @@ logger = logging.getLogger(__name__)
 def create_llm_engine_from_config(config: Dict[str, Any]) -> InferenceEngine:
     """
     Creates and configures an LLM InferenceEngine instance based on the provided configuration dictionary.
+    The specific LLMConfig class to use is determined by 'llm_config_type' in the config.
 
     Args:
         config (Dict[str, Any]): A dictionary containing LLM engine configuration.
-                                 Expected keys depend on 'api_type'.
+                                 Expected keys: 'api_type', 'llm_config_type',
+                                 and other parameters for engine and LLMConfig.
 
     Returns:
         InferenceEngine: An instance of the configured LLM engine.
 
     Raises:
-        ValueError: If configuration is invalid or api_type is unsupported.
+        ValueError: If configuration is invalid or api_type/llm_config_type is unsupported.
         ImportError: If a required library for an api_type is not installed.
     """
     api_type = config.get('api_type')
+    llm_config_type_str = config.get('llm_config_type', 'BasicLLMConfig') # Default to BasicLLMConfig
+
     if not api_type:
         raise ValueError("LLM API type ('api_type') is missing in the configuration.")
-    logger.info(f"Attempting to create engine for API type: {api_type}")
+    logger.info(f"Attempting to create engine for API type: {api_type} with LLMConfig type: {llm_config_type_str}")
 
+    # --- Instantiate the selected LLMConfig ---
+    llm_config_instance: LLMConfig
+    
+    # General parameters for all LLMConfigs that come directly from the top-level config
+    # 'max_tokens' from frontend maps to 'max_new_tokens' in BasicLLMConfig
+    # Temperature is also a common parameter.
+    base_llm_params = {
+        'temperature': config.get('temperature', 0.2), 
+        'max_new_tokens': config.get('max_tokens', 4096)
+    }
+    # You might want to add other general params here from 'config.get(...)'
+    # and then pass them to the **kwargs of the LLMConfig constructors.
+
+    if llm_config_type_str == "BasicLLMConfig":
+        llm_config_instance = BasicLLMConfig(
+            max_new_tokens=base_llm_params['max_new_tokens'],
+            temperature=base_llm_params['temperature']
+        )
+    elif llm_config_type_str == "OpenAIReasoningLLMConfig":
+        # OpenAIReasoningLLMConfig might have different params.
+        # For example, it doesn't use temperature.
+        # It might take 'reasoning_effort'.
+        reasoning_effort = config.get('openai_reasoning_effort', 'low') # Example: fetch from main config
+        llm_config_instance = OpenAIReasoningLLMConfig(
+            reasoning_effort=reasoning_effort,
+            max_new_tokens=base_llm_params['max_new_tokens'] # If it accepts max_new_tokens
+            # Add other params specific to OpenAIReasoningLLMConfig
+        )
+    elif llm_config_type_str == "Qwen3LLMConfig":
+        # Qwen3LLMConfig might take 'thinking_mode'.
+        thinking_mode = config.get('qwen_thinking_mode', True) # Example: fetch from main config
+        llm_config_instance = Qwen3LLMConfig(
+            thinking_mode=thinking_mode,
+            max_new_tokens=base_llm_params['max_new_tokens'], # If it accepts max_new_tokens
+            temperature=base_llm_params['temperature'] # If it accepts temperature
+            # Add other params specific to Qwen3LLMConfig
+        )
+    else:
+        raise ValueError(f"Unsupported LLMConfig type: {llm_config_type_str}")
+
+    # --- Instantiate the InferenceEngine with the chosen LLMConfig ---
     try:
         if api_type == "openai_compatible":
             base_url = config.get('llm_base_url')
             model = config.get('llm_model_openai_comp')
-            api_key = config.get('openai_compatible_api_key', "EMPTY") # Default to EMPTY if not provided
+            api_key = config.get('openai_compatible_api_key', "EMPTY")
             if not base_url or not model:
                 raise ValueError("Missing 'llm_base_url' or 'llm_model_openai_comp' for OpenAI Compatible.")
-            return OpenAIInferenceEngine(model=model, api_key=api_key, base_url=base_url)
+            return OpenAIInferenceEngine(model=model, api_key=api_key, base_url=base_url, config=llm_config_instance)
+        
         elif api_type == "ollama":
             model = config.get('ollama_model')
-            host = config.get('ollama_host') # Defaults to None if not present, Ollama client handles default
-            num_ctx = int(config.get('ollama_num_ctx', 4096))
+            host = config.get('ollama_host') 
+            num_ctx = int(config.get('ollama_num_ctx', 4096)) # This is an Ollama engine param, not LLMConfig
             if not model:
                 raise ValueError("Missing 'ollama_model' for Ollama.")
-            return OllamaInferenceEngine(model_name=model, host=host, num_ctx=num_ctx)
+            return OllamaInferenceEngine(model_name=model, host=host, num_ctx=num_ctx, config=llm_config_instance)
+            
         elif api_type == "huggingface_hub":
             model_or_endpoint = config.get('hf_model_or_endpoint')
-            token = config.get('hf_token') # Defaults to None
+            token = config.get('hf_token') 
             if not model_or_endpoint:
                 raise ValueError("Missing 'hf_model_or_endpoint' for HuggingFace Hub.")
-            return HuggingFaceHubInferenceEngine(model=model_or_endpoint, token=token)
+            return HuggingFaceHubInferenceEngine(model=model_or_endpoint, token=token, config=llm_config_instance)
+            
         elif api_type == "openai":
             model = config.get('openai_model')
-            api_key = config.get('openai_api_key') # Defaults to None (OpenAI client will check env var)
-            reasoning_model = config.get('openai_reasoning_model', False)
+            api_key = config.get('openai_api_key') 
             if not model:
                 raise ValueError("Missing 'openai_model' for OpenAI.")
-            return OpenAIInferenceEngine(model=model, api_key=api_key, reasoning_model=reasoning_model)
+            return OpenAIInferenceEngine(model=model, api_key=api_key, config=llm_config_instance)
+            
         elif api_type == "azure_openai":
             deployment = config.get('azure_deployment_name')
-            api_key = config.get('azure_openai_api_key') # Defaults to None
-            endpoint = config.get('azure_endpoint')     # Defaults to None
+            api_key = config.get('azure_openai_api_key') 
+            endpoint = config.get('azure_endpoint')     
             api_version = config.get('azure_api_version')
-            reasoning_model = config.get('azure_reasoning_model', False)
             if not deployment or not api_version:
                 raise ValueError("Missing 'azure_deployment_name' or 'azure_api_version' for Azure OpenAI.")
             return AzureOpenAIInferenceEngine(
-                model=deployment, api_key=api_key, azure_endpoint=endpoint, api_version=api_version, reasoning_model=reasoning_model
+                model=deployment, api_key=api_key, azure_endpoint=endpoint, api_version=api_version, config=llm_config_instance
             )
+            
         elif api_type == "litellm":
             model_str = config.get('litellm_model')
-            api_key = config.get('litellm_api_key') # Defaults to None
-            base_url = config.get('litellm_base_url') # Defaults to None
+            api_key = config.get('litellm_api_key') 
+            base_url = config.get('litellm_base_url') 
             if not model_str:
                 raise ValueError("Missing 'litellm_model' string for LiteLLM.")
-            return LiteLLMInferenceEngine(model=model_str, api_key=api_key, base_url=base_url)
+            return LiteLLMInferenceEngine(model=model_str, api_key=api_key, base_url=base_url, config=llm_config_instance)
+        
         else:
             raise ValueError(f"Unsupported LLM API type: {api_type}")
+            
     except KeyError as e:
         logger.error(f"Missing configuration key for {api_type}: {e}")
         raise ValueError(f"Missing configuration key for {api_type}: {e}") from e
@@ -95,6 +146,7 @@ def create_llm_engine_from_config(config: Dict[str, Any]) -> InferenceEngine:
     except Exception as e:
         logger.error(f"Failed to initialize engine for {api_type}: {e}", exc_info=True)
         raise RuntimeError(f"Could not initialize LLM engine for {api_type}.") from e
+
 
 
 def get_app_frame_extractor(engine: InferenceEngine, extractor_config: Dict[str, Any]) -> AppDirectFrameExtractor:

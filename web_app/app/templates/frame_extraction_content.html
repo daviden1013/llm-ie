@@ -70,10 +70,6 @@
                     <label for="fe-openai-model">Model Name:</label>
                     <input type="text" id="fe-openai-model" name="fe_openai_model" placeholder="e.g., gpt-4o-mini, o1-mini" class="api-input">
                 </div>
-                <div class="form-group">
-                     <input type="checkbox" id="fe-openai-reasoning-model" name="fe_openai_reasoning_model" style="width: auto; margin-right: 5px;">
-                    <label for="fe-openai-reasoning-model" style="display: inline; font-weight: normal;">Is Reasoning Model ('o1' series)?</label>
-                </div>
             </div>
 
             <div id="fe-azure_openai-options" class="conditional-options indented-option" style="display: none;">
@@ -94,10 +90,6 @@
                     <label for="fe-azure-deployment-name">Model Deployment Name:</label>
                     <input type="text" id="fe-azure-deployment-name" name="fe_azure_deployment_name" placeholder="Your Azure deployment name" class="api-input">
                 </div>
-                 <div class="form-group">
-                     <input type="checkbox" id="fe-azure-reasoning-model" name="fe_azure_reasoning_model" style="width: auto; margin-right: 5px;">
-                    <label for="fe-azure-reasoning-model" style="display: inline; font-weight: normal;">Is Reasoning Model ('o1' series)?</label>
-                </div>
             </div>
 
             <div id="fe-litellm-options" class="conditional-options indented-option" style="display: none;">
@@ -116,6 +108,38 @@
                  </div>
             </div>
         </form>
+
+        <hr style="margin: 20px 0;"> {# NEW LLM Configuration Type Dropdown #}
+        <div class="form-group">
+            <label for="fe-llm-config-type-select">LLM Configuration Type:</label>
+            <select id="fe-llm-config-type-select" name="llm_config_type"> {# Ensure name is 'llm_config_type' for consistency if desired #}
+                <option value="BasicLLMConfig" selected>Basic (Standard Models)</option>
+                <option value="OpenAIReasoningLLMConfig">OpenAI Reasoning (o1-series)</option>
+                <option value="Qwen3LLMConfig">Qwen3</option>
+                {# Add other LLMConfig types as needed #}
+            </select>
+        </div>
+
+        {# Existing conditional options based on LLMConfigType - YOU MIGHT ADD THESE LATER #}
+        <div id="fe-openai_reasoning-config-options" class="conditional-config-options" style="display: none;">
+            <h3>OpenAI Reasoning Config Options</h3>
+            <div class="form-group">
+                <label for="fe-openai-reasoning-effort">Reasoning Effort:</label>
+                <select id="fe-openai-reasoning-effort" name="openai_reasoning_effort">
+                    <option value="low" selected>Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
+        </div>
+        <div id="fe-qwen3-config-options" class="conditional-config-options" style="display: none;">
+            <h3>Qwen3 Config Options</h3>
+            <div class="form-group">
+                <input type="checkbox" id="fe-qwen-thinking-mode" name="qwen_thinking_mode" checked style="width: auto; margin-right: 5px;">
+                <label for="fe-qwen-thinking-mode" style="display: inline; font-weight: normal;">Enable Thinking Mode (/think)</label>
+            </div>
+        </div>
+
 
         <hr style="margin: 20px 0;">
 

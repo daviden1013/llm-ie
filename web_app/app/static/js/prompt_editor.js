@@ -11,10 +11,18 @@ function initializePromptEditor() {
     const sendButton = document.getElementById('send-button');
     const clearChatButton = document.getElementById('clear-chat-btn');
     const llmApiSelect = document.getElementById('llm-api-select');
+    const llmConfigTypeSelect = document.getElementById('pe-llm-config-type-select'); // New
     const temperatureInput = document.getElementById('pe-temperature');
     const maxTokensInput = document.getElementById('pe-max-tokens');
 
-    if (!chatHistory || !userInput || !sendButton || !clearChatButton || !llmApiSelect) {
+    // Conditional Config Options elements for Prompt Editor
+    const peOpenAIReasoningOptionsDiv = document.getElementById('pe-openai_reasoning-config-options');
+    const peOpenAIReasoningEffortSelect = document.getElementById('pe-openai-reasoning-effort');
+    const peQwen3OptionsDiv = document.getElementById('pe-qwen3-config-options');
+    const peQwenThinkingModeCheckbox = document.getElementById('pe-qwen-thinking-mode');
+
+
+    if (!chatHistory || !userInput || !sendButton || !clearChatButton || !llmApiSelect || !llmConfigTypeSelect) {
         console.error("Prompt Editor: One or more critical UI elements not found. Initialization failed.");
         return;
     }
@@ -61,25 +69,72 @@ function initializePromptEditor() {
                    .replace(/\n/g, '<br>');
     }
 
+    function updateConditionalOptions() { // For LLM API selection
+        if (!llmApiSelect) return;
+        const selectedApi = llmApiSelect.value;
+        document.querySelectorAll('#llm-config-form .conditional-options').forEach(div => {
+            div.style.display = 'none';
+        });
+        if (selectedApi) {
+            const targetDivId = `${selectedApi}-options`;
+            const optionsDiv = document.getElementById(targetDivId);
+            if (optionsDiv) {
+                optionsDiv.style.display = 'block';
+            } else {
+                console.warn(`updateConditionalOptions: Could not find options div for ID: ${targetDivId}`);
+            }
+        }
+        if (selectedApi) hideApiSelectionWarning();
+    }
+
+    function updateConditionalLLMConfigOptions() { // For LLM Config Type selection
+        if (!llmConfigTypeSelect) return;
+        const selectedConfigType = llmConfigTypeSelect.value;
+
+        if (peOpenAIReasoningOptionsDiv) peOpenAIReasoningOptionsDiv.style.display = 'none';
+        if (peQwen3OptionsDiv) peQwen3OptionsDiv.style.display = 'none';
+        // Add more here if you have other conditional config divs for Prompt Editor
+
+        if (selectedConfigType === 'OpenAIReasoningLLMConfig' && peOpenAIReasoningOptionsDiv) {
+            peOpenAIReasoningOptionsDiv.style.display = 'block';
+        } else if (selectedConfigType === 'Qwen3LLMConfig' && peQwen3OptionsDiv) {
+            peQwen3OptionsDiv.style.display = 'block';
+        }
+        // Add more else-if for other types
+    }
+
+
     function savePromptEditorState() {
         localStorage.setItem('promptEditorChatHistory', JSON.stringify(conversationHistory));
 
         const controlsToSave = {
             llmApiSelectValue: llmApiSelect.value,
+            llmConfigTypeValue: llmConfigTypeSelect.value, // Save this
             temperatureValue: temperatureInput.value,
             maxTokensValue: maxTokensInput.value
         };
 
+        // Save LLM API conditional options
         document.querySelectorAll('#llm-config-form .conditional-options input, #llm-config-form .conditional-options select, #llm-config-form .conditional-options textarea').forEach(el => {
             if (el.id) {
-                // MODIFIED: Exclude the removed checkboxes
+                // Ensure to skip the old reasoning model checkboxes
                 if (el.id === 'openai-reasoning-model' || el.id === 'azure-reasoning-model') {
-                    return; 
+                    return;
                 }
                 if (el.type === 'checkbox') controlsToSave[el.id] = el.checked;
                 else controlsToSave[el.id] = el.value;
             }
         });
+
+        // Save LLM Config Type conditional options
+        const selectedConfigType = llmConfigTypeSelect.value;
+        if (selectedConfigType === 'OpenAIReasoningLLMConfig' && peOpenAIReasoningEffortSelect) {
+            controlsToSave['pe-openai-reasoning-effort'] = peOpenAIReasoningEffortSelect.value;
+        } else if (selectedConfigType === 'Qwen3LLMConfig' && peQwenThinkingModeCheckbox) {
+            controlsToSave['pe-qwen-thinking-mode'] = peQwenThinkingModeCheckbox.checked;
+        }
+        // Add more for other config types
+
         localStorage.setItem('promptEditorControls', JSON.stringify(controlsToSave));
     }
 
@@ -87,12 +142,15 @@ function initializePromptEditor() {
         const savedControls = JSON.parse(localStorage.getItem('promptEditorControls'));
         if (savedControls) {
             if (typeof savedControls.llmApiSelectValue !== 'undefined') llmApiSelect.value = savedControls.llmApiSelectValue;
+            if (typeof savedControls.llmConfigTypeValue !== 'undefined') { // Load this
+                llmConfigTypeSelect.value = savedControls.llmConfigTypeValue;
+            }
             if (typeof savedControls.temperatureValue !== 'undefined') temperatureInput.value = savedControls.temperatureValue;
             if (typeof savedControls.maxTokensValue !== 'undefined') maxTokensInput.value = savedControls.maxTokensValue;
 
+            // Load LLM API conditional options
             document.querySelectorAll('#llm-config-form .conditional-options input, #llm-config-form .conditional-options select, #llm-config-form .conditional-options textarea').forEach(el => {
                 if (el.id && typeof savedControls[el.id] !== 'undefined') {
-                     // MODIFIED: Exclude the removed checkboxes
                     if (el.id === 'openai-reasoning-model' || el.id === 'azure-reasoning-model') {
                         return;
                     }
@@ -100,10 +158,20 @@ function initializePromptEditor() {
                     else el.value = savedControls[el.id];
                 }
             });
+            
+            // Load LLM Config Type conditional options
+            const loadedConfigType = savedControls.llmConfigTypeValue || 'BasicLLMConfig';
+            if (loadedConfigType === 'OpenAIReasoningLLMConfig' && peOpenAIReasoningEffortSelect && typeof savedControls['pe-openai-reasoning-effort'] !== 'undefined') {
+                peOpenAIReasoningEffortSelect.value = savedControls['pe-openai-reasoning-effort'];
+            } else if (loadedConfigType === 'Qwen3LLMConfig' && peQwenThinkingModeCheckbox && typeof savedControls['pe-qwen-thinking-mode'] !== 'undefined') {
+                peQwenThinkingModeCheckbox.checked = savedControls['pe-qwen-thinking-mode'];
+            }
+            // Add more for other config types
         }
-        if (typeof updateConditionalOptions === "function") {
-            updateConditionalOptions();
-        }
+
+        updateConditionalOptions(); // For API specific options
+        updateConditionalLLMConfigOptions(); // For LLM Config Type specific options
+
 
         const savedChat = JSON.parse(localStorage.getItem('promptEditorChatHistory'));
         if (savedChat && Array.isArray(savedChat)) {
@@ -199,24 +267,6 @@ function initializePromptEditor() {
         }
     }
 
-    function updateConditionalOptions() {
-        if (!llmApiSelect) return;
-        const selectedApi = llmApiSelect.value;
-        document.querySelectorAll('#llm-config-form .conditional-options').forEach(div => {
-            div.style.display = 'none';
-        });
-        if (selectedApi) {
-            const targetDivId = `${selectedApi}-options`;
-            const optionsDiv = document.getElementById(targetDivId);
-            if (optionsDiv) {
-                optionsDiv.style.display = 'block';
-            } else {
-                console.warn(`updateConditionalOptions: Could not find options div for ID: ${targetDivId}`);
-            }
-        }
-        if (selectedApi) hideApiSelectionWarning();
-    }
-
     function showApiSelectionWarning() { if (llmApiSelect) llmApiSelect.classList.add('input-error'); }
     function hideApiSelectionWarning() { if (llmApiSelect) llmApiSelect.classList.remove('input-error'); }
 
@@ -226,62 +276,48 @@ function initializePromptEditor() {
             return { api_type: null };
         }
         const selectedApi = llmApiSelect.value;
+        const selectedLLMConfigType = llmConfigTypeSelect.value;
+
         const config = {
             api_type: selectedApi,
+            llm_config_type: selectedLLMConfigType,
             temperature: parseFloat(temperatureInput.value) || 0.2,
             max_tokens: parseInt(maxTokensInput.value) || 4096
         };
 
+        // Add parameters from the selected LLM API's conditional options
         if (selectedApi) {
             const optionsContainer = document.getElementById(`${selectedApi}-options`);
             if (optionsContainer) {
                 optionsContainer.querySelectorAll('input, select, textarea').forEach(el => {
                     if (el.name && el.id) {
-                        // MODIFIED: Exclude the removed checkboxes from being added to config
+                        // Skip old reasoning checkboxes if they somehow still exist or are processed
                         if (el.id === 'openai-reasoning-model' || el.id === 'azure-reasoning-model') {
                             return; 
                         }
-                        let key = el.name || el.id;
+                        let key = el.name || el.id; // Prefer name, fallback to id
                         if (el.type === 'checkbox') {
                             config[key] = el.checked;
                         } else if (el.type === 'number') {
-                            config[key] = parseFloat(el.value) || (el.placeholder ? parseFloat(el.placeholder) : 0);
-                        }
-                         else {
+                            // For number inputs, try to parse as float, fallback to placeholder or 0
+                            config[key] = parseFloat(el.value) || (el.placeholder ? parseFloat(el.placeholder) : (el.value === "0" ? 0 : null) );
+                            if (config[key] === null && el.value !== "") config[key] = el.value; // If parsing failed but not empty, keep string
+                        } else {
                             config[key] = el.value;
                         }
                     }
                 });
-                 // Specific handling can be simplified as checkboxes are removed
-                if (selectedApi === "openai_compatible") {
-                    config.openai_compatible_api_key = document.getElementById('openai-compatible-api-key')?.value;
-                    config.llm_base_url = document.getElementById('llm-base-url')?.value;
-                    config.llm_model_openai_comp = document.getElementById('llm-model-openai-comp')?.value;
-                } else if (selectedApi === "ollama") {
-                    config.ollama_host = document.getElementById('ollama-host')?.value;
-                    config.ollama_model = document.getElementById('ollama-model')?.value;
-                    const numCtx = document.getElementById('ollama-num-ctx')?.value;
-                    if (numCtx) config.ollama_num_ctx = parseInt(numCtx);
-                } else if (selectedApi === "huggingface_hub") {
-                    config.hf_token = document.getElementById('hf-token')?.value;
-                    config.hf_model_or_endpoint = document.getElementById('hf-model-or-endpoint')?.value;
-                } else if (selectedApi === "openai") {
-                    config.openai_api_key = document.getElementById('openai-api-key')?.value;
-                    config.openai_model = document.getElementById('openai-model')?.value;
-                    // config.openai_reasoning_model = false; // MODIFIED: Default or remove if backend handles missing key
-                } else if (selectedApi === "azure_openai") {
-                    config.azure_openai_api_key = document.getElementById('azure-openai-api-key')?.value;
-                    config.azure_endpoint = document.getElementById('azure-endpoint')?.value;
-                    config.azure_api_version = document.getElementById('azure-api-version')?.value;
-                    config.azure_deployment_name = document.getElementById('azure-deployment-name')?.value;
-                    // config.azure_reasoning_model = false; // MODIFIED: Default or remove
-                } else if (selectedApi === "litellm") {
-                    config.litellm_model = document.getElementById('litellm-model')?.value;
-                    config.litellm_api_key = document.getElementById('litellm-api-key')?.value;
-                    config.litellm_base_url = document.getElementById('litellm-base-url')?.value;
-                }
             }
         }
+        
+        // Add parameters from the selected LLMConfigType's conditional options
+        if (selectedLLMConfigType === 'OpenAIReasoningLLMConfig' && peOpenAIReasoningEffortSelect) {
+            config.openai_reasoning_effort = peOpenAIReasoningEffortSelect.value;
+        } else if (selectedLLMConfigType === 'Qwen3LLMConfig' && peQwenThinkingModeCheckbox) {
+            config.qwen_thinking_mode = peQwenThinkingModeCheckbox.checked;
+        }
+        // Add more for other config types
+
         return config;
     }
 
@@ -340,19 +376,32 @@ function initializePromptEditor() {
                     if (line.startsWith('data: ')) {
                         try {
                             const jsonData = JSON.parse(line.substring(6));
-                            if (jsonData.text) {
-                                if (!firstChunkProcessed) {
-                                    assistantMessageContent = jsonData.text;
-                                    firstChunkProcessed = true;
-                                } else {
-                                    assistantMessageContent += jsonData.text;
-                                }
-                                updateLastAssistantMessageDOM(assistantMessageContent);
+                            let contentToUpdate = "";
+                            // Adjust based on the actual structure yielded by the backend
+                            // Assuming backend now sends: {'type': 'response'/'reasoning', 'data': 'text_chunk'}
+                            // or still {'text': 'text_chunk'}
+                            if (jsonData.text) { // If backend sends {'text': ...}
+                                contentToUpdate = jsonData.text;
+                            } else if (jsonData.data && jsonData.type === 'response') { // If backend sends {'type':'response', 'data':...}
+                                contentToUpdate = jsonData.data;
+                            } else if (jsonData.data && jsonData.type === 'reasoning') {
+                                // Optionally display reasoning differently or prepend it
+                                contentToUpdate = `*[${jsonData.type}]* ${jsonData.data} `;
                             } else if (jsonData.error) {
                                 console.error("Stream error from backend:", jsonData.error);
-                                assistantMessageContent = `**Stream Error:** ${jsonData.error}`;
+                                contentToUpdate = `**Stream Error:** ${jsonData.error}`;
+                            }
+
+                            if (contentToUpdate) {
+                                if (!firstChunkProcessed) {
+                                    assistantMessageContent = contentToUpdate;
+                                    firstChunkProcessed = true;
+                                } else {
+                                    assistantMessageContent += contentToUpdate;
+                                }
                                 updateLastAssistantMessageDOM(assistantMessageContent);
                             }
+
                         } catch (e) {
                             // console.warn("Error parsing SSE JSON data:", e, "Original line:", line);
                         }
@@ -380,7 +429,8 @@ function initializePromptEditor() {
         });
     }
 
-    loadPromptEditorState();
+    // Initial setup
+    loadPromptEditorState(); // This now calls both updateConditionalOptions and updateConditionalLLMConfigOptions
 
     if (llmApiSelect) {
         llmApiSelect.addEventListener('change', () => {
@@ -388,16 +438,28 @@ function initializePromptEditor() {
             savePromptEditorState();
         });
     }
+    if (llmConfigTypeSelect) { // Listener for the new select
+        llmConfigTypeSelect.addEventListener('change', () => {
+            updateConditionalLLMConfigOptions();
+            savePromptEditorState(); // Save state when this changes too
+        });
+    }
 
+    // Add event listeners to all control panel inputs for saving state
     const controlPanelElements = document.querySelectorAll(
         '#llm-config-form select, #llm-config-form input, #llm-config-form textarea'
     );
     controlPanelElements.forEach(element => {
+        // Exclude the new LLM Config type specific inputs from this generic handler if they are already handled
+        // or ensure their specific handlers also call savePromptEditorState.
+        // For simplicity, we can let this generic handler also call savePromptEditorState,
+        // it will just re-save but that's okay.
         const eventType = (element.tagName.toLowerCase() === 'textarea' || 
                            (element.type && element.type.match(/text|url|password|number|search|email|tel/))) 
                           ? 'input' : 'change';
         element.addEventListener(eventType, savePromptEditorState);
     });
+
 
     if (sendButton) {
         sendButton.addEventListener('click', () => {

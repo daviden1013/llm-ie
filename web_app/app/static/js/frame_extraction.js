@@ -15,8 +15,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const outputElem = document.getElementById('extraction-output');
     const displayInputElem = document.getElementById('display-input-text');
 
-    // ... (rest of the LLM API and conditional option elements) ...
     const feLlmApiSelect = document.getElementById('fe-llm-api-select');
+    const feLlmConfigTypeSelect = document.getElementById('fe-llm-config-type-select');
+
+    // Conditional LLM API Option Elements
     const feOpenaiCompatibleApiKey = document.getElementById('fe-openai-compatible-api-key');
     const feLlmBaseUrl = document.getElementById('fe-llm-base-url');
     const feLlmModelOpenaiComp = document.getElementById('fe-llm-model-openai-comp');
@@ -27,35 +29,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const feHfModelOrEndpoint = document.getElementById('fe-hf-model-or-endpoint');
     const feOpenaiApiKey = document.getElementById('fe-openai-api-key');
     const feOpenaiModel = document.getElementById('fe-openai-model');
-    const feOpenaiReasoningModel = document.getElementById('fe-openai-reasoning-model');
+    // const feOpenaiReasoningModel = document.getElementById('fe-openai-reasoning-model'); // REMOVED
     const feAzureOpenaiApiKey = document.getElementById('fe-azure-openai-api-key');
     const feAzureEndpoint = document.getElementById('fe-azure-endpoint');
     const feAzureApiVersion = document.getElementById('fe-azure-api-version');
     const feAzureDeploymentName = document.getElementById('fe-azure-deployment-name');
-    const feAzureReasoningModel = document.getElementById('fe-azure-reasoning-model');
+    // const feAzureReasoningModel = document.getElementById('fe-azure-reasoning-model'); // REMOVED
     const feLitellmModel = document.getElementById('fe-litellm-model');
     const feLitellmApiKey = document.getElementById('fe-litellm-api-key');
     const feLitellmBaseUrl = document.getElementById('fe-litellm-base-url');
-
-    const allFeConditionalOptionElements = [
+    
+    const allFeApiOptionElements = [
         feOpenaiCompatibleApiKey, feLlmBaseUrl, feLlmModelOpenaiComp,
         feOllamaHost, feOllamaModel, feOllamaNumCtx,
         feHfToken, feHfModelOrEndpoint,
-        feOpenaiApiKey, feOpenaiModel, feOpenaiReasoningModel,
-        feAzureOpenaiApiKey, feAzureEndpoint, feAzureApiVersion, feAzureDeploymentName, feAzureReasoningModel,
+        feOpenaiApiKey, feOpenaiModel, // feOpenaiReasoningModel reference removed
+        feAzureOpenaiApiKey, feAzureEndpoint, feAzureApiVersion, feAzureDeploymentName, // feAzureReasoningModel reference removed
         feLitellmModel, feLitellmApiKey, feLitellmBaseUrl
-    ];
+    ].filter(el => el); 
 
+    // Conditional LLM Config Type Option Elements for Frame Extraction
+    const feOpenAIReasoningOptionsDiv = document.getElementById('fe-openai_reasoning-config-options');
+    const feOpenAIReasoningEffortSelect = document.getElementById('fe-openai-reasoning-effort');
+    const feQwen3OptionsDiv = document.getElementById('fe-qwen3-config-options');
+    const feQwenThinkingModeCheckbox = document.getElementById('fe-qwen-thinking-mode');
 
-    let currentExtractedFrames = null; // To store the final frames for download
+    let currentExtractedFrames = null; 
 
     // --- Helper Functions ---
     function escapeHTML(str) {
         if (typeof str !== 'string') {
             try {
-                str = JSON.stringify(str, null, 2);
+                str = JSON.stringify(str, null, 2); 
             } catch (e) {
-                str = String(str);
+                str = String(str); 
             }
         }
         const div = document.createElement('div');
@@ -63,8 +70,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return div.innerHTML;
     }
 
-    // --- LLM Configuration UI Logic ---
-    function feUpdateConditionalOptions() {
+    // --- LLM API Configuration UI Logic ---
+    function feUpdateConditionalOptions() { 
         if (!feLlmApiSelect) return;
         const selectedApi = feLlmApiSelect.value;
         document.querySelectorAll('#fe-llm-config-form .conditional-options').forEach(div => {
@@ -81,6 +88,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (selectedApi) feHideApiSelectionWarning();
     }
+    
+    // --- LLM Config Type Configuration UI Logic ---
+    function feUpdateConditionalLLMConfigOptions() { 
+        if (!feLlmConfigTypeSelect) return;
+        const selectedConfigType = feLlmConfigTypeSelect.value;
+
+        if (feOpenAIReasoningOptionsDiv) feOpenAIReasoningOptionsDiv.style.display = 'none';
+        if (feQwen3OptionsDiv) feQwen3OptionsDiv.style.display = 'none';
+
+        if (selectedConfigType === 'OpenAIReasoningLLMConfig' && feOpenAIReasoningOptionsDiv) {
+            feOpenAIReasoningOptionsDiv.style.display = 'block';
+        } else if (selectedConfigType === 'Qwen3LLMConfig' && feQwen3OptionsDiv) {
+            feQwen3OptionsDiv.style.display = 'block';
+        }
+    }
 
     function feShowApiSelectionWarning() { if (feLlmApiSelect) feLlmApiSelect.classList.add('input-error'); }
     function feHideApiSelectionWarning() { if (feLlmApiSelect) feLlmApiSelect.classList.remove('input-error'); }
@@ -91,8 +113,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return { api_type: null };
         }
         const selectedApi = feLlmApiSelect.value;
+        const selectedLLMConfigType = feLlmConfigTypeSelect ? feLlmConfigTypeSelect.value : 'BasicLLMConfig';
+
         const config = {
             api_type: selectedApi,
+            llm_config_type: selectedLLMConfigType,
             temperature: parseFloat(temperatureElem?.value) || 0.0,
             max_tokens: parseInt(maxTokensElem?.value) || 512
         };
@@ -101,36 +126,32 @@ document.addEventListener('DOMContentLoaded', () => {
             const optionsDivId = `fe-${selectedApi}-options`;
             const optionsDiv = document.getElementById(optionsDivId);
             if (optionsDiv) {
-                if (selectedApi === "openai_compatible") {
-                    config.openai_compatible_api_key = feOpenaiCompatibleApiKey?.value;
-                    config.llm_base_url = feLlmBaseUrl?.value;
-                    config.llm_model_openai_comp = feLlmModelOpenaiComp?.value;
-                } else if (selectedApi === "ollama") {
-                    config.ollama_host = feOllamaHost?.value;
-                    config.ollama_model = feOllamaModel?.value;
-                    const numCtx = feOllamaNumCtx?.value;
-                    if (numCtx) config.ollama_num_ctx = parseInt(numCtx);
-                } else if (selectedApi === "huggingface_hub") {
-                    config.hf_token = feHfToken?.value;
-                    config.hf_model_or_endpoint = feHfModelOrEndpoint?.value;
-                } else if (selectedApi === "openai") {
-                    config.openai_api_key = feOpenaiApiKey?.value;
-                    config.openai_model = feOpenaiModel?.value;
-                    config.openai_reasoning_model = feOpenaiReasoningModel?.checked;
-                } else if (selectedApi === "azure_openai") {
-                    config.azure_openai_api_key = feAzureOpenaiApiKey?.value;
-                    config.azure_endpoint = feAzureEndpoint?.value;
-                    config.azure_api_version = feAzureApiVersion?.value;
-                    config.azure_deployment_name = feAzureDeploymentName?.value;
-                    config.azure_reasoning_model = feAzureReasoningModel?.checked;
-                } else if (selectedApi === "litellm") {
-                    config.litellm_model = feLitellmModel?.value;
-                    config.litellm_api_key = feLitellmApiKey?.value;
-                    config.litellm_base_url = feLitellmBaseUrl?.value;
-                }
+                optionsDiv.querySelectorAll('input, select, textarea').forEach(el => {
+                    if (el.name && el.id) {
+                        // The old reasoning model checkboxes (fe-openai-reasoning-model, fe-azure-reasoning-model)
+                        // have been removed from HTML, so no specific check needed here for them.
+                        // This loop will simply not find them.
+                        let key = el.name.startsWith('fe_') ? el.name.substring(3) : el.name; 
+
+                        if (el.type === 'checkbox') {
+                            config[key] = el.checked;
+                        } else if (el.type === 'number') {
+                            const parsedValue = parseFloat(el.value);
+                            config[key] = isNaN(parsedValue) ? (el.placeholder ? parseFloat(el.placeholder) : (el.value === "" ? null : el.value)) : parsedValue;
+                        } else {
+                            config[key] = el.value;
+                        }
+                    }
+                });
             } else {
                 console.warn(`FrameExtraction: feGetLlmConfiguration: Could not find options div for ID: ${optionsDivId}.`);
             }
+        }
+        
+        if (selectedLLMConfigType === 'OpenAIReasoningLLMConfig' && feOpenAIReasoningEffortSelect) {
+            config.openai_reasoning_effort = feOpenAIReasoningEffortSelect.value;
+        } else if (selectedLLMConfigType === 'Qwen3LLMConfig' && feQwenThinkingModeCheckbox) {
+            config.qwen_thinking_mode = feQwenThinkingModeCheckbox.checked;
         }
         return config;
     }
@@ -140,13 +161,21 @@ document.addEventListener('DOMContentLoaded', () => {
     function saveFrameExtractionState() {
         if (!localStorage) return;
         if (feLlmApiSelect) localStorage.setItem(`${feStatePrefix}llmApiSelectValue`, feLlmApiSelect.value);
+        if (feLlmConfigTypeSelect) localStorage.setItem(`${feStatePrefix}llmConfigTypeValue`, feLlmConfigTypeSelect.value);
 
-        allFeConditionalOptionElements.forEach(el => {
-            if (el && el.id) {
+        allFeApiOptionElements.forEach(el => {
+            if (el && el.id) { 
                  if (el.type === 'checkbox') localStorage.setItem(`${feStatePrefix}${el.id}`, el.checked);
                  else localStorage.setItem(`${feStatePrefix}${el.id}`, el.value);
             }
         });
+        
+        const selectedConfigType = feLlmConfigTypeSelect ? feLlmConfigTypeSelect.value : null;
+        if (selectedConfigType === 'OpenAIReasoningLLMConfig' && feOpenAIReasoningEffortSelect) {
+            localStorage.setItem(`${feStatePrefix}fe-openai-reasoning-effort`, feOpenAIReasoningEffortSelect.value);
+        } else if (selectedConfigType === 'Qwen3LLMConfig' && feQwenThinkingModeCheckbox) {
+            localStorage.setItem(`${feStatePrefix}fe-qwen-thinking-mode`, feQwenThinkingModeCheckbox.checked);
+        }
 
         if (inputTextElem) localStorage.setItem(`${feStatePrefix}inputText`, inputTextElem.value);
         if (promptTemplateElem) localStorage.setItem(`${feStatePrefix}promptTemplate`, promptTemplateElem.value);
@@ -166,9 +195,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (feLlmApiSelect && savedApi) {
             feLlmApiSelect.value = savedApi;
         }
-
-        allFeConditionalOptionElements.forEach(el => {
-            if (el && el.id) {
+        const savedLlmConfigType = localStorage.getItem(`${feStatePrefix}llmConfigTypeValue`); 
+        if (feLlmConfigTypeSelect && savedLlmConfigType) {
+            feLlmConfigTypeSelect.value = savedLlmConfigType;
+        }
+        
+        allFeApiOptionElements.forEach(el => {
+            if (el && el.id) { 
                 const savedValue = localStorage.getItem(`${feStatePrefix}${el.id}`);
                 if (savedValue !== null) {
                     if (el.type === 'checkbox') el.checked = (savedValue === 'true');
@@ -176,6 +209,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
+        
+        const loadedConfigType = feLlmConfigTypeSelect ? feLlmConfigTypeSelect.value : 'BasicLLMConfig';
+        if (loadedConfigType === 'OpenAIReasoningLLMConfig' && feOpenAIReasoningEffortSelect) {
+            const savedEffort = localStorage.getItem(`${feStatePrefix}fe-openai-reasoning-effort`);
+            if (savedEffort !== null) feOpenAIReasoningEffortSelect.value = savedEffort;
+        } else if (loadedConfigType === 'Qwen3LLMConfig' && feQwenThinkingModeCheckbox) {
+            const savedThinkingMode = localStorage.getItem(`${feStatePrefix}fe-qwen-thinking-mode`);
+            if (savedThinkingMode !== null) feQwenThinkingModeCheckbox.checked = (savedThinkingMode === 'true');
+        }
 
         const savedInputText = localStorage.getItem(`${feStatePrefix}inputText`);
         if (inputTextElem && savedInputText) inputTextElem.value = savedInputText;
@@ -222,9 +264,11 @@ document.addEventListener('DOMContentLoaded', () => {
             displayInputElem.innerHTML = savedDisplayInputTextOutput;
         }
 
-        setTimeout(feUpdateConditionalOptions, 0);
+        setTimeout(() => {
+            feUpdateConditionalOptions(); 
+            feUpdateConditionalLLMConfigOptions();
+        }, 0);
     }
-
 
     // --- Event Listeners ---
     if (startButton) {
@@ -376,22 +420,34 @@ document.addEventListener('DOMContentLoaded', () => {
                                             outputElem.innerHTML += `<div class="general-context"><strong>CONTEXT:</strong><pre>${escapeHTML(json.data)}</pre></div>`;
                                         }
                                         break;
-                                    case 'llm_chunk':
+                                    case 'response': 
+                                    case 'reasoning': 
                                         if (currentUnitId !== null) {
                                             const llmOutputContainer = document.getElementById(`unit-llm-output-${currentUnitId}`);
                                             if (llmOutputContainer) {
                                                 const header = llmOutputContainer.querySelector('.llm-output-header');
                                                 const content = llmOutputContainer.querySelector('.llm-output-content');
-                                                if (firstChunkForUnit && header) {
+                                                
+                                                if (firstChunkForUnit && header) { // Show header on first actual data chunk for the unit
                                                     header.style.display = 'inline';
                                                     firstChunkForUnit = false;
                                                 }
-                                                if (content) {
-                                                    content.innerHTML += escapeHTML(json.data);
+                                                if (content && json.data) { 
+                                                    if (json.type === 'reasoning') {
+                                                        content.innerHTML += escapeHTML(`*[Reasoning]* ${json.data} `);
+                                                    } else { // 'response'
+                                                        content.innerHTML += escapeHTML(json.data);
+                                                    }
                                                 }
                                             }
-                                        } else {
-                                            outputElem.innerHTML += escapeHTML(json.data);
+                                        } else { 
+                                            if (json.data) {
+                                                if (json.type === 'reasoning') {
+                                                    outputElem.innerHTML += escapeHTML(`*[Reasoning]* ${json.data} `);
+                                                } else { // 'response'
+                                                    outputElem.innerHTML += escapeHTML(json.data);
+                                                }
+                                            }
                                         }
                                         break;
                                     case 'result':
@@ -404,8 +460,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                         break;
                                     default:
                                         if (jsonDataString.trim() !== '{}') {
-                                            console.warn("Received unknown data type or unhandled type:", json.type, json);
-                                            outputElem.innerHTML += `<div class="unknown-message">UNKNOWN (${escapeHTML(json.type || 'undefined')}): ${escapeHTML(json.data !== undefined ? json.data : jsonDataString)}</div>`;
+                                            console.warn("Received unhandled data type from backend stream:", json);
+                                            outputElem.innerHTML += `<div class="unknown-message">UNHANDLED STREAM EVENT (${escapeHTML(json.type || 'undefined')}): ${escapeHTML(json.data !== undefined ? json.data : jsonDataString)}</div>`;
                                         }
                                 }
                             } catch (e) {
@@ -460,14 +516,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert("No frames available to download.");
                 return;
             }
-            const inputText = inputTextElem.value;
+            const inputText = inputTextElem.value; 
             if (!inputText) {
                 alert("Input text is missing, cannot create a complete .llmie file.");
                 return;
             }
 
             downloadButton.disabled = true;
-            // Set to spinner icon ONLY for "Downloading..." state
             downloadButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading...';
 
             try {
@@ -477,7 +532,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        inputText: inputText,
+                        inputText: inputText, 
                         frames: currentExtractedFrames
                     })
                 });
@@ -503,7 +558,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert(`Download failed: ${error.message}`);
             } finally {
                 downloadButton.disabled = false;
-                // Revert to icon ONLY
                 downloadButton.innerHTML = '<i class="fas fa-download"></i>'; 
             }
         });
@@ -515,20 +569,29 @@ document.addEventListener('DOMContentLoaded', () => {
             saveFrameExtractionState();
         });
     }
+    if (feLlmConfigTypeSelect) {
+        feLlmConfigTypeSelect.addEventListener('change', () => {
+            feUpdateConditionalLLMConfigOptions();
+            saveFrameExtractionState();
+        });
+    }
 
-    const feElementsToSave = [
+    const feElementsToSaveOnInputOrChange = [
         inputTextElem, promptTemplateElem, 
         extractionUnitElem, contextElem, 
         temperatureElem, maxTokensElem, fuzzyMatchElem,
-        ...allFeConditionalOptionElements
-    ];
+        ...allFeApiOptionElements,
+        feLlmConfigTypeSelect, // The dropdown itself needs to trigger save on change
+        feOpenAIReasoningEffortSelect,
+        feQwenThinkingModeCheckbox
+    ].filter(el => el); 
 
-    feElementsToSave.forEach(element => {
-        if (element) {
+    feElementsToSaveOnInputOrChange.forEach(element => {
+        if (element) { 
             const eventType = (element.tagName.toLowerCase() === 'textarea' || (element.type && element.type.match(/text|url|password|number|search|email|tel/))) ? 'input' : 'change';
             element.addEventListener(eventType, saveFrameExtractionState);
         }
     });
 
-    loadFrameExtractionState(); // Initial load
+    loadFrameExtractionState(); 
 });
