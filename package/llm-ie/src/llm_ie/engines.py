@@ -97,7 +97,7 @@ class BasicLLMConfig(LLMConfig):
             for chunk in response:
                 yield {"type": "response", "data": chunk}
 
-            return _process_stream()
+        return _process_stream()
 
 class Qwen3LLMConfig(LLMConfig):
     def __init__(self, thinking_mode:bool=True, **kwargs):
@@ -188,6 +188,9 @@ class OpenAIReasoningLLMConfig(LLMConfig):
     def __init__(self, reasoning_effort:str="low", **kwargs):
         """
         The OpenAI "o" series configuration.
+        1. The reasoning effort is set to "low" by default.
+        2. The temperature parameter is not supported and will be ignored.
+        3. The system prompt is not supported and will be concatenated to the next user prompt.
 
         Parameters:
         ----------
@@ -207,7 +210,7 @@ class OpenAIReasoningLLMConfig(LLMConfig):
 
     def preprocess_messages(self, messages:List[Dict[str,str]]) -> List[Dict[str,str]]:
         """
-        Remove system prompts from the input messages.
+        Concatenate system prompts to the next user prompt.
 
         Parameters:
         ----------
@@ -219,12 +222,25 @@ class OpenAIReasoningLLMConfig(LLMConfig):
         messages : List[Dict[str,str]]
             a list of dict with role and content. role must be one of {"system", "user", "assistant"}
         """
+        system_prompt_holder = ""
         new_messages = []
-        for message in messages:
+        for i, message in enumerate(messages):
+            # if system prompt, store it in system_prompt_holder
             if message['role'] == 'system':
-                warnings.warn("Reasoning models do not support system prompts. Will be ignored.", UserWarning)
-                continue
-            new_messages.append(message)
+                system_prompt_holder = message['content']
+            # if user prompt, concatenate it with system_prompt_holder
+            elif message['role'] == 'user':
+                if system_prompt_holder:
+                    new_message = {'role': message['role'], 'content': f"{system_prompt_holder} {message['content']}"}
+                    system_prompt_holder = ""
+                else:
+                    new_message = {'role': message['role'], 'content': message['content']}
+
+                new_messages.append(new_message)
+            # if assistant/other prompt, do nothing
+            else:
+                new_message = {'role': message['role'], 'content': message['content']}
+                new_messages.append(new_message)
 
         return new_messages
 
@@ -248,7 +264,7 @@ class OpenAIReasoningLLMConfig(LLMConfig):
             for chunk in response:
                 yield {"type": "response", "data": chunk}
 
-            return _process_stream()
+        return _process_stream()
 
 
 class InferenceEngine:
