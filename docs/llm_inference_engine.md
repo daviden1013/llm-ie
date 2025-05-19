@@ -1,4 +1,4 @@
-We provide an interface for different LLM inference engines to work in the information extraction workflow. The built-in engines are `LiteLLMInferenceEngine`, `OpenAIInferenceEngine`, `HuggingFaceHubInferenceEngine`, `OllamaInferenceEngine`, and `LlamaCppInferenceEngine`. For customization, see [customize inference engine](#customize-inference-engine)
+We provide an interface for different LLM inference engines to work in the information extraction workflow. The built-in engines are `LiteLLMInferenceEngine`, `OpenAIInferenceEngine`, `HuggingFaceHubInferenceEngine`, `OllamaInferenceEngine`, and `LlamaCppInferenceEngine`. For customization, see [customize inference engine](#customize-inference-engine). Inference engines accept a [LLMConfig]() class where **sampling parameters** (e.g., temperature, top-p, top-k, maximum new tokens) and **reasoning configuration** (e.g., OpenAI o-series models, Qwen3) can be set.
 
 ## LiteLLM
 The LiteLLM is an adaptor project that unifies many proprietary and open-source LLM APIs. Popular inferncing servers, including OpenAI, Huggingface Hub, and Ollama are supported via its interface. For more details, refer to [LiteLLM GitHub page](https://github.com/BerriAI/litellm). 
@@ -37,21 +37,21 @@ from llm_ie.engines import OpenAIInferenceEngine
 inference_engine = OpenAIInferenceEngine(model="gpt-4o-mini")
 ```
 
-For reasoning models ("o" series), use the `reasoning_model=True` flag. The `max_completion_tokens` will be used instead of the `max_tokens`. `temperature` will be ignored.
+For OpenAI reasoning models (o-series), pass a `OpenAIReasoningLLMConfig` object to `OpenAIInferenceEngine` constructor. 
 
 ```python
-from llm_ie.engines import OpenAIInferenceEngine
+from llm_ie.engines import OpenAIInferenceEngine, OpenAIReasoningLLMConfig
 
-inference_engine = OpenAIInferenceEngine(model="o1-mini", reasoning_model=True)
+inference_engine = OpenAIInferenceEngine(model="o1-mini", 
+                                         config=OpenAIReasoningLLMConfig(reasoning_effort="low"))
 ```
 
 For OpenAI compatible services (OpenRouter for example):
 ```python
 from llm_ie.engines import OpenAIInferenceEngine
 
-inference_engine = OpenAIInferenceEngine(base_url="https://openrouter.ai/api/v1", model="qwen/qwen3-30b-a3b")
+inference_engine = OpenAIInferenceEngine(base_url="https://openrouter.ai/api/v1", model="meta-llama/llama-4-scout")
 ```
-
 
 ## Azure OpenAI API
 In bash, save the endpoint name and API key to environmental variables `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_API_KEY`.
@@ -69,12 +69,13 @@ from llm_ie.engines import AzureOpenAIInferenceEngine
 inference_engine = AzureOpenAIInferenceEngine(model="gpt-4o-mini")
 ```
 
-For reasoning models ("o" series), use the `reasoning_model=True` flag. The `max_completion_tokens` will be used instead of the `max_tokens`. `temperature` will be ignored. 
+For reasoning models (o-series), pass a `OpenAIReasoningLLMConfig` object to `OpenAIInferenceEngine` constructor. 
 
 ```python
 from llm_ie.engines import AzureOpenAIInferenceEngine
 
-inference_engine = AzureOpenAIInferenceEngine(model="o1-mini", reasoning_model=True)
+inference_engine = AzureOpenAIInferenceEngine(model="o1-mini", 
+                                              config=OpenAIReasoningLLMConfig(reasoning_effort="low"))
 ```
 
 ## Huggingface_hub
@@ -148,15 +149,22 @@ The abstract class ```InferenceEngine``` defines the interface and required meth
 ```python
 class InferenceEngine:
     @abc.abstractmethod
-    def __init__(self):
+    def __init__(self, config:LLMConfig, **kwrs):
         """
         This is an abstract class to provide interfaces for LLM inference engines. 
-        Children classes that inherits this class can be used in extractors. Must implement chat() method.
+        Children classes that inherts this class can be used in extrators. Must implement chat() method.
+
+        Parameters:
+        ----------
+        config : LLMConfig
+            the LLM configuration. Must be a child class of LLMConfig.
         """
         return NotImplemented
 
+
     @abc.abstractmethod
-    def chat(self, messages:List[Dict[str,str]], max_new_tokens:int=2048, temperature:float=0.0, verbose:bool=False, **kwrs) -> str:
+    def chat(self, messages:List[Dict[str,str]], 
+             verbose:bool=False, stream:bool=False) -> Union[str, Generator[Dict[str, str], None, None]]:
         """
         This method inputs chat messages and outputs LLM generated text.
 
@@ -164,12 +172,19 @@ class InferenceEngine:
         ----------
         messages : List[Dict[str,str]]
             a list of dict with role and content. role must be one of {"system", "user", "assistant"}
-        max_new_tokens : str, Optional
-            the max number of new tokens LLM can generate. 
-        temperature : float, Optional
-            the temperature for token sampling. 
         verbose : bool, Optional
-            if True, LLM generated text will be printed in terminal in real-time. 
+            if True, LLM generated text will be printed in terminal in real-time.
+        stream : bool, Optional
+            if True, returns a generator that yields the output in real-time.  
+        """
+        return NotImplemented
+
+    def _format_config(self) -> Dict[str, Any]:
+        """
+        This method format the LLM configuration with the correct key for the inference engine. 
+
+        Return : Dict[str, Any]
+            the config parameters.
         """
         return NotImplemented
 ```

@@ -1,5 +1,5 @@
 # LLM-IE Documentation
-LLM-IE is a toolkit that provides robust information extraction utilities for named entity, entity attributes, and entity relation extraction. The flowchart below demonstrates the workflow:
+*LLM-IE* is a toolkit that provides robust information extraction utilities for named entity, entity attributes, and entity relation extraction. The flowchart below demonstrates the workflow:
 
 1. Prompt engineering with LLM agent: [Prompt Editor](./prompt_editor.md)
 2. Prompting algorithm design: [Extractors](./extractors.md)

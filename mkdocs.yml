@@ -4,9 +4,11 @@ theme:
 
 nav:
     - 'Home': 'index.md'
+    - 'Installation': 'installation.md'
     - 'Quick Start': 'quick_start.md'
     - 'Web Application': 'web_application.md'
     - 'User Guide': 
+      - 'LLM Configuration': 'llm_config.md'
       - 'LLM Inference Engine': 'llm_inference_engine.md'
       - 'Prompt Templates': 'prompt_templates.md'
       - 'Prompt Editor': 'prompt_editor.md'
@@ -14,7 +16,8 @@ nav:
       - 'Visualization': 'visualization.md'
       
     - 'API Reference': 
-        - 'Engines': 'api/engines.md'
+        - 'LLM Configuration': 'api/llm_config.md'
+        - 'LLM Inference Engine': 'api/llm_inference_engine.md'
         - 'Extractors': 'api/extractors.md'
         - 'Chunkers': 'api/chunkers.md'
         - 'Prompt Editor': 'api/prompt_editor.md'
