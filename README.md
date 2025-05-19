@@ -44,7 +44,7 @@ At least one LLM inference engine is required. There are built-in supports for ð
 
 ## ðŸ’¿Installation
 The Python package is available on PyPI. 
-```
+```bash
 pip install llm-ie 
 ```
 Note that this package does not check LLM inference engine installation nor install them. See [prerequisite](#prerequisite) section for details. 
@@ -147,7 +147,7 @@ inference_engine = LlamaCppInferenceEngine(repo_id="bullerwins/Meta-Llama-3.1-8B
 ```
 </details>
 
-In this quick start demo, we use OpenRouter to run Llama-4-Scout.
+In this quick start demo, we use OpenRouter to run Llama-4-Scout for prompt engineering and Llama-3.1-70B-Instruct for entity and attribute extraction.
 The outputs might be slightly different with other inference engines, LLMs, or quantization. 
 
 ### Prompt engineering by chatting with LLM agent
@@ -157,12 +157,16 @@ export OPENROUTER_API_KEY=<OpenRouter API key>
 ```
 
 ```python
-from llm_ie import OpenAIInferenceEngine, DirectFrameExtractor, PromptEditor, SentenceUnitChunker, SlideWindowContextChunker
+from llm_ie import OpenAIInferenceEngine, BasicLLMConfig, DirectFrameExtractor, PromptEditor, SentenceUnitChunker, SlideWindowContextChunker
 
-# Define a LLM inference engine
-llm = OpenAIInferenceEngine(base_url="https://openrouter.ai/api/v1", model="meta-llama/llama-4-scout", api_key=os.getenv("OPENROUTER_API_KEY"))
+# Define a LLM inference engine for the prompt editor
+prompt_editor_llm = OpenAIInferenceEngine(base_url="https://openrouter.ai/api/v1", 
+                                          model="meta-llama/llama-4-scout", 
+                                          api_key=os.getenv("OPENROUTER_API_KEY"),
+                                          config=BasicLLMConfig(temperature=0.4, 
+                                                                max_new_tokens=4096))
 # Define LLM prompt editor
-editor = PromptEditor(inference_engine, DirectFrameExtractor)
+editor = PromptEditor(prompt_editor_llm, DirectFrameExtractor)
 # Start chat
 editor.chat()
 ```
@@ -200,19 +204,25 @@ The text below is from the clinical note:
 ```
 
 ### Design prompting algorithm for information extraction
-Instead of prompting LLMs with the entire document (which, by our experiments, has worse performance), we divide the input document into units (e.g., sentences, text lines, paragraphs). LLM only focus on one unit at a time, before moving to the next unit. This is achieved by the `UnitChunker` classes. In this demo, we use `SentenceUnitChunker` for sentence by sentence prompting. Though LLM only focus on one sentence at a time, we supply a context, in this case, a slide window of 2 sentences as context. This provides LLM with additional information. This is achieved by the `SlideWindowContextChunker` class. 
+Instead of prompting LLMs with the entire document (which, by our experiments, has worse performance), we divide the input document into units (e.g., sentences, text lines, paragraphs). LLM only focus on one unit at a time, before moving to the next unit. This is achieved by the `UnitChunker` classes. In this demo, we use `SentenceUnitChunker` for sentence by sentence prompting. Though LLM only focus on one sentence at a time, we supply a context, in this case, a slide window of 2 sentences as context. This provides LLM with additional information. This is achieved by the `SlideWindowContextChunker` class. For information extraction, we use a smaller LLM, llama-3.1-70b-instruct for lower cost. We set `temperature = 0.0` to improve output stability and reproducibility. 
 
 ```python
 # Load synthesized medical note
 with open("./demo/document/synthesized_note.txt", 'r') as f:
     note_text = f.read()
 
+# Define a LLM inference engine for the extractor
+extractor_llm = OpenAIInferenceEngine(base_url="https://openrouter.ai/api/v1", 
+                                      model="meta-llama/llama-3.1-70b-instruct", 
+                                      api_key=os.getenv("OPENROUTER_API_KEY"),
+                                      config=BasicLLMConfig(temperature=0.0, 
+                                                            max_new_tokens=1024))
 # Define unit chunker. Prompts sentences-by-sentence.
 unit_chunker = SentenceUnitChunker()
 # Define context chunker. Provides context for units.
 context_chunker = SlideWindowContextChunker(window_size=2)
 # Define extractor
-extractor = DirectFrameExtractor(llm, 
+extractor = DirectFrameExtractor(inference_engine=extractor_llm, 
                                  unit_chunker=unit_chunker,
                                  context_chunker=context_chunker,
                                  prompt_template=prompt_template)
