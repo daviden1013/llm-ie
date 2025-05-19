@@ -111,15 +111,13 @@
             <div class="form-group">
                 <label for="pe-llm-config-type-select">LLM Configuration Type:</label>
                 <select id="pe-llm-config-type-select" name="llm_config_type">
-                    <option value="BasicLLMConfig" selected>Basic (Standard Models)</option>
-                    <option value="OpenAIReasoningLLMConfig">OpenAI Reasoning (o1-series)</option>
-                    <option value="Qwen3LLMConfig">Qwen3</option>
-                    {# Add other LLMConfig types as needed #}
+                    <option value="BasicLLMConfig" selected>Basic (Standard LLMs)</option>
+                    <option value="OpenAIReasoningLLMConfig">OpenAI Reasoning (o-series)</option>
+                    <option value="Qwen3LLMConfig">Qwen3 (Hybrid thinking modes)</option>
                 </select>
             </div>
 
             <div id="pe-openai_reasoning-config-options" class="conditional-config-options" style="display: none;">
-                <h3>OpenAI Reasoning Config Options</h3>
                 <div class="form-group">
                     <label for="pe-openai-reasoning-effort">Reasoning Effort:</label>
                     <select id="pe-openai-reasoning-effort" name="openai_reasoning_effort">
@@ -131,7 +129,6 @@
             </div>
 
             <div id="pe-qwen3-config-options" class="conditional-config-options" style="display: none;">
-                <h3>Qwen3 Config Options</h3>
                 <div class="form-group">
                     <input type="checkbox" id="pe-qwen-thinking-mode" name="qwen_thinking_mode" checked style="width: auto; margin-right: 5px;">
                     <label for="pe-qwen-thinking-mode" style="display: inline; font-weight: normal;">Enable Thinking Mode (/think)</label>
