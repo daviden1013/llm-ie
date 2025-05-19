@@ -66,24 +66,11 @@ def api_prompt_editor_chat():
 
         def generate_chat_stream():
             try:
-                # Temperature and max_new_tokens are now handled by the engine's config
-                # So, they are NOT passed to chat_stream directly anymore
                 stream = editor.chat_stream(
                     messages=messages
                 )
                 for chunk in stream:
-                    # The event stream from chat_stream should be a dict like {"type": "response", "data": chunk_content}
-                    # or {"type": "reasoning", "data": chunk_content}
-                    # Ensure your frontend handles this structure if it's different from just `chunk`.
-                    # Based on your `llm_ie.engines.BasicLLMConfig.postprocess_response` and `OpenAIReasoningLLMConfig.postprocess_response`
-                    # the stream yields dicts like `{'type': 'response', 'data': chunk}` or `{'type': 'reasoning', 'data': chunk}`.
-                    # The original code `yield f"data: {json.dumps({'text': chunk})}\n\n"` might need adjustment
-                    # if `chunk` itself is already a dictionary from the new `chat_stream`.
-                    # Assuming `chunk` from `editor.chat_stream` is now the string content directly:
-                    chunk_token = chunk.get("data", "")
-                    yield f"data: {json.dumps({'text': chunk_token})}\n\n" # If chat_stream yields string chunks
-                    # If chat_stream yields dicts like {'type': 'response', 'data': 'text_chunk'}:
-                    # yield f"data: {json.dumps(chunk)}\n\n"
+                    yield f"data: {json.dumps(chunk)}\n\n"
 
 
             except Exception as e:

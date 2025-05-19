@@ -182,3 +182,71 @@
     border-bottom: none; /* Ensure h2 itself doesn't have a conflicting border */
 }
 
+.assistant-message .reasoning-container {
+    margin-bottom: 8px;
+    padding: 8px;
+    background-color: #f7f7f9;
+    border-radius: 8px;
+    border: 1px solid #e1e1e8;
+    overflow: hidden; 
+}
+
+.assistant-message details {
+    font-size: 0.9em;
+    display: block; 
+}
+
+.assistant-message summary {
+    cursor: pointer;
+    font-weight: bold;
+    color: #586069; 
+    padding: 4px 0;
+    outline: none; 
+    display: block; 
+}
+
+.assistant-message summary:hover {
+    color: #0366d6; /* GitHub link blue on hover */
+}
+
+.assistant-message summary .reasoning-icon {
+    margin-left: 5px;
+    font-style: normal; 
+    display: inline-block;
+    transition: transform 0.2s ease-in-out;
+}
+
+.assistant-message details[open] summary .reasoning-icon {
+    transform: rotate(90deg); 
+}
+
+.assistant-message .reasoning-tokens { /* This is the <pre> tag */
+    margin-top: 8px;
+    padding: 10px;
+    background-color: #f0f2f5; 
+    border: 1px solid #d1d5da;
+    border-radius: 6px;
+    
+    /* --- Core styles for wrapping and scrolling --- */
+    white-space: pre-wrap !important;  /* Preserves whitespace, wraps text. !important to ensure override. */
+    word-wrap: break-word !important;   /* Breaks long words. !important to ensure override. */
+    overflow-wrap: break-word !important; /* More standard version of word-wrap. */
+    
+    overflow-y: auto;         /* Vertical scrollbar only when needed */
+    overflow-x: hidden;       /* Explicitly hide horizontal scrollbar */
+    
+    max-height: 250px;        /* Or your preferred max height */
+    
+    color: #24292e; 
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    font-size: 0.85em;
+    line-height: 1.45;
+
+    /* Ensure the pre itself doesn't try to be wider than its parent <details> element */
+    display: block; /* Or width: 100%; though pre is block by default */
+    box-sizing: border-box; /* If padding/border would make it overflow */
+}
+
+.assistant-message .message-content {
+    /* Ensure it's distinct from reasoning if they are visually close */
+}
