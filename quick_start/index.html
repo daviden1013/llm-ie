@@ -9,7 +9,7 @@
       
       
       
-        <link rel="prev" href="..">
+        <link rel="prev" href="../installation/">
       
       
         <link rel="next" href="../web_application/">
@@ -215,6 +215,28 @@
       
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Installation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
@@ -344,10 +366,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
             
   
   
@@ -360,12 +382,35 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             User Guide
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../llm_config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LLM Configuration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -504,10 +549,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
   
@@ -520,8 +565,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             API Reference
           </label>
@@ -534,12 +579,35 @@
   
   
     <li class="md-nav__item">
-      <a href="../api/engines/" class="md-nav__link">
+      <a href="../api/llm_config/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Engines
+    LLM Configuration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/llm_inference_engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LLM Inference Engine
     
   </span>
   
@@ -787,22 +855,26 @@
 </details>
 
 <h3 id="choose-an-llm-inference-engine">Choose an LLM inference engine</h3>
-<p><em>LLM-IE</em> works with both <strong>local</strong> and <strong>remote</strong> LLM deployments. In this quick start demo, we use OpenRouter to run <a href="https://huggingface.co/meta-llama/Llama-4-Scout-17B-16E">Llama-4-Scout</a>.
-The outputs might be slightly different with other inference engines, LLMs, or quantization. To use other inference engines and models, see <a href="../llm_inference_engine/">LLM Inference Engine</a></p>
+<p><em>LLM-IE</em> works with both <strong>local</strong> and <strong>remote</strong> LLM deployments. In this quick start demo, we use OpenRouter to run <a href="https://huggingface.co/meta-llama/Llama-4-Scout-17B-16E">Llama-4-Scout</a> for prompt engineering and <a href="https://huggingface.co/meta-llama/Llama-3.1-70B-Instruct">Llama-3.1-70B-Instruct</a> for entity and attribute extraction.
+The outputs might be slightly different with other inference engines, LLMs, or quantization. To use other inference engines (e.g., Ollama, Huggingface Hub) and models (e.g., GPT-4o, Qwen3), see <a href="../llm_inference_engine/">LLM Inference Engine</a> and <a href="../llm_config/">LLM Configuration</a>.</p>
 <h3 id="prompt-engineering-by-chatting-with-llm-agent">Prompt engineering by chatting with LLM agent</h3>
 <p>We start with defining prompt editor LLM agent. We store OpenRouter API key in environmental variable <code>OPENROUTER_API_KEY</code>.
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENROUTER_API_KEY</span><span class="o">=</span>&lt;OpenRouter<span class="w"> </span>API<span class="w"> </span>key&gt;
 </code></pre></div></p>
-<p><div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span> <span class="nn">llm_ie</span> <span class="kn">import</span> <span class="n">OpenAIInferenceEngine</span><span class="p">,</span> <span class="n">DirectFrameExtractor</span><span class="p">,</span> <span class="n">PromptEditor</span><span class="p">,</span> <span class="n">SentenceUnitChunker</span><span class="p">,</span> <span class="n">SlideWindowContextChunker</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span> <span class="nn">llm_ie</span> <span class="kn">import</span> <span class="n">OpenAIInferenceEngine</span><span class="p">,</span> <span class="n">BasicLLMConfig</span><span class="p">,</span> <span class="n">DirectFrameExtractor</span><span class="p">,</span> <span class="n">PromptEditor</span><span class="p">,</span> <span class="n">SentenceUnitChunker</span><span class="p">,</span> <span class="n">SlideWindowContextChunker</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1"># Define a LLM inference engine</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">llm</span> <span class="o">=</span> <span class="n">OpenAIInferenceEngine</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://openrouter.ai/api/v1&quot;</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;meta-llama/llama-4-scout&quot;</span><span class="p">,</span> <span class="n">api_key</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;OPENROUTER_API_KEY&quot;</span><span class="p">))</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1"># Define LLM prompt editor</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="n">editor</span> <span class="o">=</span> <span class="n">PromptEditor</span><span class="p">(</span><span class="n">inference_engine</span><span class="p">,</span> <span class="n">DirectFrameExtractor</span><span class="p">)</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># Start chat</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="n">editor</span><span class="o">.</span><span class="n">chat</span><span class="p">()</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1"># Define a LLM inference engine for the prompt editor</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">prompt_editor_llm</span> <span class="o">=</span> <span class="n">OpenAIInferenceEngine</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://openrouter.ai/api/v1&quot;</span><span class="p">,</span> 
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>                                          <span class="n">model</span><span class="o">=</span><span class="s2">&quot;meta-llama/llama-4-scout&quot;</span><span class="p">,</span> 
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>                                          <span class="n">api_key</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;OPENROUTER_API_KEY&quot;</span><span class="p">),</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>                                          <span class="n">config</span><span class="o">=</span><span class="n">BasicLLMConfig</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> 
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>                                                                <span class="n">max_new_tokens</span><span class="o">=</span><span class="mi">4096</span><span class="p">))</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="c1"># Define LLM prompt editor</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="n">editor</span> <span class="o">=</span> <span class="n">PromptEditor</span><span class="p">(</span><span class="n">prompt_editor_llm</span><span class="p">,</span> <span class="n">DirectFrameExtractor</span><span class="p">)</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="c1"># Start chat</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="n">editor</span><span class="o">.</span><span class="n">chat</span><span class="p">()</span>
 </code></pre></div>
-This opens an interactive session where we can chat with the <a href="../prompt_editor/">Prompt Editor</a> agent:
+<p>This opens an interactive session where we can chat with the <a href="../prompt_editor/">Prompt Editor</a> agent:
 <img alt="chat in terminal" src="../readme_img/terminal_chat.PNG" /></p>
 <p>The agent drafts a <a href="../prompt_templates/">prompt template</a> following the schema required by the <code>DirectFrameExtractor</code>.
 After a few rounds of chatting, we have a prompt template to start with:
@@ -831,20 +903,26 @@ After a few rounds of chatting, we have a prompt template to start with:
 <a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>&quot;{{input}}&quot;
 </code></pre></div></p>
 <h3 id="design-prompting-algorithm-for-information-extraction">Design prompting algorithm for information extraction</h3>
-<p>Instead of prompting LLMs with the entire document (which, by our experiments, has worse performance), we divide the input document into units (e.g., sentences, text lines, paragraphs). LLM only focus on one unit at a time, before moving to the next unit. This is achieved by the <code>UnitChunker</code> classes. In this demo, we use <code>SentenceUnitChunker</code> for sentence-by-sentence prompting. LLM only focus on one sentence at a time. We supply a context, in this case, a slide window of 2 sentences as context. This provides LLM with additional information. This is achieved by the <code>SlideWindowContextChunker</code> class. To learn more about prompting algorithm, see <a href="../extractors/">Extractors</a>.</p>
+<p>Instead of prompting LLMs with the entire document (which, by our experiments, has worse performance), we divide the input document into units (e.g., sentences, text lines, paragraphs). LLM only focus on one unit at a time, before moving to the next unit. This is achieved by the <code>UnitChunker</code> classes. In this demo, we use <code>SentenceUnitChunker</code> for sentence-by-sentence prompting. LLM only focus on one sentence at a time. We supply a context, in this case, a slide window of 2 sentences as context. This provides LLM with additional information. This is achieved by the <code>SlideWindowContextChunker</code> class. To learn more about prompting algorithm, see <a href="../extractors/">Extractors</a>. For information extraction, we use a smaller LLM, llama-3.1-70b-instruct for lower cost. We set <code>temperature = 0.0</code> to improve output stability and reproducibility. </p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Load synthesized medical note</span>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;./demo/document/synthesized_note.txt&quot;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="n">note_text</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="c1"># Define unit chunker. Prompts sentences-by-sentence.</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="n">unit_chunker</span> <span class="o">=</span> <span class="n">SentenceUnitChunker</span><span class="p">()</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="c1"># Define context chunker. Provides context for units.</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="n">context_chunker</span> <span class="o">=</span> <span class="n">SlideWindowContextChunker</span><span class="p">(</span><span class="n">window_size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="c1"># Define extractor</span>
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="n">extractor</span> <span class="o">=</span> <span class="n">DirectFrameExtractor</span><span class="p">(</span><span class="n">inference_engine</span><span class="o">=</span><span class="n">llm</span><span class="p">,</span> 
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>                                 <span class="n">unit_chunker</span><span class="o">=</span><span class="n">unit_chunker</span><span class="p">,</span>
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>                                 <span class="n">context_chunker</span><span class="o">=</span><span class="n">context_chunker</span><span class="p">,</span>
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>                                 <span class="n">prompt_template</span><span class="o">=</span><span class="n">prompt_template</span><span class="p">)</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="c1"># Define a LLM inference engine for the extractor</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="n">extractor_llm</span> <span class="o">=</span> <span class="n">OpenAIInferenceEngine</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://openrouter.ai/api/v1&quot;</span><span class="p">,</span> 
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>                                      <span class="n">model</span><span class="o">=</span><span class="s2">&quot;meta-llama/llama-3.1-70b-instruct&quot;</span><span class="p">,</span> 
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>                                      <span class="n">api_key</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;OPENROUTER_API_KEY&quot;</span><span class="p">),</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>                                      <span class="n">config</span><span class="o">=</span><span class="n">BasicLLMConfig</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> 
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>                                                            <span class="n">max_new_tokens</span><span class="o">=</span><span class="mi">1024</span><span class="p">))</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="c1"># Define unit chunker. Prompts sentences-by-sentence.</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="n">unit_chunker</span> <span class="o">=</span> <span class="n">SentenceUnitChunker</span><span class="p">()</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="c1"># Define context chunker. Provides context for units.</span>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="n">context_chunker</span> <span class="o">=</span> <span class="n">SlideWindowContextChunker</span><span class="p">(</span><span class="n">window_size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="c1"># Define extractor</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="n">extractor</span> <span class="o">=</span> <span class="n">DirectFrameExtractor</span><span class="p">(</span><span class="n">inference_engine</span><span class="o">=</span><span class="n">extractor_llm</span><span class="p">,</span> 
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>                                 <span class="n">unit_chunker</span><span class="o">=</span><span class="n">unit_chunker</span><span class="p">,</span>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>                                 <span class="n">context_chunker</span><span class="o">=</span><span class="n">context_chunker</span><span class="p">,</span>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>                                 <span class="n">prompt_template</span><span class="o">=</span><span class="n">prompt_template</span><span class="p">)</span>
 </code></pre></div>
 <p>To run the frame extraction, use <code>extract_frames</code> method. A list of entities with attributes ("frames") will be returned. Concurrent processing is supported by setting <code>concurrent=True</code>.
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># To stream the extraction process, use concurrent=False, stream=True:</span>

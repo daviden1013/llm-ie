@@ -9,7 +9,7 @@
       
       
       
-        <link rel="prev" href="../web_application/">
+        <link rel="prev" href="../llm_config/">
       
       
         <link rel="next" href="../prompt_templates/">
@@ -218,6 +218,28 @@
   
   
     <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Installation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../quick_start/" class="md-nav__link">
         
   
@@ -272,10 +294,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
             
   
   
@@ -288,12 +310,35 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             User Guide
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../llm_config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LLM Configuration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -551,10 +596,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
   
@@ -567,8 +612,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             API Reference
           </label>
@@ -581,12 +626,35 @@
   
   
     <li class="md-nav__item">
-      <a href="../api/engines/" class="md-nav__link">
+      <a href="../api/llm_config/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Engines
+    LLM Configuration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/llm_inference_engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LLM Inference Engine
     
   </span>
   
@@ -796,7 +864,7 @@
 
   <h1>LLM Inference Engine</h1>
 
-<p>We provide an interface for different LLM inference engines to work in the information extraction workflow. The built-in engines are <code>LiteLLMInferenceEngine</code>, <code>OpenAIInferenceEngine</code>, <code>HuggingFaceHubInferenceEngine</code>, <code>OllamaInferenceEngine</code>, and <code>LlamaCppInferenceEngine</code>. For customization, see <a href="#customize-inference-engine">customize inference engine</a></p>
+<p>We provide an interface for different LLM inference engines to work in the information extraction workflow. The built-in engines are <code>LiteLLMInferenceEngine</code>, <code>OpenAIInferenceEngine</code>, <code>HuggingFaceHubInferenceEngine</code>, <code>OllamaInferenceEngine</code>, and <code>LlamaCppInferenceEngine</code>. For customization, see <a href="#customize-inference-engine">customize inference engine</a>. Inference engines accept a <a href="">LLMConfig</a> class where <strong>sampling parameters</strong> (e.g., temperature, top-p, top-k, maximum new tokens) and <strong>reasoning configuration</strong> (e.g., OpenAI o-series models, Qwen3) can be set.</p>
 <h2 id="litellm">LiteLLM</h2>
 <p>The LiteLLM is an adaptor project that unifies many proprietary and open-source LLM APIs. Popular inferncing servers, including OpenAI, Huggingface Hub, and Ollama are supported via its interface. For more details, refer to <a href="https://github.com/BerriAI/litellm">LiteLLM GitHub page</a>. </p>
 <p>To use LiteLLM with LLM-IE, import the <code>LiteLLMInferenceEngine</code> and follow the required model naming.
@@ -826,15 +894,16 @@ For more parameters, see <a href="https://platform.openai.com/docs/api-reference
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">inference_engine</span> <span class="o">=</span> <span class="n">OpenAIInferenceEngine</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4o-mini&quot;</span><span class="p">)</span>
 </code></pre></div>
-<p>For reasoning models ("o" series), use the <code>reasoning_model=True</code> flag. The <code>max_completion_tokens</code> will be used instead of the <code>max_tokens</code>. <code>temperature</code> will be ignored.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span> <span class="nn">llm_ie.engines</span> <span class="kn">import</span> <span class="n">OpenAIInferenceEngine</span>
+<p>For OpenAI reasoning models (o-series), pass a <code>OpenAIReasoningLLMConfig</code> object to <code>OpenAIInferenceEngine</code> constructor. </p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span> <span class="nn">llm_ie.engines</span> <span class="kn">import</span> <span class="n">OpenAIInferenceEngine</span><span class="p">,</span> <span class="n">OpenAIReasoningLLMConfig</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">inference_engine</span> <span class="o">=</span> <span class="n">OpenAIInferenceEngine</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;o1-mini&quot;</span><span class="p">,</span> <span class="n">reasoning_model</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">inference_engine</span> <span class="o">=</span> <span class="n">OpenAIInferenceEngine</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;o1-mini&quot;</span><span class="p">,</span> 
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>                                         <span class="n">config</span><span class="o">=</span><span class="n">OpenAIReasoningLLMConfig</span><span class="p">(</span><span class="n">reasoning_effort</span><span class="o">=</span><span class="s2">&quot;low&quot;</span><span class="p">))</span>
 </code></pre></div>
 <p>For OpenAI compatible services (OpenRouter for example):
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span> <span class="nn">llm_ie.engines</span> <span class="kn">import</span> <span class="n">OpenAIInferenceEngine</span>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">inference_engine</span> <span class="o">=</span> <span class="n">OpenAIInferenceEngine</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://openrouter.ai/api/v1&quot;</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;qwen/qwen3-30b-a3b&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">inference_engine</span> <span class="o">=</span> <span class="n">OpenAIInferenceEngine</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://openrouter.ai/api/v1&quot;</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;meta-llama/llama-4-scout&quot;</span><span class="p">)</span>
 </code></pre></div></p>
 <h2 id="azure-openai-api">Azure OpenAI API</h2>
 <p>In bash, save the endpoint name and API key to environmental variables <code>AZURE_OPENAI_ENDPOINT</code> and <code>AZURE_OPENAI_API_KEY</code>.
@@ -847,10 +916,11 @@ For more parameters, see <a href="https://learn.microsoft.com/en-us/azure/ai-ser
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
 <a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">inference_engine</span> <span class="o">=</span> <span class="n">AzureOpenAIInferenceEngine</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4o-mini&quot;</span><span class="p">)</span>
 </code></pre></div>
-<p>For reasoning models ("o" series), use the <code>reasoning_model=True</code> flag. The <code>max_completion_tokens</code> will be used instead of the <code>max_tokens</code>. <code>temperature</code> will be ignored. </p>
+<p>For reasoning models (o-series), pass a <code>OpenAIReasoningLLMConfig</code> object to <code>OpenAIInferenceEngine</code> constructor. </p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span> <span class="nn">llm_ie.engines</span> <span class="kn">import</span> <span class="n">AzureOpenAIInferenceEngine</span>
 <a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">inference_engine</span> <span class="o">=</span> <span class="n">AzureOpenAIInferenceEngine</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;o1-mini&quot;</span><span class="p">,</span> <span class="n">reasoning_model</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">inference_engine</span> <span class="o">=</span> <span class="n">AzureOpenAIInferenceEngine</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;o1-mini&quot;</span><span class="p">,</span> 
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>                                              <span class="n">config</span><span class="o">=</span><span class="n">OpenAIReasoningLLMConfig</span><span class="p">(</span><span class="n">reasoning_effort</span><span class="o">=</span><span class="s2">&quot;low&quot;</span><span class="p">))</span>
 </code></pre></div>
 <h2 id="huggingface_hub">Huggingface_hub</h2>
 <p>The <code>model</code> can be a model id hosted on the Hugging Face Hub or a URL to a deployed Inference Endpoint. Refer to the <a href="https://huggingface.co/docs/huggingface_hub/en/package_reference/inference_client">Inference Client</a> documentation for more details. </p>
@@ -903,30 +973,44 @@ The output should be something like (might vary by LLMs and versions)</p>
 <p>The abstract class <code>InferenceEngine</code> defines the interface and required method <code>chat()</code>. Inherit this class for customized API. 
 <div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="k">class</span> <span class="nc">InferenceEngine</span><span class="p">:</span>
 <a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span><span class="n">LLMConfig</span><span class="p">,</span> <span class="o">**</span><span class="n">kwrs</span><span class="p">):</span>
 <a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="sd">        This is an abstract class to provide interfaces for LLM inference engines. </span>
-<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="sd">        Children classes that inherits this class can be used in extractors. Must implement chat() method.</span>
-<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="sd">        &quot;&quot;&quot;</span>
-<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>        <span class="k">return</span> <span class="bp">NotImplemented</span>
-<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>
-<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>    <span class="k">def</span> <span class="nf">chat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">messages</span><span class="p">:</span><span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span><span class="nb">str</span><span class="p">]],</span> <span class="n">max_new_tokens</span><span class="p">:</span><span class="nb">int</span><span class="o">=</span><span class="mi">2048</span><span class="p">,</span> <span class="n">temperature</span><span class="p">:</span><span class="nb">float</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span><span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwrs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a><span class="sd">        This method inputs chat messages and outputs LLM generated text.</span>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="sd">        Children classes that inherts this class can be used in extrators. Must implement chat() method.</span>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="sd">        Parameters:</span>
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="sd">        ----------</span>
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a><span class="sd">        config : LLMConfig</span>
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a><span class="sd">            the LLM configuration. Must be a child class of LLMConfig.</span>
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>        <span class="k">return</span> <span class="bp">NotImplemented</span>
 <a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>
-<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a><span class="sd">        Parameters:</span>
-<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a><span class="sd">        ----------</span>
-<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a><span class="sd">        messages : List[Dict[str,str]]</span>
-<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a><span class="sd">            a list of dict with role and content. role must be one of {&quot;system&quot;, &quot;user&quot;, &quot;assistant&quot;}</span>
-<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a><span class="sd">        max_new_tokens : str, Optional</span>
-<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a><span class="sd">            the max number of new tokens LLM can generate. </span>
-<a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a><span class="sd">        temperature : float, Optional</span>
-<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a><span class="sd">            the temperature for token sampling. </span>
-<a id="__codelineno-15-23" name="__codelineno-15-23" href="#__codelineno-15-23"></a><span class="sd">        verbose : bool, Optional</span>
-<a id="__codelineno-15-24" name="__codelineno-15-24" href="#__codelineno-15-24"></a><span class="sd">            if True, LLM generated text will be printed in terminal in real-time. </span>
-<a id="__codelineno-15-25" name="__codelineno-15-25" href="#__codelineno-15-25"></a><span class="sd">        &quot;&quot;&quot;</span>
-<a id="__codelineno-15-26" name="__codelineno-15-26" href="#__codelineno-15-26"></a>        <span class="k">return</span> <span class="bp">NotImplemented</span>
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>    <span class="k">def</span> <span class="nf">chat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">messages</span><span class="p">:</span><span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span><span class="nb">str</span><span class="p">]],</span> 
+<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>             <span class="n">verbose</span><span class="p">:</span><span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">stream</span><span class="p">:</span><span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Generator</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]]:</span>
+<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a><span class="sd">        This method inputs chat messages and outputs LLM generated text.</span>
+<a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a>
+<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a><span class="sd">        Parameters:</span>
+<a id="__codelineno-15-23" name="__codelineno-15-23" href="#__codelineno-15-23"></a><span class="sd">        ----------</span>
+<a id="__codelineno-15-24" name="__codelineno-15-24" href="#__codelineno-15-24"></a><span class="sd">        messages : List[Dict[str,str]]</span>
+<a id="__codelineno-15-25" name="__codelineno-15-25" href="#__codelineno-15-25"></a><span class="sd">            a list of dict with role and content. role must be one of {&quot;system&quot;, &quot;user&quot;, &quot;assistant&quot;}</span>
+<a id="__codelineno-15-26" name="__codelineno-15-26" href="#__codelineno-15-26"></a><span class="sd">        verbose : bool, Optional</span>
+<a id="__codelineno-15-27" name="__codelineno-15-27" href="#__codelineno-15-27"></a><span class="sd">            if True, LLM generated text will be printed in terminal in real-time.</span>
+<a id="__codelineno-15-28" name="__codelineno-15-28" href="#__codelineno-15-28"></a><span class="sd">        stream : bool, Optional</span>
+<a id="__codelineno-15-29" name="__codelineno-15-29" href="#__codelineno-15-29"></a><span class="sd">            if True, returns a generator that yields the output in real-time.  </span>
+<a id="__codelineno-15-30" name="__codelineno-15-30" href="#__codelineno-15-30"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-15-31" name="__codelineno-15-31" href="#__codelineno-15-31"></a>        <span class="k">return</span> <span class="bp">NotImplemented</span>
+<a id="__codelineno-15-32" name="__codelineno-15-32" href="#__codelineno-15-32"></a>
+<a id="__codelineno-15-33" name="__codelineno-15-33" href="#__codelineno-15-33"></a>    <span class="k">def</span> <span class="nf">_format_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-15-34" name="__codelineno-15-34" href="#__codelineno-15-34"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-15-35" name="__codelineno-15-35" href="#__codelineno-15-35"></a><span class="sd">        This method format the LLM configuration with the correct key for the inference engine. </span>
+<a id="__codelineno-15-36" name="__codelineno-15-36" href="#__codelineno-15-36"></a>
+<a id="__codelineno-15-37" name="__codelineno-15-37" href="#__codelineno-15-37"></a><span class="sd">        Return : Dict[str, Any]</span>
+<a id="__codelineno-15-38" name="__codelineno-15-38" href="#__codelineno-15-38"></a><span class="sd">            the config parameters.</span>
+<a id="__codelineno-15-39" name="__codelineno-15-39" href="#__codelineno-15-39"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-15-40" name="__codelineno-15-40" href="#__codelineno-15-40"></a>        <span class="k">return</span> <span class="bp">NotImplemented</span>
 </code></pre></div></p>
 
 

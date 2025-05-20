@@ -9,10 +9,10 @@
       
       
       
-        <link rel="prev" href="../extractors/">
+        <link rel="prev" href="../web_application/">
       
       
-        <link rel="next" href="../api/llm_config/">
+        <link rel="next" href="../llm_inference_engine/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -20,7 +20,7 @@
     
     
       
-        <title>Visualization - LLM-IE Documentation</title>
+        <title>LLM Configuration - LLM-IE Documentation</title>
       
     
     
@@ -63,6 +63,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#setting-sampling-parameters" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -95,7 +100,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Visualization
+              LLM Configuration
             
           </span>
         </div>
@@ -316,10 +321,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../llm_config/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    LLM Configuration
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -330,6 +355,66 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#setting-sampling-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setting sampling parameters
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reasoning-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reasoning models
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reasoning models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#openai-o-series-reasoning-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      OpenAI o-series reasoning models
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#qwen3-hybrid-thinking-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      Qwen3 (hybrid thinking mode)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -431,17 +516,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../visualization/" class="md-nav__link">
         
   
   
@@ -452,7 +530,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -643,6 +720,56 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#setting-sampling-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setting sampling parameters
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reasoning-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reasoning models
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reasoning models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#openai-o-series-reasoning-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      OpenAI o-series reasoning models
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#qwen3-hybrid-thinking-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      Qwen3 (hybrid thinking mode)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -657,43 +784,42 @@
 
 
 
-  <h1>Visualization</h1>
+  <h1>LLM Configuration</h1>
 
-<p>The <code>LLMInformationExtractionDocument</code> class supports named entity, entity attributes, and relation visualization. The implementation is through our plug-in package <a href="https://github.com/daviden1013/ie-viz">ie-viz</a>. </p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip install ie-viz
+<p>In some cases, it is helpful to adjust <strong>LLM sampling parameters</strong> (e.g., temperature, top-p, top-k, maximum new tokens) or use <strong>reasoning models</strong> (e.g., OpenAI o-series models, Qwen3) which requires special treatments in system prompt, user prompt, and sampling parameters. For example, OpenAI o-series reasoning models disallow passing a system prompt or setting custom temperature. Another example is Qwen3 hybrid thinking mode. Special tokens "/think" and "/no_think" should be appended to user prompts to control for the reasoning behavior. </p>
+<h2 id="setting-sampling-parameters">Setting sampling parameters</h2>
+<p>LLM sampling parameters such as temperature, top-p, top-k, and maximum new tokens can be set by passing a <code>LLMConfig</code> class to the <code>InferenceEngine</code> constructor.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span> <span class="nn">llm_ie.engines</span> <span class="kn">import</span> <span class="n">OpenAIInferenceEngine</span><span class="p">,</span> <span class="n">BasicLLMConfig</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">config</span> <span class="o">=</span> <span class="n">BasicLLMConfig</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">max_new_tokens</span><span class="o">=</span><span class="mi">4096</span><span class="p">)</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">inference_engine</span> <span class="o">=</span> <span class="n">OpenAIInferenceEngine</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4o-mini&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
 </code></pre></div>
-<p>The <code>viz_serve()</code> method starts a Flask App on localhost port 5000 by default. 
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span> <span class="nn">llm_ie.data_types</span> <span class="kn">import</span> <span class="n">LLMInformationExtractionDocument</span>
+<h2 id="reasoning-models">Reasoning models</h2>
+<p>To use reasoning models such as OpenAI o-series (e.g., o1, o3, o3-mini, o4-mini), some special processing is required. We provide dedicated configuration classes for them.</p>
+<h3 id="openai-o-series-reasoning-models">OpenAI o-series reasoning models</h3>
+<p>OpenAI o-series reasoning model API does not allow setting system prompts. Contents in the system should be included in user prompts. Also, custom temperature is not allowed. We provide a dedicated configuration class <code>OpenAIReasoningLLMConfig</code> for these models. </p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span> <span class="nn">llm_ie.engines</span> <span class="kn">import</span> <span class="n">OpenAIInferenceEngine</span><span class="p">,</span> <span class="n">OpenAIReasoningLLMConfig</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># Define document</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">doc</span> <span class="o">=</span> <span class="n">LLMInformationExtractionDocument</span><span class="p">(</span><span class="n">doc_id</span><span class="o">=</span><span class="s2">&quot;Medical note&quot;</span><span class="p">,</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>                                       <span class="n">text</span><span class="o">=</span><span class="n">note_text</span><span class="p">)</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="c1"># Add extracted frames and relations to document</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">doc</span><span class="o">.</span><span class="n">add_frames</span><span class="p">(</span><span class="n">frames</span><span class="p">)</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="n">doc</span><span class="o">.</span><span class="n">add_relations</span><span class="p">(</span><span class="n">relations</span><span class="p">)</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="c1"># Visualize the document</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="n">doc</span><span class="o">.</span><span class="n">viz_serve</span><span class="p">()</span>
-</code></pre></div></p>
-<p><img alt="ie-viz" src="../readme_img/visualization.PNG" /></p>
-<p>Alternatively, the <code>viz_render()</code> method returns a self-contained (HTML + JS + CSS) string. Save it to file and open with a browser.
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">html</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">viz_render</span><span class="p">()</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">inference_engine</span> <span class="o">=</span> <span class="n">OpenAIInferenceEngine</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;o1-mini&quot;</span><span class="p">,</span> 
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>                                         <span class="n">config</span><span class="o">=</span><span class="n">OpenAIReasoningLLMConfig</span><span class="p">(</span><span class="n">reasoning_effort</span><span class="o">=</span><span class="s2">&quot;low&quot;</span><span class="p">))</span>
+</code></pre></div>
+<h3 id="qwen3-hybrid-thinking-mode">Qwen3 (hybrid thinking mode)</h3>
+<p>Qwen3 has a special way to manage reasoning behavior. The same models have <em>thinking mode</em> and <em>non-thinking mode</em>, controled by the prompting template. When a special token "/think" is appended to the user prompt, the models generate thinking tokens in a <code>&lt;think&gt;... &lt;/think&gt;</code> block. When 
+a special token "/no_think" is appended to the user prompt, the models generate an empty <code>&lt;think&gt;... &lt;/think&gt;</code> block. We provide a dedicated configuration class <code>Qwen3LLMConfig</code> for these models. </p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span> <span class="nn">llm_ie.engines</span> <span class="kn">import</span> <span class="n">OpenAIInferenceEngine</span><span class="p">,</span> <span class="n">Qwen3LLMConfig</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;Medical note.html&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">html</span><span class="p">)</span>
-</code></pre></div></p>
-<p>To customize colors for different entities, use <code>color_attr_key</code> (simple) or <code>color_map_func</code> (advanced). </p>
-<p>The <code>color_attr_key</code> automatically assign colors based on the specified attribute key. For example, "EntityType".
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">doc</span><span class="o">.</span><span class="n">viz_serve</span><span class="p">(</span><span class="n">color_attr_key</span><span class="o">=</span><span class="s2">&quot;EntityType&quot;</span><span class="p">)</span>
-</code></pre></div></p>
-<p>The <code>color_map_func</code> allow users to define a custom entity-color mapping function. For example,
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">def</span> <span class="nf">color_map_func</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="k">if</span> <span class="n">entity</span><span class="p">[</span><span class="s1">&#39;attr&#39;</span><span class="p">][</span><span class="s1">&#39;&lt;attribute key&gt;&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;&lt;a certain value&gt;&quot;</span><span class="p">:</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>        <span class="k">return</span> <span class="s2">&quot;#7f7f7f&quot;</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>        <span class="k">return</span> <span class="s2">&quot;#03A9F4&quot;</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="n">doc</span><span class="o">.</span><span class="n">viz_serve</span><span class="p">(</span><span class="n">color_map_func</span><span class="o">=</span><span class="n">color_map_func</span><span class="p">)</span>
-</code></pre></div></p>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1"># Thinking mode</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">llm</span> <span class="o">=</span> <span class="n">OpenAIInferenceEngine</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;http://localhost:8000/v1&quot;</span><span class="p">,</span> 
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>                            <span class="n">model</span><span class="o">=</span><span class="s2">&quot;Qwen/Qwen3-30B-A3B&quot;</span><span class="p">,</span> 
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>                            <span class="n">api_key</span><span class="o">=</span><span class="s2">&quot;EMPTY&quot;</span><span class="p">,</span> 
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>                            <span class="n">config</span><span class="o">=</span><span class="n">Qwen3LLMConfig</span><span class="p">(</span><span class="n">thinking_mode</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">max_tokens</span><span class="o">=</span><span class="mi">8192</span><span class="p">))</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="c1"># Non-thinking mode</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="n">llm</span> <span class="o">=</span> <span class="n">OpenAIInferenceEngine</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;http://localhost:8000/v1&quot;</span><span class="p">,</span> 
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>                            <span class="n">model</span><span class="o">=</span><span class="s2">&quot;Qwen/Qwen3-30B-A3B&quot;</span><span class="p">,</span> 
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>                            <span class="n">api_key</span><span class="o">=</span><span class="s2">&quot;EMPTY&quot;</span><span class="p">,</span> 
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>                            <span class="n">config</span><span class="o">=</span><span class="n">Qwen3LLMConfig</span><span class="p">(</span><span class="n">thinking_mode</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">max_tokens</span><span class="o">=</span><span class="mi">2048</span><span class="p">))</span>
+</code></pre></div>
 
 
 
