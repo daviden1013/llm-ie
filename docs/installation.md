@@ -6,7 +6,7 @@ The Python package is available on PyPI.
 ```bash
 pip install llm-ie 
 ```
-Note that this package does not check LLM inference engine installation nor install them. At least one LLM inference engine is required. There are built-in supports for [LiteLLM](https://github.com/BerriAI/litellm), [Llama-cpp-python](https://github.com/abetlen/llama-cpp-python), [Ollama](https://github.com/ollama/ollama), [Huggingface_hub](https://github.com/huggingface/huggingface_hub), [OpenAI API](https://platform.openai.com/docs/api-reference/introduction), and [vLLM](https://github.com/vllm-project/vllm). For installation guides, please refer to those projects. Other inference engines can be configured through the [InferenceEngine](src/llm_ie/engines.py) abstract class. See [LLM Inference Engine](./llm_inference_engine.md) section.
+Note that this package does not check LLM inference engine installation nor install them. At least one LLM inference engine is required. There are built-in supports for [LiteLLM](https://github.com/BerriAI/litellm), [Llama-cpp-python](https://github.com/abetlen/llama-cpp-python), [Ollama](https://github.com/ollama/ollama), [Huggingface_hub](https://github.com/huggingface/huggingface_hub), [OpenAI API](https://platform.openai.com/docs/api-reference/introduction), and [vLLM](https://github.com/vllm-project/vllm). For installation guides, please refer to those projects. Other inference engines can be configured through the `InferenceEngine` abstract class. See [LLM Inference Engine](./llm_inference_engine.md) section.
 
 ## Web Application
 ### Docker
