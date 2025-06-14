@@ -21,7 +21,7 @@ An LLM-powered tool that transforms everyday language into robust information ex
   - **Refactored `FrameExtractor`** by separating chunking methods (e.g., sentence) and prompting method (e.g., review). Chunking is now defined in `UnitChunker` and `ContextChunker`, while `FrameExtractor` defines prompting method. 
   - **Documentation website**. User guide and API reference is now available on []().
   - **Optimized concurrent/batch processing**. We adopt semaphore to better utilize the computation resource. 
-
+- [v1.1.0](https://github.com/daviden1013/llm-ie/releases/tag/v1.1.0) (May 19, 2025): LLM-specific configuration to support reasoning models (o3, Qwen3).
 
 ## 📑Table of Contents
 - [Overview](#overview)
