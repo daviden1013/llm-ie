@@ -2,7 +2,8 @@
 
 ![Python Version](https://img.shields.io/pypi/pyversions/llm-ie)
 ![PyPI](https://img.shields.io/pypi/v/llm-ie)
-
+[![Paper](https://img.shields.io/badge/DOI-10.1093/jamiaopen/ooaf012-red)](https://doi.org/10.1093/jamiaopen/ooaf012)
+[![Website](https://img.shields.io/badge/website-GitHub.io-purple)](https://daviden1013.github.io/llm-ie/)
 
 An LLM-powered tool that transforms everyday language into robust information extraction pipelines. 
 
@@ -30,6 +31,7 @@ An LLM-powered tool that transforms everyday language into robust information ex
 - [Quick Start](#quick-start)
 - [Web Applicaton](#web-application)
 - [Examples](#examples)
+- [Useful Scripts](#useful-scripts)
 - [User Guide](#user-guide)
 - [Benchmarks](#benchmarks)
 - [Citation](#citation)
