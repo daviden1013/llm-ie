@@ -1,0 +1,7 @@
+---
+  run_name: sample_config
+  system_pormpt_dir: <your_system_prompt_path>
+  prompt_temp_dir: <your_user_prompt_path>
+  data_dir: <your_data_path>
+  base_url: <your_base_url>
+  out_dif: <your_output_path>
