@@ -1752,7 +1752,7 @@ class RelationExtractor(Extractor):
                          system_prompt=system_prompt)
         
     def _get_ROI(self, frame_1:LLMInformationExtractionFrame, frame_2:LLMInformationExtractionFrame, 
-                 text:str, buffer_size:int=100) -> str:
+                 text:str, buffer_size:int=128) -> str:
         """
         This method returns the Region of Interest (ROI) that covers the two frames. Leaves a buffer_size of characters before and after.
         The returned text has the two frames inline annotated with <entity_1>, <entity_2>.
@@ -1772,21 +1772,21 @@ class RelationExtractor(Extractor):
             the ROI text with the two frames inline annotated with <entity_1>, <entity_2>.
         """
         left_frame, right_frame = sorted([frame_1, frame_2], key=lambda f: f.start)
-        left_frame_name = "entity_1" if left_frame == frame_1 else "entity_2"
-        right_frame_name = "entity_1" if right_frame == frame_1 else "entity_2"
+        left_frame_name = "entity_1" if left_frame.frame_id == frame_1.frame_id else "entity_2"
+        right_frame_name = "entity_1" if right_frame.frame_id == frame_1.frame_id else "entity_2"
 
         start = max(left_frame.start - buffer_size, 0)
         end = min(right_frame.end + buffer_size, len(text))
         roi = text[start:end]
 
         roi_annotated = roi[0:left_frame.start - start] + \
-                f'<{left_frame_name}>' + \
+                f"<{left_frame_name}> " + \
                 roi[left_frame.start - start:left_frame.end - start] + \
-                f"</{left_frame_name}>" + \
+                f" </{left_frame_name}>" + \
                 roi[left_frame.end - start:right_frame.start - start] + \
-                f'<{right_frame_name}>' + \
+                f"<{right_frame_name}> " + \
                 roi[right_frame.start - start:right_frame.end - start] + \
-                f"</{right_frame_name}>" + \
+                f" </{right_frame_name}>" + \
                 roi[right_frame.end - start:end - start]
 
         if start > 0:
@@ -1795,36 +1795,91 @@ class RelationExtractor(Extractor):
             roi_annotated = roi_annotated + "..."
         return roi_annotated
     
+    @abc.abstractmethod
+    def _get_task_if_possible(self, frame_1: LLMInformationExtractionFrame, frame_2: LLMInformationExtractionFrame, 
+                              text: str, buffer_size: int) -> Optional[Dict[str, Any]]:
+        """Checks if a relation is possible and constructs the task payload."""
+        raise NotImplementedError
 
     @abc.abstractmethod
-    def extract_relations(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, 
-                          verbose:bool=False, return_messages_log:bool=False, **kwrs) -> List[Dict]:
-        """
-        This method considers all combinations of two frames. 
+    def _post_process_result(self, gen_text: str, pair_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Processes the LLM output for a single pair and returns the final relation dictionary."""
+        raise NotImplementedError
 
-        Parameters:
-        -----------
-        doc : LLMInformationExtractionDocument
-            a document with frames.
-        buffer_size : int, Optional
-            the number of characters before and after the two frames in the ROI text.
-        max_new_tokens : str, Optional
-            the max number of new tokens LLM should generate. 
-        temperature : float, Optional
-            the temperature for token sampling.
-        verbose : bool, Optional
-            if True, LLM generated text will be printed in terminal in real-time. 
-        return_messages_log : bool, Optional
-            if True, a list of messages will be returned.
+    def _extract(self, doc: LLMInformationExtractionDocument, buffer_size: int = 128, verbose: bool = False, 
+                 return_messages_log: bool = False) -> Union[List[Dict], Tuple[List[Dict], List]]:
+        pairs = itertools.combinations(doc.frames, 2)
+        relations = []
+        messages_log = [] if return_messages_log else None
 
-        Return : List[Dict]
-            a list of dict with {"frame_1", "frame_2"} for all relations.
-        """
-        return NotImplemented
+        for frame_1, frame_2 in pairs:
+            task_payload = self._get_task_if_possible(frame_1, frame_2, doc.text, buffer_size)
+            if task_payload:
+                if verbose:
+                    print(f"\n\n{Fore.GREEN}Evaluating pair:{Style.RESET_ALL} ({frame_1.frame_id}, {frame_2.frame_id})")
+                    print(f"{Fore.YELLOW}ROI Text:{Style.RESET_ALL}\n{task_payload['roi_text']}\n")
+                    print(f"{Fore.BLUE}Extraction:{Style.RESET_ALL}")
+
+                gen_text = self.inference_engine.chat(
+                    messages=task_payload['messages'],
+                    verbose=verbose
+                )
+                relation = self._post_process_result(gen_text, task_payload)
+                if relation:
+                    relations.append(relation)
+
+                if return_messages_log:
+                    task_payload['messages'].append({"role": "assistant", "content": gen_text})
+                    messages_log.append(task_payload['messages'])
+
+        return (relations, messages_log) if return_messages_log else relations
+
+    async def _extract_async(self, doc: LLMInformationExtractionDocument, buffer_size: int = 128, concurrent_batch_size: int = 32, return_messages_log: bool = False) -> Union[List[Dict], Tuple[List[Dict], List]]:
+        pairs = list(itertools.combinations(doc.frames, 2))
+        tasks_input = [self._get_task_if_possible(f1, f2, doc.text, buffer_size) for f1, f2 in pairs]
+        # Filter out impossible pairs
+        tasks_input = [task for task in tasks_input if task is not None] 
+
+        relations = []
+        messages_log = [] if return_messages_log else None
+        semaphore = asyncio.Semaphore(concurrent_batch_size)
+
+        async def semaphore_helper(task_payload: Dict):
+            async with semaphore:
+                gen_text = await self.inference_engine.chat_async(messages=task_payload['messages'])
+                return gen_text, task_payload
+
+        tasks = [asyncio.create_task(semaphore_helper(payload)) for payload in tasks_input]
+        results = await asyncio.gather(*tasks)
+
+        for gen_text, task_payload in results:
+            relation = self._post_process_result(gen_text, task_payload)
+            if relation:
+                relations.append(relation)
+
+            if return_messages_log:
+                task_payload['messages'].append({"role": "assistant", "content": gen_text})
+                messages_log.append(task_payload['messages'])
+
+        return (relations, messages_log) if return_messages_log else relations
+
+    def extract_relations(self, doc: LLMInformationExtractionDocument, buffer_size: int = 128, concurrent: bool = False, concurrent_batch_size: int = 32, verbose: bool = False, return_messages_log: bool = False) -> List[Dict]:
+        if not doc.has_frame():
+            raise ValueError("Input document must have frames.")
+        if doc.has_duplicate_frame_ids():
+            raise ValueError("All frame_ids in the input document must be unique.")
+
+        if concurrent:
+            if verbose:
+                warnings.warn("verbose=True is not supported in concurrent mode.", RuntimeWarning)
+            nest_asyncio.apply()
+            return asyncio.run(self._extract_async(doc, buffer_size, concurrent_batch_size, return_messages_log))
+        else:
+            return self._extract(doc, buffer_size, verbose, return_messages_log)
     
 
 class BinaryRelationExtractor(RelationExtractor):
-    def __init__(self, inference_engine:InferenceEngine, prompt_template:str, possible_relation_func: Callable, 
+    def __init__(self, inference_engine:InferenceEngine, prompt_template:str, possible_relation_func: Callable,
                  system_prompt:str=None):
         """
         This class extracts binary (yes/no) relations between two entities.
@@ -1841,227 +1896,40 @@ class BinaryRelationExtractor(RelationExtractor):
         system_prompt : str, Optional
             system prompt.
         """
-        super().__init__(inference_engine=inference_engine,
-                         prompt_template=prompt_template,
-                         system_prompt=system_prompt)
+        super().__init__(inference_engine, prompt_template, system_prompt)
+        if not callable(possible_relation_func):
+            raise TypeError(f"Expect possible_relation_func as a function, received {type(possible_relation_func)} instead.")
         
-        if possible_relation_func:
-            # Check if possible_relation_func is a function
-            if not callable(possible_relation_func):
-                raise TypeError(f"Expect possible_relation_func as a function, received {type(possible_relation_func)} instead.")
-            
-            sig = inspect.signature(possible_relation_func)
-            # Check if frame_1, frame_2 are in input parameters
-            if len(sig.parameters) != 2:
-                raise ValueError("The possible_relation_func must have exactly frame_1 and frame_2 as parameters.")
-            if "frame_1" not in sig.parameters.keys():
-                raise ValueError("The possible_relation_func is missing frame_1 as a parameter.")
-            if "frame_2" not in sig.parameters.keys():
-                raise ValueError("The possible_relation_func is missing frame_2 as a parameter.")
-            # Check if output is a bool
-            if sig.return_annotation != bool:
-                raise ValueError(f"Expect possible_relation_func to output a bool, current type hint suggests {sig.return_annotation} instead.")
-
-            self.possible_relation_func = possible_relation_func
-
-
-    def _post_process(self, rel_json:str) -> bool:
-        if len(rel_json) > 0:
-            if "Relation" in rel_json[0]:
-                rel = rel_json[0]["Relation"]
-                if isinstance(rel, bool):
-                    return rel
-                elif isinstance(rel, str) and rel in {"True", "False"}:
-                    return eval(rel)
-                else:
-                    warnings.warn('Extractor output JSON "Relation" key does not have bool or {"True", "False"} as value.' + \
-                                'Following default, relation = False.', RuntimeWarning)
-            else:
-                warnings.warn('Extractor output JSON without "Relation" key. Following default, relation = False.', RuntimeWarning)
-        else:
-            warnings.warn('Extractor did not output a JSON list. Following default, relation = False.', RuntimeWarning)
-        return False
-    
-
-    def extract(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, verbose:bool=False, 
-                return_messages_log:bool=False) -> List[Dict]:
-        """
-        This method considers all combinations of two frames. Use the possible_relation_func to filter impossible pairs.
-        Outputs pairs that are related.
-
-        Parameters:
-        -----------
-        doc : LLMInformationExtractionDocument
-            a document with frames.
-        buffer_size : int, Optional
-            the number of characters before and after the two frames in the ROI text.
-        verbose : bool, Optional
-            if True, LLM generated text will be printed in terminal in real-time. 
-        return_messages_log : bool, Optional
-            if True, a list of messages will be returned.
-
-        Return : List[Dict]
-            a list of dict with {"frame_1_id", "frame_2_id"}.
-        """
-        pairs = itertools.combinations(doc.frames, 2)
-
-        if return_messages_log:
-            messages_log = []
-
-        output = []
-        for frame_1, frame_2 in pairs:
-            pos_rel = self.possible_relation_func(frame_1, frame_2)
-
-            if pos_rel:
-                roi_text = self._get_ROI(frame_1, frame_2, doc.text, buffer_size=buffer_size)
-                if verbose:
-                    print(f"\n\n{Fore.GREEN}ROI text:{Style.RESET_ALL} \n{roi_text}\n")
-                    print(f"{Fore.BLUE}Extraction:{Style.RESET_ALL}")
-                messages = []
-                if self.system_prompt:
-                    messages.append({'role': 'system', 'content': self.system_prompt})
-
-                messages.append({'role': 'user', 'content': self._get_user_prompt(text_content={"roi_text":roi_text, 
-                                                                                                "frame_1": str(frame_1.to_dict()),
-                                                                                                "frame_2": str(frame_2.to_dict())}
-                                                                                                )})
-
-                gen_text = self.inference_engine.chat(
-                                messages=messages, 
-                                verbose=verbose
-                            )
-                rel_json = self._extract_json(gen_text)
-                if self._post_process(rel_json):
-                    output.append({'frame_1_id':frame_1.frame_id, 'frame_2_id':frame_2.frame_id})
-
-                if return_messages_log:
-                    messages.append({"role": "assistant", "content": gen_text})
-                    messages_log.append(messages)
-
-        if return_messages_log:
-            return output, messages_log
-        return output
-    
-    
-    async def extract_async(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, 
-                            concurrent_batch_size:int=32, return_messages_log:bool=False) -> List[Dict]:
-        """
-        This is the asynchronous version of the extract() method.
-
-        Parameters:
-        -----------
-        doc : LLMInformationExtractionDocument
-            a document with frames.
-        buffer_size : int, Optional
-            the number of characters before and after the two frames in the ROI text.
-        concurrent_batch_size : int, Optional
-            the number of frame pairs to process in concurrent.
-        return_messages_log : bool, Optional
-            if True, a list of messages will be returned.
-
-        Return : List[Dict]
-            a list of dict with {"frame_1", "frame_2"}. 
-        """
-        # Check if self.inference_engine.chat_async() is implemented
-        if not hasattr(self.inference_engine, 'chat_async'):
-            raise NotImplementedError(f"{self.inference_engine.__class__.__name__} does not have chat_async() method.")
+        sig = inspect.signature(possible_relation_func)
+        if len(sig.parameters) != 2:
+            raise ValueError("The possible_relation_func must have exactly two parameters.")
         
-        pairs = itertools.combinations(doc.frames, 2)
-        if return_messages_log:
-            messages_log = []
+        if sig.return_annotation not in {bool, inspect.Signature.empty}:
+            warnings.warn(f"Expected possible_relation_func return annotation to be bool, but got {sig.return_annotation}.")
+        
+        self.possible_relation_func = possible_relation_func
 
-        n_frames = len(doc.frames)
-        num_pairs = (n_frames * (n_frames-1)) // 2
-        output = []
-        for i in range(0, num_pairs, concurrent_batch_size):
-            rel_pair_list = []
-            tasks = []
-            batch = list(itertools.islice(pairs, concurrent_batch_size))
-            batch_messages = []
-            for frame_1, frame_2 in batch:
-                pos_rel = self.possible_relation_func(frame_1, frame_2)
-    
-                if pos_rel:
-                    rel_pair_list.append({'frame_1_id':frame_1.frame_id, 'frame_2_id':frame_2.frame_id})
-                    roi_text = self._get_ROI(frame_1, frame_2, doc.text, buffer_size=buffer_size)
-                    messages = []
-                    if self.system_prompt:
-                        messages.append({'role': 'system', 'content': self.system_prompt})
+    def _get_task_if_possible(self, frame_1: LLMInformationExtractionFrame, frame_2: LLMInformationExtractionFrame, 
+                              text: str, buffer_size: int) -> Optional[Dict[str, Any]]:
+        if self.possible_relation_func(frame_1, frame_2):
+            roi_text = self._get_ROI(frame_1, frame_2, text, buffer_size)
+            messages = []
+            if self.system_prompt:
+                messages.append({'role': 'system', 'content': self.system_prompt})
 
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(text_content={"roi_text":roi_text, 
-                                                                                                    "frame_1": str(frame_1.to_dict()),
-                                                                                                    "frame_2": str(frame_2.to_dict())}
-                                                                                                    )})
+            messages.append({'role': 'user', 'content': self._get_user_prompt(
+                text_content={"roi_text": roi_text, "frame_1": str(frame_1.to_dict()), "frame_2": str(frame_2.to_dict())}
+            )})
+            return {"frame_1": frame_1, "frame_2": frame_2, "messages": messages, "roi_text": roi_text}
+        return None
 
-                    task = asyncio.create_task(
-                        self.inference_engine.chat_async(
-                            messages=messages
-                        )
-                    )
-                    tasks.append(task)
-                    batch_messages.append(messages)
-
-            responses = await asyncio.gather(*tasks)
-
-            for d, response, messages in zip(rel_pair_list, responses, batch_messages):
-                if return_messages_log:
-                    messages.append({"role": "assistant", "content": response})
-                    messages_log.append(messages)
-
-                rel_json = self._extract_json(response)
-                if self._post_process(rel_json):
-                    output.append(d)
-
-        if return_messages_log:
-            return output, messages_log
-        return output
-
-
-    def extract_relations(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, 
-                          concurrent:bool=False, concurrent_batch_size:int=32, verbose:bool=False, 
-                          return_messages_log:bool=False) -> List[Dict]:
-        """
-        This method considers all combinations of two frames. Use the possible_relation_func to filter impossible pairs.
-
-        Parameters:
-        -----------
-        doc : LLMInformationExtractionDocument
-            a document with frames.
-        buffer_size : int, Optional
-            the number of characters before and after the two frames in the ROI text.
-        concurrent: bool, Optional
-            if True, the extraction will be done in concurrent.
-        concurrent_batch_size : int, Optional
-            the number of frame pairs to process in concurrent.
-        verbose : bool, Optional
-            if True, LLM generated text will be printed in terminal in real-time. 
-        return_messages_log : bool, Optional
-            if True, a list of messages will be returned.
-
-        Return : List[Dict]
-            a list of dict with {"frame_1", "frame_2"} for all relations.
-        """
-        if not doc.has_frame():
-            raise ValueError("Input document must have frames.")
-
-        if doc.has_duplicate_frame_ids():
-            raise ValueError("All frame_ids in the input document must be unique.")
-
-        if concurrent:
-            if verbose:
-                warnings.warn("stream=True is not supported in concurrent mode.", RuntimeWarning)
-
-            nest_asyncio.apply() # For Jupyter notebook. Terminal does not need this.
-            return asyncio.run(self.extract_async(doc=doc, 
-                                                  buffer_size=buffer_size, 
-                                                  concurrent_batch_size=concurrent_batch_size, 
-                                                  return_messages_log=return_messages_log)
-                                )
-        else:
-            return self.extract(doc=doc, 
-                                buffer_size=buffer_size, 
-                                verbose=verbose,
-                                return_messages_log=return_messages_log)
+    def _post_process_result(self, gen_text: str, pair_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        rel_json = self._extract_json(gen_text)
+        if len(rel_json) > 0 and "Relation" in rel_json[0]:
+            rel = rel_json[0]["Relation"]
+            if (isinstance(rel, bool) and rel) or (isinstance(rel, str) and rel.lower() == 'true'):
+                return {'frame_1_id': pair_data['frame_1'].frame_id, 'frame_2_id': pair_data['frame_2'].frame_id}
+        return None
             
 
 class MultiClassRelationExtractor(RelationExtractor):
@@ -2107,215 +1975,25 @@ class MultiClassRelationExtractor(RelationExtractor):
             self.possible_relation_types_func = possible_relation_types_func
 
 
-    def _post_process(self, rel_json:List[Dict], pos_rel_types:List[str]) -> Union[str, None]:
-        """
-        This method post-processes the extracted relation JSON.
-
-        Parameters:
-        -----------
-        rel_json : List[Dict]
-            the extracted relation JSON.
-        pos_rel_types : List[str]
-            possible relation types by the possible_relation_types_func.
-
-        Return : Union[str, None]
-            the relation type (str) or None for no relation.
-        """
-        if len(rel_json) > 0:
-            if "RelationType" in rel_json[0]:
-                if rel_json[0]["RelationType"] in pos_rel_types:
-                    return rel_json[0]["RelationType"]
-            else:
-                warnings.warn('Extractor output JSON without "RelationType" key. Following default, relation = "No Relation".', RuntimeWarning)
-        else:
-            warnings.warn('Extractor did not output a JSON. Following default, relation = "No Relation".', RuntimeWarning)
+    def _get_task_if_possible(self, frame_1: LLMInformationExtractionFrame, frame_2: LLMInformationExtractionFrame, 
+                              text: str, buffer_size: int) -> Optional[Dict[str, Any]]:
+        pos_rel_types = self.possible_relation_types_func(frame_1, frame_2)
+        if pos_rel_types:
+            roi_text = self._get_ROI(frame_1, frame_2, text, buffer_size)
+            messages = []
+            if self.system_prompt:
+                messages.append({'role': 'system', 'content': self.system_prompt})
+            messages.append({'role': 'user', 'content': self._get_user_prompt(
+                text_content={"roi_text": roi_text, "frame_1": str(frame_1.to_dict()), "frame_2": str(frame_2.to_dict()), "pos_rel_types": str(pos_rel_types)}
+            )})
+            return {"frame_1": frame_1, "frame_2": frame_2, "messages": messages, "pos_rel_types": pos_rel_types, "roi_text": roi_text}
         return None
-    
 
-    def extract(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, verbose:bool=False, return_messages_log:bool=False) -> List[Dict]:
-        """
-        This method considers all combinations of two frames. Use the possible_relation_types_func to filter impossible pairs.
-
-        Parameters:
-        -----------
-        doc : LLMInformationExtractionDocument
-            a document with frames.
-        buffer_size : int, Optional
-            the number of characters before and after the two frames in the ROI text.
-        max_new_tokens : str, Optional
-            the max number of new tokens LLM should generate. 
-        temperature : float, Optional
-            the temperature for token sampling.
-        stream : bool, Optional
-            if True, LLM generated text will be printed in terminal in real-time. 
-        return_messages_log : bool, Optional
-            if True, a list of messages will be returned.
-
-        Return : List[Dict]
-            a list of dict with {"frame_1_id", "frame_2_id", "relation"} for all frame pairs.
-        """
-        pairs = itertools.combinations(doc.frames, 2)
-
-        if return_messages_log:
-            messages_log = []
-
-        output = []
-        for frame_1, frame_2 in pairs:
-            pos_rel_types = self.possible_relation_types_func(frame_1, frame_2)
-
-            if pos_rel_types:
-                roi_text = self._get_ROI(frame_1, frame_2, doc.text, buffer_size=buffer_size)
-                if verbose:
-                    print(f"\n\n{Fore.GREEN}ROI text:{Style.RESET_ALL} \n{roi_text}\n")
-                    print(f"{Fore.BLUE}Extraction:{Style.RESET_ALL}")
-                messages = []
-                if self.system_prompt:
-                    messages.append({'role': 'system', 'content': self.system_prompt})
-
-                messages.append({'role': 'user', 'content': self._get_user_prompt(text_content={"roi_text":roi_text, 
-                                                                                                "frame_1": str(frame_1.to_dict()),
-                                                                                                "frame_2": str(frame_2.to_dict()),
-                                                                                                "pos_rel_types":str(pos_rel_types)}
-                                                                                                )})
-
-                gen_text = self.inference_engine.chat(
-                                messages=messages, 
-                                stream=False, 
-                                verbose=verbose
-                            )
-                
-                if return_messages_log:
-                    messages.append({"role": "assistant", "content": gen_text})
-                    messages_log.append(messages)
-
-                rel_json = self._extract_json(gen_text)
-                rel = self._post_process(rel_json, pos_rel_types)
-                if rel:
-                    output.append({'frame_1_id':frame_1.frame_id, 'frame_2_id':frame_2.frame_id, 'relation':rel})
-
-        if return_messages_log:
-            return output, messages_log
-        return output   
-    
-    
-    async def extract_async(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, 
-                            concurrent_batch_size:int=32, return_messages_log:bool=False) -> List[Dict]:
-        """
-        This is the asynchronous version of the extract() method.
-
-        Parameters:
-        -----------
-        doc : LLMInformationExtractionDocument
-            a document with frames.
-        buffer_size : int, Optional
-            the number of characters before and after the two frames in the ROI text.
-        concurrent_batch_size : int, Optional
-            the number of frame pairs to process in concurrent.
-        return_messages_log : bool, Optional
-            if True, a list of messages will be returned.
-
-        Return : List[Dict]
-            a list of dict with {"frame_1_id", "frame_2_id", "relation"} for all frame pairs. 
-        """
-        # Check if self.inference_engine.chat_async() is implemented
-        if not hasattr(self.inference_engine, 'chat_async'):
-            raise NotImplementedError(f"{self.inference_engine.__class__.__name__} does not have chat_async() method.")
-        
-        pairs = itertools.combinations(doc.frames, 2)
-        if return_messages_log:
-            messages_log = []
-
-        n_frames = len(doc.frames)
-        num_pairs = (n_frames * (n_frames-1)) // 2
-        output = []
-        for i in range(0, num_pairs, concurrent_batch_size):
-            rel_pair_list = []
-            tasks = []
-            batch = list(itertools.islice(pairs, concurrent_batch_size))
-            batch_messages = []
-            for frame_1, frame_2 in batch:
-                pos_rel_types = self.possible_relation_types_func(frame_1, frame_2)
-    
-                if pos_rel_types:
-                    rel_pair_list.append({'frame_1':frame_1.frame_id, 'frame_2':frame_2.frame_id, 'pos_rel_types':pos_rel_types})
-                    roi_text = self._get_ROI(frame_1, frame_2, doc.text, buffer_size=buffer_size)
-                    messages = []
-                    if self.system_prompt:
-                        messages.append({'role': 'system', 'content': self.system_prompt})
-
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(text_content={"roi_text":roi_text, 
-                                                                                                    "frame_1": str(frame_1.to_dict()),
-                                                                                                    "frame_2": str(frame_2.to_dict()),
-                                                                                                    "pos_rel_types":str(pos_rel_types)}
-                                                                                                    )})
-                    task = asyncio.create_task(
-                        self.inference_engine.chat_async(
-                            messages=messages
-                        )
-                    )
-                    tasks.append(task)
-                    batch_messages.append(messages)
-
-            responses = await asyncio.gather(*tasks)
-
-            for d, response, messages in zip(rel_pair_list, responses, batch_messages):
-                if return_messages_log:
-                    messages.append({"role": "assistant", "content": response})
-                    messages_log.append(messages)
-
-                rel_json = self._extract_json(response)
-                rel = self._post_process(rel_json, d['pos_rel_types'])
-                if rel:
-                    output.append({'frame_1_id':d['frame_1'], 'frame_2_id':d['frame_2'], 'relation':rel})
-
-        if return_messages_log:
-            return output, messages_log
-        return output
-
-
-    def extract_relations(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, 
-                          concurrent:bool=False, concurrent_batch_size:int=32, 
-                          verbose:bool=False, return_messages_log:bool=False, **kwrs) -> List[Dict]:
-        """
-        This method considers all combinations of two frames. Use the possible_relation_types_func to filter impossible pairs.
-
-        Parameters:
-        -----------
-        doc : LLMInformationExtractionDocument
-            a document with frames.
-        buffer_size : int, Optional
-            the number of characters before and after the two frames in the ROI text.
-        concurrent: bool, Optional
-            if True, the extraction will be done in concurrent.
-        concurrent_batch_size : int, Optional
-            the number of frame pairs to process in concurrent.
-        verbose : bool, Optional
-            if True, LLM generated text will be printed in terminal in real-time. 
-        return_messages_log : bool, Optional
-            if True, a list of messages will be returned.
-
-        Return : List[Dict]
-            a list of dict with {"frame_1", "frame_2", "relation"} for all relations.
-        """
-        if not doc.has_frame():
-            raise ValueError("Input document must have frames.")
-
-        if doc.has_duplicate_frame_ids():
-            raise ValueError("All frame_ids in the input document must be unique.")
-
-        if concurrent:
-            if verbose:
-                warnings.warn("stream=True is not supported in concurrent mode.", RuntimeWarning)
-
-            nest_asyncio.apply() # For Jupyter notebook. Terminal does not need this.
-            return asyncio.run(self.extract_async(doc=doc, 
-                                                  buffer_size=buffer_size, 
-                                                  concurrent_batch_size=concurrent_batch_size, 
-                                                  return_messages_log=return_messages_log)
-                                )
-        else:
-            return self.extract(doc=doc, 
-                                buffer_size=buffer_size, 
-                                verbose=verbose,
-                                return_messages_log=return_messages_log)
-            
+    def _post_process_result(self, gen_text: str, pair_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        rel_json = self._extract_json(gen_text)
+        pos_rel_types = pair_data['pos_rel_types']
+        if len(rel_json) > 0 and "RelationType" in rel_json[0]:
+            rel_type = rel_json[0]["RelationType"]
+            if rel_type in pos_rel_types:
+                return {'frame_1_id': pair_data['frame_1'].frame_id, 'frame_2_id': pair_data['frame_2'].frame_id, 'relation': rel_type}
+        return None
