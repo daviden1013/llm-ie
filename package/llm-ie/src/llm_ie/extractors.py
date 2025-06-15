@@ -1449,6 +1449,289 @@ class SentenceReviewFrameExtractor(ReviewFrameExtractor):
                          context_chunker=context_chunker)
     
 
+class AttributeExtractor(Extractor):
+    def __init__(self, inference_engine:InferenceEngine, prompt_template:str, system_prompt:str=None):
+        """
+        This class is for attribute extraction for frames. Though FrameExtractors can also extract attributes, when
+        the number of attribute increases, it is more efficient to use a dedicated AttributeExtractor.
+
+        Parameters
+        ----------
+        inference_engine : InferenceEngine
+            the LLM inferencing engine object. Must implements the chat() method.
+        prompt_template : str
+            prompt template with "{{<placeholder name>}}" placeholder.
+        system_prompt : str, Optional
+            system prompt.
+        """
+        super().__init__(inference_engine=inference_engine,
+                         prompt_template=prompt_template,
+                         system_prompt=system_prompt)
+        # validate prompt template
+        if "{{context}}" not in self.prompt_template or "{{frame}}" not in self.prompt_template:
+            raise ValueError("prompt_template must contain both {{context}} and {{frame}} placeholders.")
+        
+    def _get_context(self, frame:LLMInformationExtractionFrame, text:str, context_size:int=256) -> str:
+        """
+        This method returns the context that covers the frame. Leaves a context_size of characters before and after.
+        The returned text has the frame inline annotated with <entity>.
+
+        Parameters:
+        -----------
+        frame : LLMInformationExtractionFrame
+            a frame
+        text : str
+            the entire document text
+        context_size : int, Optional
+            the number of characters before and after the frame in the context text.
+
+        Return : str
+            the context text with the frame inline annotated with <entity>.
+        """
+        start = max(frame.start - context_size, 0)
+        end = min(frame.end + context_size, len(text))
+        context = text[start:end]
+
+        context_annotated = context[0:frame.start - start] + \
+                f"<entity> " + \
+                context[frame.start - start:frame.end - start] + \
+                f" </entity>" + \
+                context[frame.end - start:end - start]
+
+        if start > 0:
+            context_annotated = "..." + context_annotated
+        if end < len(text):
+            context_annotated = context_annotated + "..."
+        return context_annotated
+    
+    def _extract_from_frame(self, frame:LLMInformationExtractionFrame, text:str,
+                            context_size:int=256, verbose:bool=False, return_messages_log:bool=False) -> Dict[str, Any]:
+        """
+        This method extracts attributes from a single frame.
+
+        Parameters:
+        -----------
+        frame : LLMInformationExtractionFrame
+            a frame to extract attributes from.
+        text : str
+            the entire document text.
+        context_size : int, Optional
+            the number of characters before and after the frame in the context text.
+        verbose : bool, Optional
+            if True, LLM generated text will be printed in terminal in real-time.
+        return_messages_log : bool, Optional
+            if True, a list of messages will be returned.
+
+        Return : Dict[str, Any]
+            a dictionary of attributes extracted from the frame.
+            If return_messages_log is True, a list of messages will be returned as well.
+        """
+        # construct chat messages
+        messages = []
+        if self.system_prompt:
+            messages.append({'role': 'system', 'content': self.system_prompt})
+
+        context = self._get_context(frame, text, context_size)
+        messages.append({'role': 'user', 'content': self._get_user_prompt({"context": context, "frame": str(frame.to_dict())})})
+
+        if verbose:
+            print(f"\n\n{Fore.GREEN}Frame: {frame.frame_id}{Style.RESET_ALL}\n{frame.to_dict()}\n")
+            if context != "":
+                print(f"{Fore.YELLOW}Context:{Style.RESET_ALL}\n{context}\n")
+            
+            print(f"{Fore.BLUE}Extraction:{Style.RESET_ALL}")
+
+        get_text = self.inference_engine.chat(
+                            messages=messages,
+                            verbose=verbose,
+                            stream=False
+                        )
+        if return_messages_log:
+            messages.append({"role": "assistant", "content": get_text})
+
+        attribute_list = self._extract_json(gen_text=get_text)
+        if isinstance(attribute_list, list) and len(attribute_list) > 0:
+            attributes = attribute_list[0]
+            if return_messages_log:
+                return attributes, messages
+            return attributes
+
+
+    def extract(self, frames:List[LLMInformationExtractionFrame], text:str, context_size:int=256, verbose:bool=False, 
+                return_messages_log:bool=False, inplace:bool=True) -> Union[None, List[LLMInformationExtractionFrame]]:
+        """
+        This method extracts attributes from the document.
+
+        Parameters:
+        -----------
+        frames : List[LLMInformationExtractionFrame]
+            a list of frames to extract attributes from.
+        text : str
+            the entire document text.
+        context_size : int, Optional
+            the number of characters before and after the frame in the context text.
+        verbose : bool, Optional
+            if True, LLM generated text will be printed in terminal in real-time. 
+        return_messages_log : bool, Optional
+            if True, a list of messages will be returned.
+        inplace : bool, Optional
+            if True, the method will modify the frames in-place.
+        
+        Return : Union[None, List[LLMInformationExtractionFrame]]
+            if inplace is True, the method will modify the frames in-place.
+            if inplace is False, the method will return a list of frames with attributes extracted.
+        """
+        for frame in frames:
+            if not isinstance(frame, LLMInformationExtractionFrame):
+                raise TypeError(f"Expect frame as LLMInformationExtractionFrame, received {type(frame)} instead.")
+        if not isinstance(text, str):
+            raise TypeError(f"Expect text as str, received {type(text)} instead.")
+        
+        new_frames = []
+        messages_log = [] if return_messages_log else None
+
+        for frame in frames:
+            if return_messages_log:
+                attr, messages = self._extract_from_frame(frame=frame, text=text, context_size=context_size,
+                                                          verbose=verbose, return_messages_log=return_messages_log)
+                messages_log.append(messages)
+            else: 
+                attr = self._extract_from_frame(frame=frame, text=text, context_size=context_size,
+                                                verbose=verbose, return_messages_log=return_messages_log)
+            
+            if inplace:
+                frame.attr.update(attr)
+            else:
+                new_frame = frame.copy()
+                new_frame.attr.update(attr)
+                new_frames.append(new_frame)
+
+        if inplace:
+            return messages_log if return_messages_log else None
+        else:
+            return (new_frames, messages_log) if return_messages_log else new_frames
+
+
+    async def extract_async(self, frames:List[LLMInformationExtractionFrame], text:str, context_size:int=256,
+                            concurrent_batch_size:int=32, inplace:bool=True, return_messages_log:bool=False) -> Union[None, List[LLMInformationExtractionFrame]]:
+        """
+        This method extracts attributes from the document asynchronously.
+
+        Parameters:
+        -----------
+        frames : List[LLMInformationExtractionFrame]
+            a list of frames to extract attributes from.
+        text : str
+            the entire document text.
+        context_size : int, Optional
+            the number of characters before and after the frame in the context text.
+        concurrent_batch_size : int, Optional
+            the batch size for concurrent processing. 
+        inplace : bool, Optional
+            if True, the method will modify the frames in-place.
+        return_messages_log : bool, Optional
+            if True, a list of messages will be returned.
+        
+        Return : Union[None, List[LLMInformationExtractionFrame]]
+            if inplace is True, the method will modify the frames in-place.
+            if inplace is False, the method will return a list of frames with attributes extracted.
+        """
+        # validation
+        for frame in frames:
+            if not isinstance(frame, LLMInformationExtractionFrame):
+                raise TypeError(f"Expect frame as LLMInformationExtractionFrame, received {type(frame)} instead.")
+        if not isinstance(text, str):
+            raise TypeError(f"Expect text as str, received {type(text)} instead.")
+
+        # async helper
+        semaphore = asyncio.Semaphore(concurrent_batch_size)
+        
+        async def semaphore_helper(frame:LLMInformationExtractionFrame, text:str, context_size:int) -> dict:
+            async with semaphore:
+                messages = []
+                if self.system_prompt:
+                    messages.append({'role': 'system', 'content': self.system_prompt})
+
+                context = self._get_context(frame, text, context_size)
+                messages.append({'role': 'user', 'content': self._get_user_prompt({"context": context, "frame": str(frame.to_dict())})})
+
+                gen_text = await self.inference_engine.chat_async(messages=messages)
+                
+                if return_messages_log:
+                    messages.append({"role": "assistant", "content": gen_text})
+
+                attribute_list = self._extract_json(gen_text=gen_text)
+                attributes = attribute_list[0] if isinstance(attribute_list, list) and len(attribute_list) > 0 else {}
+                return {"frame": frame, "attributes": attributes, "messages": messages}
+
+        # create tasks
+        tasks = [asyncio.create_task(semaphore_helper(frame, text, context_size)) for frame in frames]
+        results = await asyncio.gather(*tasks)
+
+        # process results
+        new_frames = []
+        messages_log = [] if return_messages_log else None
+
+        for result in results:
+            if return_messages_log:
+                messages_log.append(result["messages"])
+
+            if inplace:
+                result["frame"].attr.update(result["attributes"])
+            else:
+                new_frame = result["frame"].copy()
+                new_frame.attr.update(result["attributes"])
+                new_frames.append(new_frame)
+
+        # output
+        if inplace:
+            return messages_log if return_messages_log else None
+        else:
+            return (new_frames, messages_log) if return_messages_log else new_frames
+
+    def extract_attributes(self, frames:List[LLMInformationExtractionFrame], text:str, context_size:int=256, 
+                           concurrent:bool=False, concurrent_batch_size:int=32, verbose:bool=False, 
+                           return_messages_log:bool=False, inplace:bool=True) -> Union[None, List[LLMInformationExtractionFrame]]:
+        """
+        This method extracts attributes from the document.
+
+        Parameters:
+        -----------
+        frames : List[LLMInformationExtractionFrame]
+            a list of frames to extract attributes from.
+        text : str
+            the entire document text.
+        context_size : int, Optional
+            the number of characters before and after the frame in the context text.
+        concurrent : bool, Optional
+            if True, the method will run in concurrent mode with batch size concurrent_batch_size.
+        concurrent_batch_size : int, Optional
+            the batch size for concurrent processing.
+        verbose : bool, Optional
+            if True, LLM generated text will be printed in terminal in real-time. 
+        return_messages_log : bool, Optional
+            if True, a list of messages will be returned.
+        inplace : bool, Optional
+            if True, the method will modify the frames in-place.
+        
+        Return : Union[None, List[LLMInformationExtractionFrame]]
+            if inplace is True, the method will modify the frames in-place.
+            if inplace is False, the method will return a list of frames with attributes extracted.
+        """
+        if concurrent:
+            if verbose:
+                warnings.warn("verbose=True is not supported in concurrent mode.", RuntimeWarning)
+
+            nest_asyncio.apply() # For Jupyter notebook. Terminal does not need this.
+
+            return asyncio.run(self.extract_async(frames=frames, text=text, context_size=context_size,
+                                                  concurrent_batch_size=concurrent_batch_size, 
+                                                  inplace=inplace, return_messages_log=return_messages_log))
+        else:
+            return self.extract(frames=frames, text=text, context_size=context_size, 
+                                verbose=verbose, return_messages_log=return_messages_log, inplace=inplace)
+
+
 class RelationExtractor(Extractor):
     def __init__(self, inference_engine:InferenceEngine, prompt_template:str, system_prompt:str=None):
         """
@@ -1514,8 +1797,8 @@ class RelationExtractor(Extractor):
     
 
     @abc.abstractmethod
-    def extract_relations(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, max_new_tokens:int=128, 
-                         temperature:float=0.0, stream:bool=False, return_messages_log:bool=False, **kwrs) -> List[Dict]:
+    def extract_relations(self, doc:LLMInformationExtractionDocument, buffer_size:int=100, 
+                          verbose:bool=False, return_messages_log:bool=False, **kwrs) -> List[Dict]:
         """
         This method considers all combinations of two frames. 
 
@@ -1529,7 +1812,7 @@ class RelationExtractor(Extractor):
             the max number of new tokens LLM should generate. 
         temperature : float, Optional
             the temperature for token sampling.
-        stream : bool, Optional
+        verbose : bool, Optional
             if True, LLM generated text will be printed in terminal in real-time. 
         return_messages_log : bool, Optional
             if True, a list of messages will be returned.
@@ -1671,10 +1954,6 @@ class BinaryRelationExtractor(RelationExtractor):
             a document with frames.
         buffer_size : int, Optional
             the number of characters before and after the two frames in the ROI text.
-        max_new_tokens : str, Optional
-            the max number of new tokens LLM should generate. 
-        temperature : float, Optional
-            the temperature for token sampling.
         concurrent_batch_size : int, Optional
             the number of frame pairs to process in concurrent.
         return_messages_log : bool, Optional
@@ -1930,10 +2209,6 @@ class MultiClassRelationExtractor(RelationExtractor):
             a document with frames.
         buffer_size : int, Optional
             the number of characters before and after the two frames in the ROI text.
-        max_new_tokens : str, Optional
-            the max number of new tokens LLM should generate. 
-        temperature : float, Optional
-            the temperature for token sampling.
         concurrent_batch_size : int, Optional
             the number of frame pairs to process in concurrent.
         return_messages_log : bool, Optional
@@ -2010,15 +2285,11 @@ class MultiClassRelationExtractor(RelationExtractor):
             a document with frames.
         buffer_size : int, Optional
             the number of characters before and after the two frames in the ROI text.
-        max_new_tokens : str, Optional
-            the max number of new tokens LLM should generate. 
-        temperature : float, Optional
-            the temperature for token sampling.
         concurrent: bool, Optional
             if True, the extraction will be done in concurrent.
         concurrent_batch_size : int, Optional
             the number of frame pairs to process in concurrent.
-        stream : bool, Optional
+        verbose : bool, Optional
             if True, LLM generated text will be printed in terminal in real-time. 
         return_messages_log : bool, Optional
             if True, a list of messages will be returned.

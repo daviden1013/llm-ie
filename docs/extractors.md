@@ -1,5 +1,5 @@
-An extractor implements a prompting algorithm for information extraction. There are two main extractor families: `FrameExtractor` and `RelationExtractor`. 
-The `FrameExtractor` extracts named entities with attributes ("frames"). The `RelationExtractor` extracts the relations (and relation types) between frames. Under `FrameExtractor`, we made pre-packaged extractors that does not require much configuation and are often sufficient for regular use case ([Convenience FrameExtractor](#convenience-frameextractor)).
+An extractor implements a prompting algorithm for information extraction. There are three extractor families: `FrameExtractor`, `AttributeExtractor` and `RelationExtractor`. 
+The `FrameExtractor` extracts named entities with attributes ("frames"). The `AttributeExtractor` extracts additional attributes and serve as an assistant class for `FrameExtractor`. The `RelationExtractor` extracts the relations (and relation types) between frames. Under `FrameExtractor`, we made pre-packaged extractors that does not require much configuation and are often sufficient for regular use case ([Convenience FrameExtractor](#convenience-frameextractor)).
 
 ## FrameExtractor
 Frame extractors in general adopts an **unit-context schema**. The purpose is to avoid having LLM to process long context and suffer from *needle in the haystack* challenge. We split an input document into multiple units. LLM only process a unit of text at a time. 
@@ -165,6 +165,91 @@ extractor = ReviewFrameExtractor(inference_engine=llm,
                                  prompt_template=prompt_template,
                                  review_mode="revision")
 ```
+
+## AttributeExtractor
+Although the `FrameExtractor` can extract both named entity and attributes in a single prompt, for some use cases where many attributes are required, offloading some attributes to the `AttributeExtractor` can improve the accuracy. For examlpe, in clinical notes, we want to extract treatments and diagnoses. For treatment frames, attributes like *drug name*, *strength*, *dosage*, *frequency*, and *route* are required; for diagnosis frames, *diagnosed date*, *status*, and *ICD code* are required. In such case, having a frame extractor to handle everything would be challenging. We can divide the treatment frames and diagnosis frames to their own attribute extractors
+
+To define an `AttributeExtractor`
+```python
+from llm_ie import AttributeExtractor
+
+extractor = AttributeExtractor(
+    inference_engine=llm,
+    prompt_template=prompt,
+)
+```
+
+The prompt must include placeholders `{{frame}}` and `{{context}}`. For example:
+```text
+### Task description
+This is an attribute extraction task. Given a diagnosis entity and the context, you need to generate attributes for the entity. 
+
+### Schema definition
+    "Date" which is the date when the diagnosis was made in MM/DD/YYYY format,
+    "Status" which is the current status of the diagnosis (e.g. active, resolved, etc.)
+
+### Output format definition
+Your output should follow the JSON format:
+{"Date": "<MM/DD/YYYY>", "Status": "<status>"}
+
+I am only interested in the content between []. Do not explain your answer. 
+
+### Hints
+- If the date is not complete, use the first available date in the context. For example, if the date is 01/2023, you should return 01/01/2023.
+- If the status is not available, you should return "not specified".
+
+### Entity
+Information about the entity to extract attributes from:
+{{frame}}
+
+### Context
+Context for the entity. The <Entity> tags are used to mark the entity in the context.
+{{context}}
+```
+
+To extract, input a list of frames. There could be some existing attributes. The `AttributeExtractor` prompts LLM with a frame and the context to extract attributes. Setting `inplace==True`, the new attibutes will be added/updated to the input frames, while setting `inplace=False`, new frames with attributes will be returned. 
+```python
+frame1 = LLMInformationExtractionFrame(frame_id="id1", start=1026, end=1040, entity_text='Hyperlipidemia', attr={"Date": "not available"})
+frame2 = LLMInformationExtractionFrame(frame_id="id2", start=1063, end=1087, entity_text='Type 2 Diabetes Mellitus')
+frame3 = LLMInformationExtractionFrame(frame_id="id3", start=2046, end=2066, entity_text='No acute infiltrates')
+
+# extract attributes                               
+extractor.extract_attributes([frame1, frame2, frame3], note_text, verbose=True, inplace=True)
+# Use concurrent
+# extractor.extract_attributes([frame1, frame2, frame3], note_text, concurrent=True, inplace=True)
+```
+
+The extraction process:
+```bash
+Frame: id1
+{'frame_id': 'id1', 'start': 1026, 'end': 1040, 'entity_text': 'Hyperlipidemia', 'attr': {'Date': '01/01/2015', 'Status': 'not specified'}}
+
+Context:
+...tral chest, radiating to the left arm and jaw. He also experienced dyspnea on exertion and occasional palpitations. The patient denied any recent upper respiratory infection, cough, or fever.
+
+#### Past Medical History
+- Hypertension (diagnosed in 2010)
+- <entity> Hyperlipidemia </entity> (diagnosed in 2015)
+- Type 2 Diabetes Mellitus (diagnosed in 2018)
+
+#### Social History
+- Former smoker (quit in 2010)
+- Occasional alcohol consumption
+- Works as an accountant
+- Married with two children
+
+#### Family History
+- Father: myocardial infarcti...
+
+Extraction:
+[{"Date": "01/01/2015", "Status": "not specified"}]
+
+Frame: id2
+...
+```
+
+
+
 
 ## RelationExtractor
 Relation extractors prompt LLM with combinations of two frames from a document (```LLMInformationExtractionDocument```) and extract relations.

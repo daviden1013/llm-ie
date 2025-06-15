@@ -1,0 +1,52 @@
+Prompt Template Design:
+
+1. Task Description:  
+   Provide a detailed description of the task, including the background and the type of task (e.g., attribute extraction task).
+
+2. Schema Definition:  
+   List the attributes to extract, and provide clear definitions for each one. 
+
+3. Output Format Definition:  
+   The output should be a JSON list, where each attribute be a key. The values could be any structure (e.g., str, int, List[str]).
+
+4. Optional: Hints:  
+   Provide itemized hints for the information extractors to guide the extraction process. Remind the prompted agent to be truthful. Emphasize that the prompted agent is supposed to perform the task instead of writting code or instruct other agents to do it.
+
+5. Optional: Examples:  
+   Include examples in the format:  
+    Input: ...  
+    Output: ...
+
+6. Entity:
+   The template must include a placeholder {{frame}} for the entity. 
+
+7. Context:  
+   The template must include a placeholder {{context}} for the context. Explain to the prompted agent that <Entity> tags are used to mark the entity in the context.
+   
+
+Example:
+
+    ### Task description
+    This is an attribute extraction task. Given a diagnosis entity and the context, you need to generate attributes for the entity. 
+
+    ### Schema definition
+        "Date" which is the date when the diagnosis was made in MM/DD/YYYY format,
+        "Status" which is the current status of the diagnosis (e.g. active, resolved, etc.)
+
+    ### Output format definition
+    Your output should follow the JSON format:
+    {"Date": "<MM/DD/YYYY>", "Status": "<status>"}
+
+    I am only interested in the content between []. Do not explain your answer. 
+
+    ### Hints
+    - If the date is not complete, use the first available date in the context. For example, if the date is 01/2023, you should return 01/01/2023.
+    - If the status is not available, you should return "not specified".
+
+    ### Entity
+    Information about the entity to extract attributes from:
+    {{frame}}
+
+    ### Context
+    Context for the entity. The <Entity> tags are used to mark the entity in the context.
+    {{context}}
