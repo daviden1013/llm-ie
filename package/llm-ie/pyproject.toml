@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "llm-ie"
-version = "1.1.0"
+version = "1.2.0"
 description = "A comprehensive toolkit that provides building blocks for LLM-based named entity recognition, attribute extraction, and relation extraction pipelines."
 authors = ["Enshuo (David) Hsu"]
 license = "MIT"

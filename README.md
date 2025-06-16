@@ -5,7 +5,7 @@
 [![Paper](https://img.shields.io/badge/DOI-10.1093/jamiaopen/ooaf012-red)](https://doi.org/10.1093/jamiaopen/ooaf012)
 [![Website](https://img.shields.io/badge/website-GitHub.io-purple)](https://daviden1013.github.io/llm-ie/)
 
-An LLM-powered tool that transforms everyday language into robust information extraction pipelines. 
+A comprehensive toolkit that provides building blocks for LLM-based named entity recognition, attribute extraction, and relation extraction pipelines. 
 
 | Features | Support |
 |----------|----------|
@@ -23,6 +23,7 @@ An LLM-powered tool that transforms everyday language into robust information ex
   - **Documentation website**. User guide and API reference is now available on []().
   - **Optimized concurrent/batch processing**. We adopt semaphore to better utilize the computation resource. 
 - [v1.1.0](https://github.com/daviden1013/llm-ie/releases/tag/v1.1.0) (May 19, 2025): LLM-specific configuration to support reasoning models (o3, Qwen3).
+- [v1.2.0](https://github.com/daviden1013/llm-ie/releases/tag/v1.2.0) (Jun 15, 2025): Attribute extractor for complicated attribute schema. 
 
 ## 📑Table of Contents
 - [Overview](#overview)
