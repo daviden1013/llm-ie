@@ -1,6 +1,8 @@
 site_name: LLM-IE Documentation
 theme:
     name: material
+repo_url: https://github.com/daviden1013/llm-ie
+repo_name: daviden1013/llm-ie
 
 nav:
     - 'Home': 'index.md'
