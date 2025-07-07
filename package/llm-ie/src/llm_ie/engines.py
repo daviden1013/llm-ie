@@ -185,10 +185,11 @@ class Qwen3LLMConfig(LLMConfig):
 
 
 class OpenAIReasoningLLMConfig(LLMConfig):
-    def __init__(self, reasoning_effort:str="low", **kwargs):
+    def __init__(self, reasoning_effort:str=None, **kwargs):
         """
         The OpenAI "o" series configuration.
-        1. The reasoning effort is set to "low" by default.
+        1. The reasoning effort as one of {"low", "medium", "high"}.
+            For models that do not support setting reasoning effort (e.g., o1-mini, o1-preview), set to None.
         2. The temperature parameter is not supported and will be ignored.
         3. The system prompt is not supported and will be concatenated to the next user prompt.
 
@@ -198,11 +199,12 @@ class OpenAIReasoningLLMConfig(LLMConfig):
             the reasoning effort. Must be one of {"low", "medium", "high"}. Default is "low".
         """
         super().__init__(**kwargs)
-        if reasoning_effort not in ["low", "medium", "high"]:
-            raise ValueError("reasoning_effort must be one of {'low', 'medium', 'high'}.")
+        if reasoning_effort is not None:
+            if reasoning_effort not in ["low", "medium", "high"]:
+                raise ValueError("reasoning_effort must be one of {'low', 'medium', 'high'}.")
 
-        self.reasoning_effort = reasoning_effort
-        self.params["reasoning_effort"] = self.reasoning_effort
+            self.reasoning_effort = reasoning_effort
+            self.params["reasoning_effort"] = self.reasoning_effort
 
         if "temperature" in self.params:
             warnings.warn("Reasoning models do not support temperature parameter. Will be ignored.", UserWarning)
