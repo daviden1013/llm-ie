@@ -13,7 +13,26 @@ inference_engine = OllamaInferenceEngine(model_name="llama4:scout")
 # Define editor
 editor = PromptEditor(inference_engine, DirectFrameExtractor)
 
+# Start chat session
 editor.chat()
+
+# After a conversation, you can view the chat history
+print(editor.messages)
+
+# Export chat history as a JSON file
+editor.export_chat("<your chat history file name>.json")
+
+# In a new session, you can load the chat history and continue
+new_editor = PromptEditor(inference_engine, DirectFrameExtractor)
+
+# Import chat history from a JSON file
+new_editor.import_chat("<your chat history file name>.json")
+
+# Continue the chat
+new_editor.chat()
+
+# To delete the chat history
+editor.clear_messages()
 ```
 
 In a terminal environment, an interactive chat session will start:
