@@ -153,6 +153,18 @@
       
     
     
+      <div class="md-header__source">
+        <a href="https://github.com/daviden1013/llm-ie" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    daviden1013/llm-ie
+  </div>
+</a>
+      </div>
+    
   </nav>
   
 </header>
@@ -186,6 +198,18 @@
     </a>
     LLM-IE Documentation
   </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/daviden1013/llm-ie" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    daviden1013/llm-ie
+  </div>
+</a>
+    </div>
   
   <ul class="md-nav__list" data-md-scrollfix>
     
@@ -765,12 +789,15 @@
                   
 
 
+  
+  
+
 
   <h1>Prompt Editor</h1>
 
 <p>The prompt editor is an LLM agent that help users write prompt templates following the defined schema and guideline of each extractor. <strong>It is recommanded to initiate prompt editors with larger/smarter LLMs for better quality!</strong>. </p>
 <h3 id="access-prompt-editor-by-chat-interface">Access Prompt Editor by chat interface</h3>
-<p>The easiest way to </p>
+<p>The easiest way to access the prompt editor is through the chat interface. This allows users to interact with the editor and graduately build up the prompt template. First, define an LLM inference engine and a prompt editor. Then, start a chat session by calling the <code>chat</code> method. A chat session will start. chat history (messages) can be accessed through the <code>messages</code> attribute. The <code>export_chat</code> method exports the chat history as a JSON file. The <code>import_chat</code> method imports the chat history from a JSON file. The <code>clear_chat</code> method clears the chat history.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span> <span class="nn">llm_ie</span> <span class="kn">import</span> <span class="n">OllamaInferenceEngine</span><span class="p">,</span> <span class="n">PromptEditor</span><span class="p">,</span> <span class="n">DirectFrameExtractor</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># Define an LLM inference engine</span>
@@ -779,7 +806,26 @@
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1"># Define editor</span>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">editor</span> <span class="o">=</span> <span class="n">PromptEditor</span><span class="p">(</span><span class="n">inference_engine</span><span class="p">,</span> <span class="n">DirectFrameExtractor</span><span class="p">)</span>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">editor</span><span class="o">.</span><span class="n">chat</span><span class="p">()</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1"># Start chat session</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="n">editor</span><span class="o">.</span><span class="n">chat</span><span class="p">()</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="c1"># After a conversation, you can view the chat history</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="nb">print</span><span class="p">(</span><span class="n">editor</span><span class="o">.</span><span class="n">messages</span><span class="p">)</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="c1"># Export chat history as a JSON file</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="n">editor</span><span class="o">.</span><span class="n">export_chat</span><span class="p">(</span><span class="s2">&quot;&lt;your chat history file name&gt;.json&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="c1"># In a new session, you can load the chat history and continue</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="n">new_editor</span> <span class="o">=</span> <span class="n">PromptEditor</span><span class="p">(</span><span class="n">inference_engine</span><span class="p">,</span> <span class="n">DirectFrameExtractor</span><span class="p">)</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="c1"># Import chat history from a JSON file</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="n">new_editor</span><span class="o">.</span><span class="n">import_chat</span><span class="p">(</span><span class="s2">&quot;&lt;your chat history file name&gt;.json&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="c1"># Continue the chat</span>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="n">new_editor</span><span class="o">.</span><span class="n">chat</span><span class="p">()</span>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="c1"># To delete the chat history</span>
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="n">editor</span><span class="o">.</span><span class="n">clear_messages</span><span class="p">()</span>
 </code></pre></div>
 <p>In a terminal environment, an interactive chat session will start:
 <img alt="chat in terminal" src="../readme_img/terminal_chat.PNG" /></p>
