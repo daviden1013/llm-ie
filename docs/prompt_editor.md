@@ -2,7 +2,7 @@
 The prompt editor is an LLM agent that help users write prompt templates following the defined schema and guideline of each extractor. **It is recommanded to initiate prompt editors with larger/smarter LLMs for better quality!**. 
 
 ### Access Prompt Editor by chat interface
-The easiest way to 
+The easiest way to access the prompt editor is through the chat interface. This allows users to interact with the editor and graduately build up the prompt template. First, define an LLM inference engine and a prompt editor. Then, start a chat session by calling the `chat` method. A chat session will start. chat history (messages) can be accessed through the `messages` attribute. The `export_chat` method exports the chat history as a JSON file. The `import_chat` method imports the chat history from a JSON file. The `clear_chat` method clears the chat history.
 
 ```python
 from llm_ie import OllamaInferenceEngine, PromptEditor, DirectFrameExtractor
