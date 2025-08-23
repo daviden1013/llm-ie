@@ -16,6 +16,7 @@ def main():
     parser = argparse.ArgumentParser()
     add_arg = parser.add_argument
     add_arg("-c", "--config", help='dir to config file', type=str)
+    add_arg("-o", "--overwrite", help="Overwrite existing output files", action="store_true")
     args = parser.parse_known_args()[0]
     
     """ Load config"""
@@ -36,6 +37,12 @@ def main():
     with open(config['prompt_temp_dir'], 'r') as f:
         prompt_template = f.read()
 
+    """ Ensure output directory exists """
+    output_dir = os.path.join(config["out_dir"], config['run_name'])
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
+        logging.info(f"Created output directory: {output_dir}")
+
     """ Load data """
     logging.info(f"Loading text from {config['data_dir']}")
     # Using .endswith for a slightly cleaner check
@@ -43,6 +50,20 @@ def main():
     # Adjust the file loading logic as needed for your data.
     # **
     data = []
+
+    """ Check exist outputs """
+    if args.overwrite:
+        pass
+        # **
+        # Adjust the logic as needed for your data.
+        #
+        # Example:
+        #
+        # exist = os.listdir(output_dir)
+        # logging.info(f"Found {len(exist)} existing outputs.")
+        # data = [d for d in data if d['filename'] in exist]
+        # logging.info(f"Found {len(data)} files to process after filtering.")
+        # **
 
     """ Define engine """
     logging.info('Loading inference engine...')
@@ -63,12 +84,6 @@ def main():
                                      prompt_template=prompt_template, 
                                      system_prompt=system_prompt)
 
-    """ Ensure output directory exists """
-    output_dir = os.path.join(config["out_dif"], config['run_name'])
-    if not os.path.isdir(output_dir):
-        os.makedirs(output_dir)
-        logging.info(f"Created output directory: {output_dir}")
-
     """ Process each file in the data directory """
     logging.info(f"Starting extraction for {len(data)} files...")
     loop = tqdm(data.items(), total=len(data), leave=True)
@@ -80,7 +95,7 @@ def main():
         
         llmie = LLMInformationExtractionDocument(doc_id=filename, text=text)
         llmie.add_frames(frames, create_id=True)
-        llmie.save(os.path.join(config["out_dif"], config['run_name'], f"{llmie.doc_id}.llmie"))
+        llmie.save(os.path.join(config["out_dir"], config['run_name'], f"{llmie.doc_id}.llmie"))
 
 if __name__ == "__main__":
     main()

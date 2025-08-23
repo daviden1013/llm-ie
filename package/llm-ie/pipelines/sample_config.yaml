@@ -4,4 +4,4 @@
   prompt_temp_dir: <your_user_prompt_path>
   data_dir: <your_data_path>
   base_url: <your_base_url>
-  out_dif: <your_output_path>
+  out_dir: <your_output_path>

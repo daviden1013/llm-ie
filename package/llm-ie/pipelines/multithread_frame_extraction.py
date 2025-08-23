@@ -37,7 +37,7 @@ def process_file_worker(filename, text_content, config, system_prompt_str, promp
         llmie = LLMInformationExtractionDocument(doc_id=filename, text=text_content)
         llmie.add_frames(frames, create_id=True)
 
-        output_path = os.path.join(config["out_dif"], config['run_name'], f"{llmie.doc_id}.llmie")
+        output_path = os.path.join(config["out_dir"], config['run_name'], f"{llmie.doc_id}.llmie")
         llmie.save(output_path)
 
         return filename, "success"
@@ -56,6 +56,7 @@ def main():
     parser = argparse.ArgumentParser(description="Information extraction pipeline with parallel processing.")
     add_arg = parser.add_argument
     add_arg("-c", "--config", help='Directory to config file', type=str, required=True)
+    add_arg("-o", "--overwrite", help="Overwrite existing output files", action="store_true")
     add_arg("--num_workers", help="Number of parallel worker processes. Defaults to CPU count.", type=int, default=os.cpu_count())
     args = parser.parse_known_args()[0]
 
@@ -78,19 +79,32 @@ def main():
     with open(config['prompt_temp_dir'], 'r') as f:
         prompt_template = f.read()
 
+    """ Ensure output directory exists """
+    output_dir = os.path.join(config["out_dir"], config['run_name'])
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
+        logging.info(f"Created output directory: {output_dir}")
+
     """ Load data """
     logging.info(f"Loading text from {config['data_dir']}")
-    # Using .endswith for a slightly cleaner check
     # **
     # Adjust the file loading logic as needed for your data.
     # **
     data = []
 
-    """ Ensure output directory exists """
-    output_dir = os.path.join(config["out_dif"], config['run_name'])
-    if not os.path.isdir(output_dir):
-        os.makedirs(output_dir)
-        logging.info(f"Created output directory: {output_dir}")
+    """ Check exist outputs """
+    if args.overwrite:
+        pass
+        # **
+        # Adjust the logic as needed for your data.
+        #
+        # Example:
+        #
+        # exist = os.listdir(output_dir)
+        # logging.info(f"Found {len(exist)} existing outputs.")
+        # data = [d for d in data if d['filename'] in exist]
+        # logging.info(f"Found {len(data)} files to process after filtering.")
+        # **
 
     logging.info(f"Starting extraction for {len(data)} files...")
 
