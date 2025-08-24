@@ -7,7 +7,7 @@ Frame extractors in general adopts an **unit-context schema**. The purpose is to
 - **Unit:** a text snippet that LLM extrator will process at a time. It could be a sentence, a line of text, or a paragraph. 
 - **Context:** the context around the unit. For exapmle, a slidewindow of 2 sentences before and after. Context is optional. 
 
-![unit-context schema](/readme_img/unit_context_schema.png)
+![unit-context schema](./readme_img/unit_context_schema.png)
 
 ### DirectFrameExtractor
 The `DirectFrameExtractor` implements the unit-context schema. We start by defining the unit using one of the `UnitChunker`. The `SentenceUnitChunker` chunks the input document into sentences. Then, we define how context should be provided by choosing one of the `ContextChunker`. The `SlideWindowContextChunker` parse 2 units (sentences in this case) before and after each unit as context. For more options, see [Chunkers](./api/chunkers.md).
