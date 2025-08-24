@@ -99,10 +99,82 @@ class BasicLLMConfig(LLMConfig):
 
         return _process_stream()
 
+
+class ReasoningLLMConfig(LLMConfig):
+    def __init__(self, thinking_token_start="<think>", thinking_token_end="</think>", **kwargs):
+        """
+        The general LLM configuration for reasoning models.
+        """
+        super().__init__(**kwargs)
+        self.thinking_token_start = thinking_token_start
+        self.thinking_token_end = thinking_token_end
+
+    def preprocess_messages(self, messages:List[Dict[str,str]]) -> List[Dict[str,str]]:
+        """
+        This method preprocesses the input messages before passing them to the LLM.
+
+        Parameters:
+        ----------
+        messages : List[Dict[str,str]]
+            a list of dict with role and content. role must be one of {"system", "user", "assistant"}
+        
+        Returns:
+        -------
+        messages : List[Dict[str,str]]
+            a list of dict with role and content. role must be one of {"system", "user", "assistant"}
+        """
+        return messages
+
+    def postprocess_response(self, response:Union[str, Generator[str, None, None]]) -> Union[str, Generator[Dict[str,str], None, None]]:
+        """
+        If input is a generator, tag contents in <think> and </think> as {"type": "reasoning", "data": <content>},
+        and the rest as {"type": "response", "data": <content>}.
+        If input is a string, drop contents in <think> and </think>.
+
+        Parameters:
+        ----------
+        response : Union[str, Generator[str, None, None]]
+            the LLM response. Can be a string or a generator.
+        
+        Returns:
+        -------
+        response : Union[str, Generator[str, None, None]]
+            the postprocessed LLM response.
+            if input is a generator, the output will be a generator {"type": <reasoning or response>, "data": <content>}.
+        """
+        if isinstance(response, str):
+            return re.sub(f".*?{self.thinking_token_end}", "", response, flags=re.DOTALL).strip()
+
+        if isinstance(response, Generator):
+            def _process_stream():
+                think_flag = False
+                buffer = ""
+                for chunk in response:
+                    if isinstance(chunk, str):
+                        buffer += chunk
+                        # switch between reasoning and response
+                        if self.thinking_token_start in buffer:
+                            think_flag = True
+                            buffer = buffer.replace(self.thinking_token_start, "")
+                        elif self.thinking_token_end in buffer:
+                            think_flag = False
+                            buffer = buffer.replace(self.thinking_token_end, "")
+                        
+                        # if chunk is in thinking block, tag it as reasoning; else tag it as response
+                        if chunk not in [self.thinking_token_start, self.thinking_token_end]:
+                            if think_flag:
+                                yield {"type": "reasoning", "data": chunk}
+                            else:
+                                yield {"type": "response", "data": chunk}
+
+            return _process_stream()
+        
+
 class Qwen3LLMConfig(LLMConfig):
     def __init__(self, thinking_mode:bool=True, **kwargs):
         """
-        The Qwen3 LLM configuration for reasoning models.
+        The Qwen3 hybrid thinking LLM configuration. 
+        For Qwen3 thinking 2507, use ReasoningLLMConfig instead; for Qwen3 Instruct, use BasicLLMConfig instead.
 
         Parameters:
         ----------
