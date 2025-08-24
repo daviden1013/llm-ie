@@ -41,6 +41,41 @@ class WholeDocumentUnitChunker(UnitChunker):
             text=text
         )]
     
+class SeparatorUnitChunker(UnitChunker):
+    def __init__(self, sep:str):
+        """
+        This class chunks a document by separator provided.
+
+        Parameters:
+        ----------
+        sep : str
+            a separator string.
+        """
+        super().__init__()
+        if not isinstance(sep, str):
+            raise ValueError("sep must be a string")
+
+        self.sep = sep
+
+    def chunk(self, text:str) -> List[FrameExtractionUnit]:
+        """
+        Parameters:
+        ----------
+        text : str
+            The document text.
+        """
+        paragraphs = text.split(self.sep)
+        paragraph_units = []
+        start = 0
+        for paragraph in paragraphs:
+            end = start + len(paragraph)
+            paragraph_units.append(FrameExtractionUnit(
+                start=start,
+                end=end,
+                text=paragraph
+            ))
+            start = end + len(self.sep)
+        return paragraph_units
 
 class SentenceUnitChunker(UnitChunker):
     from nltk.tokenize.punkt import PunktSentenceTokenizer
