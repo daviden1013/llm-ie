@@ -167,9 +167,9 @@ extractor = DirectFrameExtractor(inference_engine=extractor_llm,
 To run the frame extraction, use `extract_frames` method. A list of entities with attributes ("frames") will be returned. Concurrent processing is supported by setting `concurrent=True`.
 ```python
 # To stream the extraction process, use concurrent=False, stream=True:
-frames =  extractor.extract_frames(note_text, concurrent=False, verbose=True)
+frames, messages_log =  extractor.extract_frames(note_text, concurrent=False, verbose=True, return_messages_log=True)
 # For faster extraction, use concurrent=True to enable asynchronous prompting
-# frames =  extractor.extract_frames(note_text, concurrent=True)
+# frames, messages_log =  extractor.extract_frames(note_text, concurrent=True, return_messages_log=True)
 
 # Check extractions
 for frame in frames:

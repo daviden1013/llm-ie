@@ -21,6 +21,8 @@ extractor = DirectFrameExtractor(inference_engine=llm,
                                  unit_chunker=unit_chunker,
                                  context_chunker=context_chunker,
                                  prompt_template=prompt_template)
+
+frames, messages_log =  extractor.extract_frames(note_text, concurrent=True, return_messages_log=True)
 ```
 
 ### ReviewFrameExtractor
@@ -247,9 +249,6 @@ Extraction:
 Frame: id2
 ...
 ```
-
-
-
 
 ## RelationExtractor
 Relation extractors prompt LLM with combinations of two frames from a document (```LLMInformationExtractionDocument```) and extract relations.
