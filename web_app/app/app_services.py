@@ -2,7 +2,7 @@ import os
 import logging
 from typing import Dict, Any
 from llm_ie.engines import (
-    LLMConfig, BasicLLMConfig, OpenAIReasoningLLMConfig, Qwen3LLMConfig,
+    LLMConfig, BasicLLMConfig, ReasoningLLMConfig, OpenAIReasoningLLMConfig, Qwen3LLMConfig,
     InferenceEngine, OllamaInferenceEngine, OpenAIInferenceEngine, AzureOpenAIInferenceEngine,
     HuggingFaceHubInferenceEngine, LiteLLMInferenceEngine
 )
@@ -61,24 +61,24 @@ def create_llm_engine_from_config(config: Dict[str, Any]) -> InferenceEngine:
             max_new_tokens=base_llm_params['max_new_tokens'],
             temperature=base_llm_params['temperature']
         )
+    elif llm_config_type_str == "ReasoningLLMConfig":
+        llm_config_instance = ReasoningLLMConfig(
+            max_new_tokens=base_llm_params['max_new_tokens'],
+            temperature=base_llm_params['temperature']
+        )
+
     elif llm_config_type_str == "OpenAIReasoningLLMConfig":
-        # OpenAIReasoningLLMConfig might have different params.
-        # For example, it doesn't use temperature.
-        # It might take 'reasoning_effort'.
-        reasoning_effort = config.get('openai_reasoning_effort', 'low') # Example: fetch from main config
+        reasoning_effort = config.get('openai_reasoning_effort', 'low')
         llm_config_instance = OpenAIReasoningLLMConfig(
             reasoning_effort=reasoning_effort,
-            max_new_tokens=base_llm_params['max_new_tokens'] # If it accepts max_new_tokens
-            # Add other params specific to OpenAIReasoningLLMConfig
+            max_new_tokens=base_llm_params['max_new_tokens']
         )
     elif llm_config_type_str == "Qwen3LLMConfig":
-        # Qwen3LLMConfig might take 'thinking_mode'.
-        thinking_mode = config.get('qwen_thinking_mode', True) # Example: fetch from main config
+        thinking_mode = config.get('qwen_thinking_mode', True)
         llm_config_instance = Qwen3LLMConfig(
             thinking_mode=thinking_mode,
-            max_new_tokens=base_llm_params['max_new_tokens'], # If it accepts max_new_tokens
-            temperature=base_llm_params['temperature'] # If it accepts temperature
-            # Add other params specific to Qwen3LLMConfig
+            max_new_tokens=base_llm_params['max_new_tokens'], 
+            temperature=base_llm_params['temperature'] 
         )
     else:
         raise ValueError(f"Unsupported LLMConfig type: {llm_config_type_str}")
