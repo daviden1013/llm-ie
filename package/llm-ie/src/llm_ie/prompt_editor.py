@@ -85,7 +85,7 @@ class PromptEditor:
         messages = [{"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": prompt}]
         res = self.inference_engine.chat(messages, verbose=True)
-        return res
+        return res["response"]
     
     def comment(self, draft:str) -> str:
         """
@@ -101,7 +101,7 @@ class PromptEditor:
         messages = [{"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": prompt}]
         res = self.inference_engine.chat(messages, verbose=True)
-        return res
+        return res["response"]
     
     def clear_messages(self):
         """
@@ -175,7 +175,7 @@ class PromptEditor:
             self.messages.append({"role": "user", "content": user_input})
             print(f"{Fore.BLUE}Assistant: {Style.RESET_ALL}", end="")
             response = self.inference_engine.chat(self.messages, verbose=True)
-            self.messages.append({"role": "assistant", "content": response})
+            self.messages.append({"role": "assistant", "content": response["response"]})
             
 
     def _IPython_chat(self):
@@ -229,7 +229,7 @@ class PromptEditor:
             # Get assistant's response and append it to conversation
             print("Assistant: ", end="")
             response = self.inference_engine.chat(self.messages, verbose=True)
-            self.messages.append({"role": "assistant", "content": response})
+            self.messages.append({"role": "assistant", "content": response["response"]})
 
             # Display the assistant's response
             with output_area:
