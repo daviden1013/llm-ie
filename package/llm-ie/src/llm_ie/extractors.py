@@ -489,7 +489,10 @@ class DirectFrameExtractor(FrameExtractor):
                         )
 
             if return_messages_log:
-                messages.append({"role": "assistant", "content": gen_text})
+                message = {"role": "assistant", "content": gen_text["response"]}
+                if "reasoning" in gen_text:
+                    message["reasoning"] = gen_text["reasoning"]
+                messages.append(message)
                 messages_log.append(messages)
 
             # add to output
@@ -497,7 +500,7 @@ class DirectFrameExtractor(FrameExtractor):
                             start=unit.start,
                             end=unit.end,
                             text=unit.text,
-                            gen_text=gen_text)
+                            gen_text=gen_text["response"])
             output.append(result)
             
         if return_messages_log:
@@ -581,7 +584,8 @@ class DirectFrameExtractor(FrameExtractor):
             )
             for chunk in response_stream:
                 yield chunk
-                current_gen_text += chunk
+                if chunk["type"] == "response":
+                    current_gen_text += chunk["data"]
            
             # Store the result for this unit
             result_for_unit = FrameExtractionUnitResult(
@@ -679,7 +683,11 @@ class DirectFrameExtractor(FrameExtractor):
                 gen_text = await self.inference_engine.chat_async(
                     messages=messages
                 )
-            return {"original_index": original_index, "unit": unit, "gen_text": gen_text, "messages": messages}
+
+            out = {"original_index": original_index, "unit": unit, "gen_text": gen_text["response"], "messages": messages}
+            if "reasoning" in gen_text:
+                out["reasoning"] = gen_text["reasoning"]
+            return out
            
         # Create and gather tasks
         tasks = []
@@ -713,7 +721,10 @@ class DirectFrameExtractor(FrameExtractor):
 
             # Append to messages log if requested
             if return_messages_log:
-                final_messages = result_data["messages"] + [{"role": "assistant", "content": gen_text}]
+                message = {"role": "assistant", "content": gen_text}
+                if "reasoning" in result_data:
+                    message["reasoning"] = result_data["reasoning"]
+                final_messages = result_data["messages"] + [message]
                 messages_log.append(final_messages)
 
         if return_messages_log:
@@ -975,15 +986,11 @@ class ReviewFrameExtractor(DirectFrameExtractor):
                             stream=False
                         )
 
-            if return_messages_log:
-                messages.append({"role": "assistant", "content": initial})
-                messages_log.append(messages)
-
             # <--- Review step --->
             if verbose:
                 print(f"\n{Fore.YELLOW}Review:{Style.RESET_ALL}")
 
-            messages.append({'role': 'assistant', 'content': initial})
+            messages.append({'role': 'assistant', 'content': initial["response"]})
             messages.append({'role': 'user', 'content': self.review_prompt})
             
             review = self.inference_engine.chat(
@@ -994,12 +1001,18 @@ class ReviewFrameExtractor(DirectFrameExtractor):
 
             # Output
             if self.review_mode == "revision":
-                gen_text = review
+                gen_text = review["response"]
             elif self.review_mode == "addition":
-                gen_text = initial + '\n' + review
+                gen_text = initial["response"] + '\n' + review["response"]
 
             if return_messages_log:
-                messages.append({"role": "assistant", "content": review})
+                if "reasoning" in initial:
+                    messages[-2]["reasoning"] = initial["reasoning"]
+
+                message = {"role": "assistant", "content": review["response"]}
+                if "reasoning" in review:
+                    message["reasoning"] = review["reasoning"]
+                messages.append(message)
                 messages_log.append(messages)
 
             # add to output
@@ -1192,7 +1205,10 @@ class ReviewFrameExtractor(DirectFrameExtractor):
                     messages=messages
                 )
             # Return initial generation result along with the messages used and the unit
-            return {"original_index": original_index, "unit": unit, "initial_gen_text": gen_text, "initial_messages": messages}
+            out = {"original_index": original_index, "unit": unit, "initial_gen_text": gen_text["response"], "initial_messages": messages}
+            if "reasoning" in gen_text:
+                out["reasoning"] = gen_text["reasoning"]
+            return out
 
         # Create and gather initial generation tasks
         initial_tasks = [
@@ -1218,28 +1234,35 @@ class ReviewFrameExtractor(DirectFrameExtractor):
                 {'role': 'user', 'content': self.review_prompt}
             ]
             # Store data needed for review task
+            if "reasoning" in result_data:
+                message = {'role': 'assistant', 'content': initial_gen_text, "reasoning": result_data["reasoning"]}
+            else:
+                message = {'role': 'assistant', 'content': initial_gen_text}
+
             review_tasks_input.append({
                 "unit": result_data["unit"],
                 "initial_gen_text": initial_gen_text,
                 "messages": review_messages, 
                 "original_index": result_data["original_index"],
-                "full_initial_log": initial_messages + [{'role': 'assistant', 'content': initial_gen_text}] if return_messages_log else None # Log up to initial generation
+                "full_initial_log": initial_messages + [message] + [{'role': 'user', 'content': self.review_prompt}] if return_messages_log else None
             })
 
 
         async def review_semaphore_helper(task_data: Dict, **kwrs):
             messages = task_data["messages"] 
-            original_index = task_data["original_index"]
 
             async with semaphore:
                 review_gen_text = await self.inference_engine.chat_async(
                     messages=messages
                 )
             # Combine initial and review results
-            task_data["review_gen_text"] = review_gen_text
+            task_data["review_gen_text"] = review_gen_text["response"]
             if return_messages_log:
                 # Log for the review call itself
-                 task_data["full_review_log"] = messages + [{'role': 'assistant', 'content': review_gen_text}]
+                message = {'role': 'assistant', 'content': review_gen_text["response"]}
+                if "reasoning" in review_gen_text:
+                    message["reasoning"] = review_gen_text["reasoning"]
+                task_data["full_review_log"] = task_data["full_initial_log"] + [message]
             return task_data # Return the augmented dictionary
 
         # Create and gather review tasks
@@ -1283,7 +1306,7 @@ class ReviewFrameExtractor(DirectFrameExtractor):
 
             # Append full conversation log if requested
             if return_messages_log:
-                full_log_for_unit = result_data.get("full_initial_log", []) + [{'role': 'user', 'content': self.review_prompt}] + [{'role': 'assistant', 'content': review_gen}]
+                full_log_for_unit = result_data["full_review_log"]
                 messages_log.append(full_log_for_unit)
 
         if return_messages_log:
@@ -1541,15 +1564,18 @@ class AttributeExtractor(Extractor):
             
             print(f"{Fore.BLUE}Extraction:{Style.RESET_ALL}")
 
-        get_text = self.inference_engine.chat(
+        gen_text = self.inference_engine.chat(
                             messages=messages,
                             verbose=verbose,
                             stream=False
                         )
         if return_messages_log:
-            messages.append({"role": "assistant", "content": get_text})
+            message = {"role": "assistant", "content": gen_text["response"]}
+            if "reasoning" in gen_text:
+                message["reasoning"] = gen_text["reasoning"]
+            messages.append(message)
 
-        attribute_list = self._extract_json(gen_text=get_text)
+        attribute_list = self._extract_json(gen_text=gen_text["response"])
         if isinstance(attribute_list, list) and len(attribute_list) > 0:
             attributes = attribute_list[0]
             if return_messages_log:
@@ -1658,9 +1684,12 @@ class AttributeExtractor(Extractor):
                 gen_text = await self.inference_engine.chat_async(messages=messages)
                 
                 if return_messages_log:
-                    messages.append({"role": "assistant", "content": gen_text})
+                    message = {"role": "assistant", "content": gen_text["response"]}
+                    if "reasoning" in gen_text:
+                        message["reasoning"] = gen_text["reasoning"]
+                    messages.append(message)
 
-                attribute_list = self._extract_json(gen_text=gen_text)
+                attribute_list = self._extract_json(gen_text=gen_text["response"])
                 attributes = attribute_list[0] if isinstance(attribute_list, list) and len(attribute_list) > 0 else {}
                 return {"frame": frame, "attributes": attributes, "messages": messages}
 
@@ -1824,12 +1853,15 @@ class RelationExtractor(Extractor):
                     messages=task_payload['messages'],
                     verbose=verbose
                 )
-                relation = self._post_process_result(gen_text, task_payload)
+                relation = self._post_process_result(gen_text["response"], task_payload)
                 if relation:
                     relations.append(relation)
 
                 if return_messages_log:
-                    task_payload['messages'].append({"role": "assistant", "content": gen_text})
+                    message = {"role": "assistant", "content": gen_text["response"]}
+                    if "reasoning" in gen_text:
+                        message["reasoning"] = gen_text["reasoning"]
+                    task_payload['messages'].append(message)
                     messages_log.append(task_payload['messages'])
 
         return (relations, messages_log) if return_messages_log else relations
@@ -1853,12 +1885,15 @@ class RelationExtractor(Extractor):
         results = await asyncio.gather(*tasks)
 
         for gen_text, task_payload in results:
-            relation = self._post_process_result(gen_text, task_payload)
+            relation = self._post_process_result(gen_text["response"], task_payload)
             if relation:
                 relations.append(relation)
 
             if return_messages_log:
-                task_payload['messages'].append({"role": "assistant", "content": gen_text})
+                message = {"role": "assistant", "content": gen_text["response"]}
+                if "reasoning" in gen_text:
+                    message["reasoning"] = gen_text["reasoning"]
+                task_payload['messages'].append(message)
                 messages_log.append(task_payload['messages'])
 
         return (relations, messages_log) if return_messages_log else relations
