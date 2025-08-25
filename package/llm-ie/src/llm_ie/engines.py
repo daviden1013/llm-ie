@@ -33,18 +33,18 @@ class LLMConfig(abc.ABC):
         return NotImplemented
 
     @abc.abstractmethod
-    def postprocess_response(self, response:Union[str, Generator[str, None, None]]) -> Union[str, Generator[str, None, None]]:
+    def postprocess_response(self, response:Union[str, Generator[str, None, None]]) -> Union[Dict[str,str], Generator[Dict[str, str], None, None]]:
         """
         This method postprocesses the LLM response after it is generated.
 
         Parameters:
         ----------
-        response : Union[str, Generator[str, None, None]]
-            the LLM response. Can be a string or a generator.
+        response : Union[str, Generator[Dict[str, str], None, None]]
+            the LLM response. Can be a dict or a generator. 
         
         Returns:
         -------
-        response : str
+        response : Union[Dict[str,str], Generator[Dict[str, str], None, None]]
             the postprocessed LLM response
         """
         return NotImplemented
@@ -77,7 +77,7 @@ class BasicLLMConfig(LLMConfig):
         """
         return messages
 
-    def postprocess_response(self, response:Union[str, Generator[str, None, None]]) -> Union[str, Generator[Dict[str, str], None, None]]:
+    def postprocess_response(self, response:Union[str, Generator[str, None, None]]) -> Union[Dict[str,str], Generator[Dict[str, str], None, None]]:
         """
         This method postprocesses the LLM response after it is generated.
 
@@ -86,12 +86,13 @@ class BasicLLMConfig(LLMConfig):
         response : Union[str, Generator[str, None, None]]
             the LLM response. Can be a string or a generator.
         
-        Returns: Union[str, Generator[Dict[str, str], None, None]]
+        Returns: Union[Dict[str,str], Generator[Dict[str, str], None, None]]
             the postprocessed LLM response. 
-            if input is a generator, the output will be a generator {"data": <content>}.
+            If input is a string, the output will be a dict {"response": <response>}. 
+            if input is a generator, the output will be a generator {"type": "response", "data": <content>}.
         """
         if isinstance(response, str):
-            return response
+            return {"response": response}
 
         def _process_stream():
             for chunk in response:
@@ -125,11 +126,9 @@ class ReasoningLLMConfig(LLMConfig):
         """
         return messages
 
-    def postprocess_response(self, response:Union[str, Generator[str, None, None]]) -> Union[str, Generator[Dict[str,str], None, None]]:
+    def postprocess_response(self, response:Union[str, Generator[str, None, None]]) -> Union[Dict[str,str], Generator[Dict[str,str], None, None]]:
         """
-        If input is a generator, tag contents in <think> and </think> as {"type": "reasoning", "data": <content>},
-        and the rest as {"type": "response", "data": <content>}.
-        If input is a string, drop contents in <think> and </think>.
+        This method postprocesses the LLM response after it is generated.
 
         Parameters:
         ----------
@@ -139,11 +138,16 @@ class ReasoningLLMConfig(LLMConfig):
         Returns:
         -------
         response : Union[str, Generator[str, None, None]]
-            the postprocessed LLM response.
+            the postprocessed LLM response as a dict {"reasoning": <reasoning>, "response": <content>}
             if input is a generator, the output will be a generator {"type": <reasoning or response>, "data": <content>}.
         """
         if isinstance(response, str):
-            return re.sub(f".*?{self.thinking_token_end}", "", response, flags=re.DOTALL).strip()
+            # get contents between thinking_token_start and thinking_token_end
+            match = re.search(f"{self.thinking_token_start}.*?{self.thinking_token_end}", response, re.DOTALL)
+            reasoning = match.group(0) if match else ""
+            # get response AFTER thinking_token_end
+            response = re.sub(f".*?{self.thinking_token_end}", "", response, flags=re.DOTALL).strip()
+            return {"reasoning": reasoning, "response": response}
 
         if isinstance(response, Generator):
             def _process_stream():
@@ -170,10 +174,10 @@ class ReasoningLLMConfig(LLMConfig):
             return _process_stream()
         
 
-class Qwen3LLMConfig(LLMConfig):
+class Qwen3LLMConfig(ReasoningLLMConfig):
     def __init__(self, thinking_mode:bool=True, **kwargs):
         """
-        The Qwen3 hybrid thinking LLM configuration. 
+        The Qwen3 **hybrid thinking** LLM configuration. 
         For Qwen3 thinking 2507, use ReasoningLLMConfig instead; for Qwen3 Instruct, use BasicLLMConfig instead.
 
         Parameters:
@@ -211,52 +215,8 @@ class Qwen3LLMConfig(LLMConfig):
 
         return new_messages
 
-    def postprocess_response(self, response:Union[str, Generator[str, None, None]]) -> Union[str, Generator[Dict[str,str], None, None]]:
-        """
-        If input is a generator, tag contents in <think> and </think> as {"type": "reasoning", "data": <content>},
-        and the rest as {"type": "response", "data": <content>}.
-        If input is a string, drop contents in <think> and </think>.
 
-        Parameters:
-        ----------
-        response : Union[str, Generator[str, None, None]]
-            the LLM response. Can be a string or a generator.
-        
-        Returns:
-        -------
-        response : Union[str, Generator[str, None, None]]
-            the postprocessed LLM response.
-            if input is a generator, the output will be a generator {"type": <reasoning or response>, "data": <content>}.
-        """
-        if isinstance(response, str):
-            return re.sub(r"<think>.*?</think>\s*", "", response, flags=re.DOTALL).strip()
-
-        if isinstance(response, Generator):
-            def _process_stream():
-                think_flag = False
-                buffer = ""
-                for chunk in response:
-                    if isinstance(chunk, str):
-                        buffer += chunk
-                        # switch between reasoning and response
-                        if "<think>" in buffer:
-                            think_flag = True
-                            buffer = buffer.replace("<think>", "")
-                        elif "</think>" in buffer:
-                            think_flag = False
-                            buffer = buffer.replace("</think>", "")
-                        
-                        # if chunk is in thinking block, tag it as reasoning; else tag it as response
-                        if chunk not in ["<think>", "</think>"]:
-                            if think_flag:
-                                yield {"type": "reasoning", "data": chunk}
-                            else:
-                                yield {"type": "response", "data": chunk}
-
-            return _process_stream()
-
-
-class OpenAIReasoningLLMConfig(LLMConfig):
+class OpenAIReasoningLLMConfig(ReasoningLLMConfig):
     def __init__(self, reasoning_effort:str=None, **kwargs):
         """
         The OpenAI "o" series configuration.
@@ -318,28 +278,6 @@ class OpenAIReasoningLLMConfig(LLMConfig):
 
         return new_messages
 
-    def postprocess_response(self, response:Union[str, Generator[str, None, None]]) -> Union[str, Generator[Dict[str, str], None, None]]:
-        """
-        This method postprocesses the LLM response after it is generated.
-
-        Parameters:
-        ----------
-        response : Union[str, Generator[str, None, None]]
-            the LLM response. Can be a string or a generator.
-        
-        Returns: Union[str, Generator[Dict[str, str], None, None]]
-            the postprocessed LLM response. 
-            if input is a generator, the output will be a generator {"type": "response", "data": <content>}.
-        """
-        if isinstance(response, str):
-            return response
-
-        def _process_stream():
-            for chunk in response:
-                yield {"type": "response", "data": chunk}
-
-        return _process_stream()
-
 
 class InferenceEngine:
     @abc.abstractmethod
@@ -358,7 +296,7 @@ class InferenceEngine:
 
     @abc.abstractmethod
     def chat(self, messages:List[Dict[str,str]], 
-             verbose:bool=False, stream:bool=False) -> Union[str, Generator[Dict[str, str], None, None]]:
+             verbose:bool=False, stream:bool=False) -> Union[Dict[str,str], Generator[Dict[str, str], None, None]]:
         """
         This method inputs chat messages and outputs LLM generated text.
 
@@ -370,6 +308,11 @@ class InferenceEngine:
             if True, LLM generated text will be printed in terminal in real-time.
         stream : bool, Optional
             if True, returns a generator that yields the output in real-time.  
+
+        Returns:
+        -------
+        response : Union[Dict[str,str], Generator[Dict[str, str], None, None]]
+            a dict {"reasoning": <reasoning>, "response": <response>} or Generator {"type": <reasoning or response>, "data": <content>}
         """
         return NotImplemented
 
@@ -435,7 +378,7 @@ class LlamaCppInferenceEngine(InferenceEngine):
 
         return formatted_params
 
-    def chat(self, messages:List[Dict[str,str]], verbose:bool=False) -> str:
+    def chat(self, messages:List[Dict[str,str]], verbose:bool=False) -> Dict[str,str]:
         """
         This method inputs chat messages and outputs LLM generated text.
 
@@ -508,7 +451,7 @@ class OllamaInferenceEngine(InferenceEngine):
         return formatted_params
 
     def chat(self, messages:List[Dict[str,str]], 
-             verbose:bool=False, stream:bool=False) -> Union[str, Generator[Dict[str, str], None, None]]:
+             verbose:bool=False, stream:bool=False) -> Union[Dict[str,str], Generator[Dict[str, str], None, None]]:
         """
         This method inputs chat messages and outputs VLM generated text.
 
@@ -520,6 +463,11 @@ class OllamaInferenceEngine(InferenceEngine):
             if True, VLM generated text will be printed in terminal in real-time.
         stream : bool, Optional
             if True, returns a generator that yields the output in real-time.
+
+        Returns:
+        -------
+        response : Union[Dict[str,str], Generator[Dict[str, str], None, None]]
+            a dict {"reasoning": <reasoning>, "response": <response>} or Generator {"type": <reasoning or response>, "data": <content>}
         """
         processed_messages = self.config.preprocess_messages(messages)
 
@@ -569,7 +517,7 @@ class OllamaInferenceEngine(InferenceEngine):
             return self.config.postprocess_response(res)
         
 
-    async def chat_async(self, messages:List[Dict[str,str]]) -> str:
+    async def chat_async(self, messages:List[Dict[str,str]]) -> Dict[str,str]:
         """
         Async version of chat method. Streaming is not supported.
         """
@@ -630,7 +578,7 @@ class HuggingFaceHubInferenceEngine(InferenceEngine):
 
 
     def chat(self, messages:List[Dict[str,str]], 
-             verbose:bool=False, stream:bool=False) -> Union[str, Generator[Dict[str, str], None, None]]:
+             verbose:bool=False, stream:bool=False) -> Union[Dict[str,str], Generator[Dict[str, str], None, None]]:
         """
         This method inputs chat messages and outputs LLM generated text.
 
@@ -642,6 +590,11 @@ class HuggingFaceHubInferenceEngine(InferenceEngine):
             if True, VLM generated text will be printed in terminal in real-time.
         stream : bool, Optional
             if True, returns a generator that yields the output in real-time.
+
+        Returns:
+        -------
+        response : Union[Dict[str,str], Generator[Dict[str, str], None, None]]
+            a dict {"reasoning": <reasoning>, "response": <response>} or Generator {"type": <reasoning or response>, "data": <content>}
         """
         processed_messages = self.config.preprocess_messages(messages)
 
@@ -683,7 +636,7 @@ class HuggingFaceHubInferenceEngine(InferenceEngine):
             res = response.choices[0].message.content
             return self.config.postprocess_response(res)
     
-    async def chat_async(self, messages:List[Dict[str,str]]) -> str:
+    async def chat_async(self, messages:List[Dict[str,str]]) -> Dict[str,str]:
         """
         Async version of chat method. Streaming is not supported.
         """
@@ -734,7 +687,7 @@ class OpenAIInferenceEngine(InferenceEngine):
 
         return formatted_params
 
-    def chat(self, messages:List[Dict[str,str]], verbose:bool=False, stream:bool=False) -> Union[str, Generator[Dict[str, str], None, None]]:
+    def chat(self, messages:List[Dict[str,str]], verbose:bool=False, stream:bool=False) -> Union[Dict[str, str], Generator[Dict[str, str], None, None]]:
         """
         This method inputs chat messages and outputs LLM generated text.
 
@@ -746,6 +699,11 @@ class OpenAIInferenceEngine(InferenceEngine):
             if True, VLM generated text will be printed in terminal in real-time.
         stream : bool, Optional
             if True, returns a generator that yields the output in real-time.
+
+        Returns:
+        -------
+        response : Union[Dict[str,str], Generator[Dict[str, str], None, None]]
+            a dict {"reasoning": <reasoning>, "response": <response>} or Generator {"type": <reasoning or response>, "data": <content>}
         """
         processed_messages = self.config.preprocess_messages(messages)
 
@@ -795,7 +753,7 @@ class OpenAIInferenceEngine(InferenceEngine):
             return self.config.postprocess_response(res)
     
 
-    async def chat_async(self, messages:List[Dict[str,str]]) -> str:
+    async def chat_async(self, messages:List[Dict[str,str]]) -> Dict[str,str]:
         """
         Async version of chat method. Streaming is not supported.
         """
@@ -885,7 +843,7 @@ class LiteLLMInferenceEngine(InferenceEngine):
 
         return formatted_params
 
-    def chat(self, messages:List[Dict[str,str]], verbose:bool=False, stream:bool=False) -> Union[str, Generator[Dict[str, str], None, None]]:
+    def chat(self, messages:List[Dict[str,str]], verbose:bool=False, stream:bool=False) -> Union[Dict[str,str], Generator[Dict[str, str], None, None]]:
         """
         This method inputs chat messages and outputs LLM generated text.
 
@@ -897,6 +855,11 @@ class LiteLLMInferenceEngine(InferenceEngine):
             if True, VLM generated text will be printed in terminal in real-time.
         stream : bool, Optional
             if True, returns a generator that yields the output in real-time.
+
+        Returns:
+        -------
+        response : Union[Dict[str,str], Generator[Dict[str, str], None, None]]
+            a dict {"reasoning": <reasoning>, "response": <response>} or Generator {"type": <reasoning or response>, "data": <content>}
         """
         processed_messages = self.config.preprocess_messages(messages)
         
@@ -949,7 +912,7 @@ class LiteLLMInferenceEngine(InferenceEngine):
             res = response.choices[0].message.content
             return self.config.postprocess_response(res)
     
-    async def chat_async(self, messages:List[Dict[str,str]]) -> str:
+    async def chat_async(self, messages:List[Dict[str,str]]) -> Dict[str,str]:
         """
         Async version of chat method. Streaming is not supported.
         """
