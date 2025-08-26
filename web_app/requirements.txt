@@ -1,6 +1,6 @@
 Flask>=2.0
 flask-cors==5.0.0
-llm-ie>=1.1.0
+llm-ie>=1.2.2
 nltk
 ie-viz
 ollama
