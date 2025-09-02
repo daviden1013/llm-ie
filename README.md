@@ -24,6 +24,9 @@ A comprehensive toolkit that provides building blocks for LLM-based named entity
   - **Optimized concurrent/batch processing**. We adopt semaphore to better utilize the computation resource. 
 - [v1.1.0](https://github.com/daviden1013/llm-ie/releases/tag/v1.1.0) (May 19, 2025): LLM-specific configuration to support reasoning models (o3, Qwen3).
 - [v1.2.0](https://github.com/daviden1013/llm-ie/releases/tag/v1.2.0) (Jun 15, 2025): Attribute extractor for complicated attribute schema. 
+- [v1.2.1](https://github.com/daviden1013/llm-ie/releases/tag/v1.2.1) (Jul 12, 2025): Added exporting/importing chat history functionality to the Prompt Editor.
+- [v1.2.2](https://github.com/daviden1013/llm-ie/releases/tag/v1.2.2) (Aug 25, 2025): Added configs for reasoning LLMs (GPT-OSS, Qwen3).
+
 
 ## 📑Table of Contents
 - [Overview](#overview)
