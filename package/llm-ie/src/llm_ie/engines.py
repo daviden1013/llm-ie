@@ -75,7 +75,7 @@ class BasicLLMConfig(LLMConfig):
         messages : List[Dict[str,str]]
             a list of dict with role and content. role must be one of {"system", "user", "assistant"}
         """
-        return messages
+        return messages.copy()
 
     def postprocess_response(self, response:Union[str, Generator[str, None, None]]) -> Union[Dict[str,str], Generator[Dict[str, str], None, None]]:
         """
@@ -124,7 +124,7 @@ class ReasoningLLMConfig(LLMConfig):
         messages : List[Dict[str,str]]
             a list of dict with role and content. role must be one of {"system", "user", "assistant"}
         """
-        return messages
+        return messages.copy()
 
     def postprocess_response(self, response:Union[str, Generator[str, None, None]]) -> Union[Dict[str,str], Generator[Dict[str,str], None, None]]:
         """
@@ -149,7 +149,7 @@ class ReasoningLLMConfig(LLMConfig):
             response = re.sub(f".*?{self.thinking_token_end}", "", response, flags=re.DOTALL).strip()
             return {"reasoning": reasoning, "response": response}
 
-        if isinstance(response, Generator):
+        elif isinstance(response, Generator):
             def _process_stream():
                 think_flag = False
                 buffer = ""
@@ -173,6 +173,9 @@ class ReasoningLLMConfig(LLMConfig):
 
             return _process_stream()
         
+        else:
+            warnings.warn(f"Invalid response type: {type(response)}. Returning default empty dict.", UserWarning)
+            return {"reasoning": "", "response": ""}
 
 class Qwen3LLMConfig(ReasoningLLMConfig):
     def __init__(self, thinking_mode:bool=True, **kwargs):
@@ -279,6 +282,32 @@ class OpenAIReasoningLLMConfig(ReasoningLLMConfig):
         return new_messages
 
 
+class MessagesLogger:
+    def __init__(self):
+        """
+        This class is used to log the messages for InferenceEngine.chat().
+        """
+        self.messages_log = []
+
+    def log_messages(self, messages : List[Dict[str,str]]):
+        """
+        This method logs the messages to a list.
+        """
+        self.messages_log.append(messages)
+
+    def get_messages_log(self) -> List[List[Dict[str,str]]]:
+        """
+        This method returns a copy of the current messages log
+        """
+        return self.messages_log.copy()
+    
+    def clear_messages_log(self):
+        """
+        This method clears the current messages log
+        """
+        self.messages_log.clear()
+
+
 class InferenceEngine:
     @abc.abstractmethod
     def __init__(self, config:LLMConfig, **kwrs):
@@ -293,10 +322,16 @@ class InferenceEngine:
         """
         return NotImplemented
 
+    def get_messages_log(self) -> List[List[Dict[str,str]]]:
+        return self.messages_log.copy()
+
+    def clear_messages_log(self):
+        self.messages_log = []
+
 
     @abc.abstractmethod
-    def chat(self, messages:List[Dict[str,str]], 
-             verbose:bool=False, stream:bool=False) -> Union[Dict[str,str], Generator[Dict[str, str], None, None]]:
+    def chat(self, messages:List[Dict[str,str]], verbose:bool=False, stream:bool=False, 
+             messages_logger:MessagesLogger=None) -> Union[Dict[str,str], Generator[Dict[str, str], None, None]]:
         """
         This method inputs chat messages and outputs LLM generated text.
 
@@ -308,6 +343,8 @@ class InferenceEngine:
             if True, LLM generated text will be printed in terminal in real-time.
         stream : bool, Optional
             if True, returns a generator that yields the output in real-time.  
+        Messages_logger : MessagesLogger, Optional
+            the message logger that logs the chat messages.
 
         Returns:
         -------
@@ -346,6 +383,7 @@ class LlamaCppInferenceEngine(InferenceEngine):
             the LLM configuration. 
         """
         from llama_cpp import Llama
+        super().__init__(config)
         self.repo_id = repo_id
         self.gguf_filename = gguf_filename
         self.n_ctx = n_ctx
@@ -378,7 +416,7 @@ class LlamaCppInferenceEngine(InferenceEngine):
 
         return formatted_params
 
-    def chat(self, messages:List[Dict[str,str]], verbose:bool=False) -> Dict[str,str]:
+    def chat(self, messages:List[Dict[str,str]], verbose:bool=False, messages_logger:MessagesLogger=None) -> Dict[str,str]:
         """
         This method inputs chat messages and outputs LLM generated text.
 
@@ -388,15 +426,18 @@ class LlamaCppInferenceEngine(InferenceEngine):
             a list of dict with role and content. role must be one of {"system", "user", "assistant"}
         verbose : bool, Optional
             if True, LLM generated text will be printed in terminal in real-time. 
+        messages_logger : MessagesLogger, Optional
+            the message logger that logs the chat messages.
         """
+        # Preprocess messages
         processed_messages = self.config.preprocess_messages(messages)
-
+        # Generate response
         response = self.model.create_chat_completion(
                     messages=processed_messages,
                     stream=verbose,
                     **self.formatted_params
                 )
-
+    
         if verbose:
             res = ''
             for chunk in response:
@@ -408,7 +449,16 @@ class LlamaCppInferenceEngine(InferenceEngine):
             return self.config.postprocess_response(res)
         
         res = response['choices'][0]['message']['content']
-        return self.config.postprocess_response(res)
+        # Postprocess response
+        res_dict = self.config.postprocess_response(res)
+        # Write to messages log
+        if messages_logger:
+            processed_messages.append({"role": "assistant", 
+                                    "content": res_dict.get("response", ""), 
+                                    "reasoning": res_dict.get("reasoning", "")})
+            messages_logger.log_messages(processed_messages)
+
+        return res_dict
 
 
 class OllamaInferenceEngine(InferenceEngine):
@@ -431,6 +481,7 @@ class OllamaInferenceEngine(InferenceEngine):
             raise ImportError("ollama-python not found. Please install ollama-python (```pip install ollama```).")
         
         from ollama import Client, AsyncClient
+        super().__init__(config)
         self.client = Client(**kwrs)
         self.async_client = AsyncClient(**kwrs)
         self.model_name = model_name
@@ -450,8 +501,8 @@ class OllamaInferenceEngine(InferenceEngine):
 
         return formatted_params
 
-    def chat(self, messages:List[Dict[str,str]], 
-             verbose:bool=False, stream:bool=False) -> Union[Dict[str,str], Generator[Dict[str, str], None, None]]:
+    def chat(self, messages:List[Dict[str,str]], verbose:bool=False, stream:bool=False, 
+             messages_logger:MessagesLogger=None) -> Union[Dict[str,str], Generator[Dict[str, str], None, None]]:
         """
         This method inputs chat messages and outputs VLM generated text.
 
@@ -463,6 +514,8 @@ class OllamaInferenceEngine(InferenceEngine):
             if True, VLM generated text will be printed in terminal in real-time.
         stream : bool, Optional
             if True, returns a generator that yields the output in real-time.
+        Messages_logger : MessagesLogger, Optional
+            the message logger that logs the chat messages.
 
         Returns:
         -------
@@ -481,10 +534,21 @@ class OllamaInferenceEngine(InferenceEngine):
                     stream=True, 
                     keep_alive=self.keep_alive
                 )
+                res_text = ""
                 for chunk in response_stream:
                     content_chunk = chunk.get('message', {}).get('content')
                     if content_chunk:
+                        res_text += content_chunk
                         yield content_chunk
+                
+                # Postprocess response
+                res_dict = self.config.postprocess_response(res_text)
+                # Write to messages log
+                if messages_logger:
+                    processed_messages.append({"role": "assistant",
+                                                "content": res_dict.get("response", ""),
+                                                "reasoning": res_dict.get("reasoning", "")})
+                    messages_logger.log_messages(processed_messages)
 
             return self.config.postprocess_response(_stream_generator())
 
@@ -503,8 +567,7 @@ class OllamaInferenceEngine(InferenceEngine):
                 print(content_chunk, end='', flush=True)
                 res += content_chunk
             print('\n')
-            return self.config.postprocess_response(res)
-        
+
         else:
             response = self.client.chat(
                                 model=self.model_name, 
@@ -514,10 +577,20 @@ class OllamaInferenceEngine(InferenceEngine):
                                 keep_alive=self.keep_alive
                             )
             res = response.get('message', {}).get('content')
-            return self.config.postprocess_response(res)
+        
+        # Postprocess response
+        res_dict = self.config.postprocess_response(res)
+        # Write to messages log
+        if messages_logger:
+            processed_messages.append({"role": "assistant", 
+                                    "content": res_dict.get("response", ""), 
+                                    "reasoning": res_dict.get("reasoning", "")})
+            messages_logger.log_messages(processed_messages)
+
+        return res_dict
         
 
-    async def chat_async(self, messages:List[Dict[str,str]]) -> Dict[str,str]:
+    async def chat_async(self, messages:List[Dict[str,str]], messages_logger:MessagesLogger=None) -> Dict[str,str]:
         """
         Async version of chat method. Streaming is not supported.
         """
@@ -532,7 +605,16 @@ class OllamaInferenceEngine(InferenceEngine):
                         )
         
         res = response['message']['content']
-        return self.config.postprocess_response(res)
+        # Postprocess response
+        res_dict = self.config.postprocess_response(res)
+        # Write to messages log
+        if messages_logger:
+            processed_messages.append({"role": "assistant", 
+                                        "content": res_dict.get("response", ""), 
+                                        "reasoning": res_dict.get("reasoning", "")})
+            messages_logger.log_messages(processed_messages)
+
+        return res_dict
 
 
 class HuggingFaceHubInferenceEngine(InferenceEngine):
@@ -558,6 +640,7 @@ class HuggingFaceHubInferenceEngine(InferenceEngine):
             raise ImportError("huggingface-hub not found. Please install huggingface-hub (```pip install huggingface-hub```).")
         
         from huggingface_hub import InferenceClient, AsyncInferenceClient
+        super().__init__(config)
         self.model = model
         self.base_url = base_url
         self.client = InferenceClient(model=model, token=token, base_url=base_url, api_key=api_key, **kwrs)
@@ -577,8 +660,8 @@ class HuggingFaceHubInferenceEngine(InferenceEngine):
         return formatted_params
 
 
-    def chat(self, messages:List[Dict[str,str]], 
-             verbose:bool=False, stream:bool=False) -> Union[Dict[str,str], Generator[Dict[str, str], None, None]]:
+    def chat(self, messages:List[Dict[str,str]], verbose:bool=False, stream:bool=False, 
+             messages_logger:MessagesLogger=None) -> Union[Dict[str,str], Generator[Dict[str, str], None, None]]:
         """
         This method inputs chat messages and outputs LLM generated text.
 
@@ -590,7 +673,9 @@ class HuggingFaceHubInferenceEngine(InferenceEngine):
             if True, VLM generated text will be printed in terminal in real-time.
         stream : bool, Optional
             if True, returns a generator that yields the output in real-time.
-
+        messages_logger : MessagesLogger, Optional
+            the message logger that logs the chat messages.
+            
         Returns:
         -------
         response : Union[Dict[str,str], Generator[Dict[str, str], None, None]]
@@ -605,10 +690,21 @@ class HuggingFaceHubInferenceEngine(InferenceEngine):
                                     stream=True,
                                     **self.formatted_params
                                 )
+                res_text = ""
                 for chunk in response_stream:
                     content_chunk = chunk.get('choices')[0].get('delta').get('content')
                     if content_chunk:
+                        res_text += content_chunk
                         yield content_chunk
+
+                # Postprocess response
+                res_dict = self.config.postprocess_response(res_text)
+                # Write to messages log
+                if messages_logger:
+                    processed_messages.append({"role": "assistant",
+                                                "content": res_dict.get("response", ""),
+                                                "reasoning": res_dict.get("reasoning", "")})
+                    messages_logger.log_messages(processed_messages)
 
             return self.config.postprocess_response(_stream_generator())
         
@@ -625,7 +721,7 @@ class HuggingFaceHubInferenceEngine(InferenceEngine):
                 if content_chunk:
                     res += content_chunk
                     print(content_chunk, end='', flush=True)
-            return self.config.postprocess_response(res)
+
         
         else:
             response = self.client.chat.completions.create(
@@ -634,9 +730,20 @@ class HuggingFaceHubInferenceEngine(InferenceEngine):
                                 **self.formatted_params
                             )
             res = response.choices[0].message.content
-            return self.config.postprocess_response(res)
+
+        # Postprocess response
+        res_dict = self.config.postprocess_response(res)
+        # Write to messages log
+        if messages_logger:
+            processed_messages.append({"role": "assistant", 
+                                    "content": res_dict.get("response", ""), 
+                                    "reasoning": res_dict.get("reasoning", "")})
+            messages_logger.log_messages(processed_messages)
+
+        return res_dict
     
-    async def chat_async(self, messages:List[Dict[str,str]]) -> Dict[str,str]:
+    
+    async def chat_async(self, messages:List[Dict[str,str]], messages_logger:MessagesLogger=None) -> Dict[str,str]:
         """
         Async version of chat method. Streaming is not supported.
         """
@@ -649,9 +756,18 @@ class HuggingFaceHubInferenceEngine(InferenceEngine):
                 )
     
         res = response.choices[0].message.content
-        return self.config.postprocess_response(res)
-        
+        # Postprocess response
+        res_dict = self.config.postprocess_response(res)
+        # Write to messages log
+        if messages_logger:
+            processed_messages.append({"role": "assistant", 
+                                        "content": res_dict.get("response", ""), 
+                                        "reasoning": res_dict.get("reasoning", "")})
+            messages_logger.log_messages(processed_messages)
 
+        return res_dict
+
+        
 class OpenAIInferenceEngine(InferenceEngine):
     def __init__(self, model:str, config:LLMConfig=None, **kwrs):
         """
@@ -670,6 +786,7 @@ class OpenAIInferenceEngine(InferenceEngine):
             raise ImportError("OpenAI Python API library not found. Please install OpanAI (```pip install openai```).")
         
         from openai import OpenAI, AsyncOpenAI
+        super().__init__(config)
         self.client = OpenAI(**kwrs)
         self.async_client = AsyncOpenAI(**kwrs)
         self.model = model
@@ -687,7 +804,7 @@ class OpenAIInferenceEngine(InferenceEngine):
 
         return formatted_params
 
-    def chat(self, messages:List[Dict[str,str]], verbose:bool=False, stream:bool=False) -> Union[Dict[str, str], Generator[Dict[str, str], None, None]]:
+    def chat(self, messages:List[Dict[str,str]], verbose:bool=False, stream:bool=False, messages_logger:MessagesLogger=None) -> Union[Dict[str, str], Generator[Dict[str, str], None, None]]:
         """
         This method inputs chat messages and outputs LLM generated text.
 
@@ -699,6 +816,8 @@ class OpenAIInferenceEngine(InferenceEngine):
             if True, VLM generated text will be printed in terminal in real-time.
         stream : bool, Optional
             if True, returns a generator that yields the output in real-time.
+        messages_logger : MessagesLogger, Optional
+            the message logger that logs the chat messages.
 
         Returns:
         -------
@@ -715,12 +834,24 @@ class OpenAIInferenceEngine(InferenceEngine):
                                         stream=True,
                                         **self.formatted_params
                                     )
+                res_text = ""
                 for chunk in response_stream:
                     if len(chunk.choices) > 0:
-                        if chunk.choices[0].delta.content is not None:
-                            yield chunk.choices[0].delta.content
+                        chunk_text = chunk.choices[0].delta.content
+                        if chunk_text is not None:
+                            res_text += chunk_text
+                            yield chunk_text
                         if chunk.choices[0].finish_reason == "length":
                             warnings.warn("Model stopped generating due to context length limit.", RuntimeWarning)
+
+                # Postprocess response
+                res_dict = self.config.postprocess_response(res_text)
+                # Write to messages log
+                if messages_logger:
+                    processed_messages.append({"role": "assistant",
+                                                "content": res_dict.get("response", ""),
+                                                "reasoning": res_dict.get("reasoning", "")})
+                    messages_logger.log_messages(processed_messages)
 
             return self.config.postprocess_response(_stream_generator())
 
@@ -741,7 +872,7 @@ class OpenAIInferenceEngine(InferenceEngine):
                         warnings.warn("Model stopped generating due to context length limit.", RuntimeWarning)
 
             print('\n')
-            return self.config.postprocess_response(res)
+
         else:
             response = self.client.chat.completions.create(
                 model=self.model,
@@ -750,10 +881,20 @@ class OpenAIInferenceEngine(InferenceEngine):
                 **self.formatted_params
             )
             res = response.choices[0].message.content
-            return self.config.postprocess_response(res)
+            
+        # Postprocess response
+        res_dict = self.config.postprocess_response(res)
+        # Write to messages log
+        if messages_logger:
+            processed_messages.append({"role": "assistant", 
+                                    "content": res_dict.get("response", ""), 
+                                    "reasoning": res_dict.get("reasoning", "")})
+            messages_logger.log_messages(processed_messages)
+
+        return res_dict
     
 
-    async def chat_async(self, messages:List[Dict[str,str]]) -> Dict[str,str]:
+    async def chat_async(self, messages:List[Dict[str,str]], messages_logger:MessagesLogger=None) -> Dict[str,str]:
         """
         Async version of chat method. Streaming is not supported.
         """
@@ -770,7 +911,16 @@ class OpenAIInferenceEngine(InferenceEngine):
             warnings.warn("Model stopped generating due to context length limit.", RuntimeWarning)
 
         res = response.choices[0].message.content
-        return self.config.postprocess_response(res)
+        # Postprocess response
+        res_dict = self.config.postprocess_response(res)
+        # Write to messages log
+        if messages_logger:
+            processed_messages.append({"role": "assistant", 
+                                    "content": res_dict.get("response", ""), 
+                                    "reasoning": res_dict.get("reasoning", "")})
+            messages_logger.log_messages(processed_messages)
+
+        return res_dict
     
 
 class AzureOpenAIInferenceEngine(OpenAIInferenceEngine):
@@ -825,6 +975,7 @@ class LiteLLMInferenceEngine(InferenceEngine):
             raise ImportError("litellm not found. Please install litellm (```pip install litellm```).")
         
         import litellm 
+        super().__init__(config)
         self.litellm = litellm
         self.model = model
         self.base_url = base_url
@@ -843,7 +994,7 @@ class LiteLLMInferenceEngine(InferenceEngine):
 
         return formatted_params
 
-    def chat(self, messages:List[Dict[str,str]], verbose:bool=False, stream:bool=False) -> Union[Dict[str,str], Generator[Dict[str, str], None, None]]:
+    def chat(self, messages:List[Dict[str,str]], verbose:bool=False, stream:bool=False, messages_logger:MessagesLogger=None) -> Union[Dict[str,str], Generator[Dict[str, str], None, None]]:
         """
         This method inputs chat messages and outputs LLM generated text.
 
@@ -855,6 +1006,8 @@ class LiteLLMInferenceEngine(InferenceEngine):
             if True, VLM generated text will be printed in terminal in real-time.
         stream : bool, Optional
             if True, returns a generator that yields the output in real-time.
+        messages_logger: MessagesLogger, Optional
+            a messages logger that logs the messages.
 
         Returns:
         -------
@@ -873,11 +1026,21 @@ class LiteLLMInferenceEngine(InferenceEngine):
                     api_key=self.api_key,
                     **self.formatted_params
                 )
-
+                res_text = ""
                 for chunk in response_stream:
                     chunk_content = chunk.get('choices')[0].get('delta').get('content')
                     if chunk_content:
+                        res_text += chunk_content
                         yield chunk_content
+
+                # Postprocess response
+                res_dict = self.config.postprocess_response(res_text)
+                # Write to messages log
+                if messages_logger:
+                    processed_messages.append({"role": "assistant",
+                                                "content": res_dict.get("response", ""),
+                                                "reasoning": res_dict.get("reasoning", "")})
+                    messages_logger.log_messages(processed_messages)
 
             return self.config.postprocess_response(_stream_generator())
 
@@ -897,8 +1060,6 @@ class LiteLLMInferenceEngine(InferenceEngine):
                 if chunk_content:
                     res += chunk_content
                     print(chunk_content, end='', flush=True)
-
-            return self.config.postprocess_response(res)
         
         else:
             response = self.litellm.completion(
@@ -910,9 +1071,19 @@ class LiteLLMInferenceEngine(InferenceEngine):
                     **self.formatted_params
                 )
             res = response.choices[0].message.content
-            return self.config.postprocess_response(res)
+
+        # Postprocess response
+        res_dict = self.config.postprocess_response(res)
+        # Write to messages log
+        if messages_logger:
+            processed_messages.append({"role": "assistant", 
+                                        "content": res_dict.get("response", ""), 
+                                        "reasoning": res_dict.get("reasoning", "")})
+            messages_logger.log_messages(processed_messages)
+
+        return res_dict
     
-    async def chat_async(self, messages:List[Dict[str,str]]) -> Dict[str,str]:
+    async def chat_async(self, messages:List[Dict[str,str]], messages_logger:MessagesLogger=None) -> Dict[str,str]:
         """
         Async version of chat method. Streaming is not supported.
         """
@@ -928,4 +1099,13 @@ class LiteLLMInferenceEngine(InferenceEngine):
         )
         
         res = response.get('choices')[0].get('message').get('content')
-        return self.config.postprocess_response(res)
+
+        # Postprocess response
+        res_dict = self.config.postprocess_response(res)
+        # Write to messages log
+        if messages_logger:
+            processed_messages.append({"role": "assistant", 
+                                    "content": res_dict.get("response", ""), 
+                                    "reasoning": res_dict.get("reasoning", "")})
+            messages_logger.log_messages(processed_messages)
+        return res_dict

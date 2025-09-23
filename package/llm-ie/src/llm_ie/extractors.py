@@ -12,7 +12,7 @@ from typing import Any, Set, List, Dict, Tuple, Union, Callable, Generator, Opti
 from llm_ie.data_types import FrameExtractionUnit, FrameExtractionUnitResult, LLMInformationExtractionFrame, LLMInformationExtractionDocument
 from llm_ie.chunkers import UnitChunker, WholeDocumentUnitChunker, SentenceUnitChunker
 from llm_ie.chunkers import ContextChunker, NoContextChunker, WholeDocumentContextChunker, SlideWindowContextChunker
-from llm_ie.engines import InferenceEngine
+from llm_ie.engines import InferenceEngine, MessagesLogger
 from colorama import Fore, Style        
 
 
@@ -440,9 +440,9 @@ class DirectFrameExtractor(FrameExtractor):
         units = self.unit_chunker.chunk(doc_text)
         # context chunker init
         self.context_chunker.fit(doc_text, units)
+
         # messages log
-        if return_messages_log:
-            messages_log = []
+        messages_logger = MessagesLogger() if return_messages_log else None
 
         # generate unit by unit
         for i, unit in enumerate(units):
@@ -485,15 +485,9 @@ class DirectFrameExtractor(FrameExtractor):
             gen_text = self.inference_engine.chat(
                             messages=messages, 
                             verbose=verbose,
-                            stream=False
+                            stream=False,
+                            messages_logger=messages_logger
                         )
-
-            if return_messages_log:
-                message = {"role": "assistant", "content": gen_text["response"]}
-                if "reasoning" in gen_text:
-                    message["reasoning"] = gen_text["reasoning"]
-                messages.append(message)
-                messages_log.append(messages)
 
             # add to output
             result = FrameExtractionUnitResult(
@@ -504,7 +498,7 @@ class DirectFrameExtractor(FrameExtractor):
             output.append(result)
             
         if return_messages_log:
-            return output, messages_log
+            return output, messages_logger.get_messages_log()
         
         return output
     
@@ -637,6 +631,9 @@ class DirectFrameExtractor(FrameExtractor):
         # context chunker init 
         self.context_chunker.fit(doc_text, units)
 
+        # messages logger init
+        messages_logger = MessagesLogger() if return_messages_log else None
+
         # Prepare inputs for all units first
         tasks_input = []
         for i, unit in enumerate(units):
@@ -681,7 +678,8 @@ class DirectFrameExtractor(FrameExtractor):
 
             async with semaphore:
                 gen_text = await self.inference_engine.chat_async(
-                    messages=messages
+                    messages=messages,
+                    messages_logger=messages_logger
                 )
 
             out = {"original_index": original_index, "unit": unit, "gen_text": gen_text["response"], "messages": messages}
@@ -704,7 +702,6 @@ class DirectFrameExtractor(FrameExtractor):
 
         # Restructure the results
         output: List[FrameExtractionUnitResult] = []
-        messages_log: Optional[List[List[Dict[str, str]]]] = [] if return_messages_log else None
 
         for result_data in results_raw:
             unit = result_data["unit"]
@@ -719,16 +716,8 @@ class DirectFrameExtractor(FrameExtractor):
             )
             output.append(result)
 
-            # Append to messages log if requested
-            if return_messages_log:
-                message = {"role": "assistant", "content": gen_text}
-                if "reasoning" in result_data:
-                    message["reasoning"] = result_data["reasoning"]
-                final_messages = result_data["messages"] + [message]
-                messages_log.append(final_messages)
-
         if return_messages_log:
-            return output, messages_log
+            return output, messages_logger.get_messages_log()
         else:
             return output
 
@@ -937,9 +926,9 @@ class ReviewFrameExtractor(DirectFrameExtractor):
         units = self.unit_chunker.chunk(doc_text)
         # context chunker init
         self.context_chunker.fit(doc_text, units)
-        # messages log
-        if return_messages_log:
-            messages_log = []
+
+        # messages logger init
+        messages_logger = MessagesLogger() if return_messages_log else None
 
         # generate unit by unit
         for i, unit in enumerate(units):
@@ -983,7 +972,8 @@ class ReviewFrameExtractor(DirectFrameExtractor):
             initial = self.inference_engine.chat(
                             messages=messages, 
                             verbose=verbose,
-                            stream=False
+                            stream=False,
+                            messages_logger=messages_logger
                         )
 
             # <--- Review step --->
@@ -996,7 +986,8 @@ class ReviewFrameExtractor(DirectFrameExtractor):
             review = self.inference_engine.chat(
                             messages=messages, 
                             verbose=verbose,
-                            stream=False
+                            stream=False,
+                            messages_logger=messages_logger
                         )
 
             # Output
@@ -1004,16 +995,6 @@ class ReviewFrameExtractor(DirectFrameExtractor):
                 gen_text = review["response"]
             elif self.review_mode == "addition":
                 gen_text = initial["response"] + '\n' + review["response"]
-
-            if return_messages_log:
-                if "reasoning" in initial:
-                    messages[-2]["reasoning"] = initial["reasoning"]
-
-                message = {"role": "assistant", "content": review["response"]}
-                if "reasoning" in review:
-                    message["reasoning"] = review["reasoning"]
-                messages.append(message)
-                messages_log.append(messages)
 
             # add to output
             result = FrameExtractionUnitResult(
@@ -1024,7 +1005,7 @@ class ReviewFrameExtractor(DirectFrameExtractor):
             output.append(result)
             
         if return_messages_log:
-            return output, messages_log
+            return output, messages_logger.get_messages_log()
         
         return output
 
@@ -1159,6 +1140,9 @@ class ReviewFrameExtractor(DirectFrameExtractor):
         # context chunker init
         self.context_chunker.fit(doc_text, units)
 
+        # messages logger init
+        messages_logger = MessagesLogger() if return_messages_log else None
+
         # <--- Initial generation step --->
         initial_tasks_input = []
         for i, unit in enumerate(units):
@@ -1202,7 +1186,8 @@ class ReviewFrameExtractor(DirectFrameExtractor):
 
             async with semaphore:
                 gen_text = await self.inference_engine.chat_async(
-                    messages=messages
+                    messages=messages,
+                    messages_logger=messages_logger
                 )
             # Return initial generation result along with the messages used and the unit
             out = {"original_index": original_index, "unit": unit, "initial_gen_text": gen_text["response"], "initial_messages": messages}
@@ -1253,16 +1238,11 @@ class ReviewFrameExtractor(DirectFrameExtractor):
 
             async with semaphore:
                 review_gen_text = await self.inference_engine.chat_async(
-                    messages=messages
+                    messages=messages,
+                    messages_logger=messages_logger
                 )
             # Combine initial and review results
             task_data["review_gen_text"] = review_gen_text["response"]
-            if return_messages_log:
-                # Log for the review call itself
-                message = {'role': 'assistant', 'content': review_gen_text["response"]}
-                if "reasoning" in review_gen_text:
-                    message["reasoning"] = review_gen_text["reasoning"]
-                task_data["full_review_log"] = task_data["full_initial_log"] + [message]
             return task_data # Return the augmented dictionary
 
         # Create and gather review tasks
@@ -1280,7 +1260,6 @@ class ReviewFrameExtractor(DirectFrameExtractor):
 
         # <--- Process final results --->
         output: List[FrameExtractionUnitResult] = []
-        messages_log: Optional[List[List[Dict[str, str]]]] = [] if return_messages_log else None
 
         for result_data in final_results_raw:
             unit = result_data["unit"]
@@ -1304,13 +1283,9 @@ class ReviewFrameExtractor(DirectFrameExtractor):
             )
             output.append(result)
 
-            # Append full conversation log if requested
-            if return_messages_log:
-                full_log_for_unit = result_data["full_review_log"]
-                messages_log.append(full_log_for_unit)
 
         if return_messages_log:
-            return output, messages_log
+            return output, messages_logger.get_messages_log()
         else:
             return output
 
@@ -1549,6 +1524,9 @@ class AttributeExtractor(Extractor):
             a dictionary of attributes extracted from the frame.
             If return_messages_log is True, a list of messages will be returned as well.
         """
+        # messages logger init
+        messages_logger = MessagesLogger() if return_messages_log else None
+
         # construct chat messages
         messages = []
         if self.system_prompt:
@@ -1567,19 +1545,15 @@ class AttributeExtractor(Extractor):
         gen_text = self.inference_engine.chat(
                             messages=messages,
                             verbose=verbose,
-                            stream=False
+                            stream=False,
+                            messages_logger=messages_logger
                         )
-        if return_messages_log:
-            message = {"role": "assistant", "content": gen_text["response"]}
-            if "reasoning" in gen_text:
-                message["reasoning"] = gen_text["reasoning"]
-            messages.append(message)
 
         attribute_list = self._extract_json(gen_text=gen_text["response"])
         if isinstance(attribute_list, list) and len(attribute_list) > 0:
             attributes = attribute_list[0]
             if return_messages_log:
-                return attributes, messages
+                return attributes, messages_logger.get_messages_log()
             return attributes
 
 
@@ -1620,7 +1594,7 @@ class AttributeExtractor(Extractor):
             if return_messages_log:
                 attr, messages = self._extract_from_frame(frame=frame, text=text, context_size=context_size,
                                                           verbose=verbose, return_messages_log=return_messages_log)
-                messages_log.append(messages)
+                messages_log.extend(messages)
             else: 
                 attr = self._extract_from_frame(frame=frame, text=text, context_size=context_size,
                                                 verbose=verbose, return_messages_log=return_messages_log)
@@ -1669,6 +1643,9 @@ class AttributeExtractor(Extractor):
         if not isinstance(text, str):
             raise TypeError(f"Expect text as str, received {type(text)} instead.")
 
+        # messages logger init
+        messages_logger = MessagesLogger() if return_messages_log else None
+
         # async helper
         semaphore = asyncio.Semaphore(concurrent_batch_size)
         
@@ -1681,14 +1658,7 @@ class AttributeExtractor(Extractor):
                 context = self._get_context(frame, text, context_size)
                 messages.append({'role': 'user', 'content': self._get_user_prompt({"context": context, "frame": str(frame.to_dict())})})
 
-                gen_text = await self.inference_engine.chat_async(messages=messages)
-                
-                if return_messages_log:
-                    message = {"role": "assistant", "content": gen_text["response"]}
-                    if "reasoning" in gen_text:
-                        message["reasoning"] = gen_text["reasoning"]
-                    messages.append(message)
-
+                gen_text = await self.inference_engine.chat_async(messages=messages, messages_logger=messages_logger)
                 attribute_list = self._extract_json(gen_text=gen_text["response"])
                 attributes = attribute_list[0] if isinstance(attribute_list, list) and len(attribute_list) > 0 else {}
                 return {"frame": frame, "attributes": attributes, "messages": messages}
@@ -1699,12 +1669,8 @@ class AttributeExtractor(Extractor):
 
         # process results
         new_frames = []
-        messages_log = [] if return_messages_log else None
 
         for result in results:
-            if return_messages_log:
-                messages_log.append(result["messages"])
-
             if inplace:
                 result["frame"].attr.update(result["attributes"])
             else:
@@ -1714,9 +1680,9 @@ class AttributeExtractor(Extractor):
 
         # output
         if inplace:
-            return messages_log if return_messages_log else None
+            return messages_logger.get_messages_log() if return_messages_log else None
         else:
-            return (new_frames, messages_log) if return_messages_log else new_frames
+            return (new_frames, messages_logger.get_messages_log()) if return_messages_log else new_frames
 
     def extract_attributes(self, frames:List[LLMInformationExtractionFrame], text:str, context_size:int=256, 
                            concurrent:bool=False, concurrent_batch_size:int=32, verbose:bool=False, 
@@ -1839,7 +1805,7 @@ class RelationExtractor(Extractor):
                  return_messages_log: bool = False) -> Union[List[Dict], Tuple[List[Dict], List]]:
         pairs = itertools.combinations(doc.frames, 2)
         relations = []
-        messages_log = [] if return_messages_log else None
+        messages_logger = MessagesLogger() if return_messages_log else None
 
         for frame_1, frame_2 in pairs:
             task_payload = self._get_task_if_possible(frame_1, frame_2, doc.text, buffer_size)
@@ -1851,20 +1817,14 @@ class RelationExtractor(Extractor):
 
                 gen_text = self.inference_engine.chat(
                     messages=task_payload['messages'],
-                    verbose=verbose
+                    verbose=verbose,
+                    messages_logger=messages_logger
                 )
                 relation = self._post_process_result(gen_text["response"], task_payload)
                 if relation:
                     relations.append(relation)
 
-                if return_messages_log:
-                    message = {"role": "assistant", "content": gen_text["response"]}
-                    if "reasoning" in gen_text:
-                        message["reasoning"] = gen_text["reasoning"]
-                    task_payload['messages'].append(message)
-                    messages_log.append(task_payload['messages'])
-
-        return (relations, messages_log) if return_messages_log else relations
+        return (relations, messages_logger.get_messages_log()) if return_messages_log else relations
 
     async def _extract_async(self, doc: LLMInformationExtractionDocument, buffer_size: int = 128, concurrent_batch_size: int = 32, return_messages_log: bool = False) -> Union[List[Dict], Tuple[List[Dict], List]]:
         pairs = list(itertools.combinations(doc.frames, 2))
@@ -1873,12 +1833,12 @@ class RelationExtractor(Extractor):
         tasks_input = [task for task in tasks_input if task is not None] 
 
         relations = []
-        messages_log = [] if return_messages_log else None
+        messages_logger = MessagesLogger() if return_messages_log else None
         semaphore = asyncio.Semaphore(concurrent_batch_size)
 
         async def semaphore_helper(task_payload: Dict):
             async with semaphore:
-                gen_text = await self.inference_engine.chat_async(messages=task_payload['messages'])
+                gen_text = await self.inference_engine.chat_async(messages=task_payload['messages'], messages_logger=messages_logger)
                 return gen_text, task_payload
 
         tasks = [asyncio.create_task(semaphore_helper(payload)) for payload in tasks_input]
@@ -1889,14 +1849,7 @@ class RelationExtractor(Extractor):
             if relation:
                 relations.append(relation)
 
-            if return_messages_log:
-                message = {"role": "assistant", "content": gen_text["response"]}
-                if "reasoning" in gen_text:
-                    message["reasoning"] = gen_text["reasoning"]
-                task_payload['messages'].append(message)
-                messages_log.append(task_payload['messages'])
-
-        return (relations, messages_log) if return_messages_log else relations
+        return (relations, messages_logger.get_messages_log()) if return_messages_log else relations
 
     def extract_relations(self, doc: LLMInformationExtractionDocument, buffer_size: int = 128, concurrent: bool = False, concurrent_batch_size: int = 32, verbose: bool = False, return_messages_log: bool = False) -> List[Dict]:
         if not doc.has_frame():
