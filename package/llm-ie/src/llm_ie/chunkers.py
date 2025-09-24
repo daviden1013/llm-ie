@@ -1,5 +1,6 @@
 import abc
 from typing import Set, List, Dict, Tuple, Union, Callable
+import asyncio
 from llm_ie.data_types import FrameExtractionUnit
 
 
@@ -11,6 +12,7 @@ class UnitChunker(abc.ABC):
         """
         pass
 
+    @abc.abstractmethod
     def chunk(self, text:str) -> List[FrameExtractionUnit]:
         """
         Parameters:
@@ -20,6 +22,12 @@ class UnitChunker(abc.ABC):
         """
         return NotImplemented
 
+    async def chunk_async(self, text:str) -> List[FrameExtractionUnit]:
+        """
+        asynchronous version of chunk method.
+        """
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.chunk, text)
 
 class WholeDocumentUnitChunker(UnitChunker):
     def __init__(self):
@@ -138,6 +146,24 @@ class ContextChunker(abc.ABC):
         """
         pass
 
+    @abc.abstractmethod
+    def fit(self, text:str, units:List[FrameExtractionUnit]):
+        """
+        Parameters:
+        ----------
+        text : str
+            The document text.
+        """
+        pass
+
+    async def fit_async(self, text:str, units:List[FrameExtractionUnit]):
+        """
+        asynchronous version of fit method.
+        """
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.fit, text, units)
+
+    @abc.abstractmethod
     def chunk(self, unit:FrameExtractionUnit) -> str:
         """
         Parameters:
@@ -149,6 +175,13 @@ class ContextChunker(abc.ABC):
             The context for the frame extraction unit.
         """
         return NotImplemented
+    
+    async def chunk_async(self, unit:FrameExtractionUnit) -> str:
+        """
+        asynchronous version of chunk method.
+        """
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.chunk, unit)
     
 
 class NoContextChunker(ContextChunker):
