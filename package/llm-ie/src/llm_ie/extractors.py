@@ -821,19 +821,19 @@ class DirectFrameExtractor(FrameExtractor):
         return frame_list
         
 
-    async def extract_docs_frames(self, text_contents:List[Dict[str, any]], document_key:str="text",
-                                  cpu_concurrency:int=4, llm_concurrency:int=32,
-                                   case_sensitive:bool=False, fuzzy_match:bool=True, fuzzy_buffer_size:float=0.2, fuzzy_score_cutoff:float=0.8,
-                                   allow_overlap_entities:bool=False, return_messages_log:bool=False) -> AsyncGenerator[Dict[str, any], None]:
+    async def extract_docs_frames(self, text_contents:List[Union[str,Dict[str, any]]], document_key:str="text",
+                                  cpu_concurrency:int=4, llm_concurrency:int=32, case_sensitive:bool=False, 
+                                  fuzzy_match:bool=True, fuzzy_buffer_size:float=0.2, fuzzy_score_cutoff:float=0.8,
+                                  allow_overlap_entities:bool=False, return_messages_log:bool=False) -> AsyncGenerator[Dict[str, any], None]:
         """
-        Processes a list of documents concurrently and yields the results for each
-        document as soon as it is complete.
+        Processes a list of documents concurrently and yields the results for each document as soon as it is complete.
 
         Parameters:
         -----------
-        text_contents: List[Dict[str, any]]
-            A list of dictionaries, where each dictionary represents a document.
-            Must contain a unique 'id' and the document text under the key specified by `document_key`.
+        text_contents : List[Union[str,Dict[str, any]]]
+            a list of input text contents to put in prompt template. 
+            If str, the prompt template must has only 1 placeholder {{<placeholder name>}}, regardless of placeholder name.
+            If dict, all the keys must be included in the prompt template placeholder {{<placeholder name>}}.
         document_key: str, optional
             The key in the `text_contents` dictionaries that holds the document text.
         cpu_concurrency: int, optional
@@ -847,7 +847,7 @@ class DirectFrameExtractor(FrameExtractor):
         fuzzy_buffer_size : float, Optional
             the buffer size for fuzzy matching. Default is 20% of entity text length.
         fuzzy_score_cutoff : float, Optional
-            the Jaccard score cutoff for fuzzy matching.
+            the Jaccard score cutoff for fuzzy matching. 
             Matched entity text must have a score higher than this value or a None will be returned.
         allow_overlap_entities : bool, Optional
             if True, entities can overlap in the text.
@@ -857,64 +857,78 @@ class DirectFrameExtractor(FrameExtractor):
         Yields:
         -------
         AsyncGenerator[Dict[str, any], None]
-            A dictionary for each completed document, containing its 'id' and extracted 'frames'.
+            A dictionary for each completed document, containing its 'idx' and extracted 'frames'.
         """
         cpu_executor = ThreadPoolExecutor(max_workers=cpu_concurrency)
         tasks_queue = asyncio.Queue(maxsize=llm_concurrency * 2)
-        results_store = {doc['id']: {'pending': 0, 'results': [], 'text': doc[document_key]} for doc in text_contents}
+        results_store = {
+            idx: {'pending': 0, 'results': [], 'text': doc if isinstance(doc, str) else doc.get(document_key, "")}
+            for idx, doc in enumerate(text_contents)
+        }
         output_queue = asyncio.Queue()
         messages_logger = MessagesLogger() if return_messages_log else None
-        print("Check 0")
+
         async def producer():
-            for doc in text_contents:
-                doc_id = doc['id']
-                doc_text = doc[document_key]
+            try:
+                for idx, doc in enumerate(text_contents):
+                    doc_text = doc if isinstance(doc, str) else doc.get(document_key, "")
+                    if not doc_text:
+                        warnings.warn(f"Document at index {idx} is empty or missing the document key '{document_key}'.")
+                        # signal that this document is done
+                        await output_queue.put({'idx': idx, 'frames': []})
+                        continue
 
-                units = await self.unit_chunker.chunk_async(doc_text, cpu_executor)
-                self.context_chunker.fit(doc_text, units)
-                results_store[doc_id]['pending'] = len(units)
+                    units = await self.unit_chunker.chunk_async(doc_text, cpu_executor)
+                    await self.context_chunker.fit_async(doc_text, units, cpu_executor)
+                    results_store[idx]['pending'] = len(units)
 
-                if not units: # Handle empty docs
-                    await output_queue.put({'doc_id': doc_id, 'frames': []})
-                    continue
+                    # Handle cases where a document yields no units
+                    if not units: 
+                        # signal that this document is done
+                        await output_queue.put({'idx': idx, 'frames': []})
+                        continue
 
-                for unit in units:
-                    context = await self.context_chunker.chunk_async(unit, cpu_executor)
-                    messages = []
-                    if self.system_prompt:
-                        messages.append({'role': 'system', 'content': self.system_prompt})
+                    # Iterate through units
+                    for unit in units:
+                        context = await self.context_chunker.chunk_async(unit, cpu_executor)
+                        messages = []
+                        if self.system_prompt:
+                            messages.append({'role': 'system', 'content': self.system_prompt})
 
-                    if not context:
-                        if isinstance(doc, str):
-                             messages.append({'role': 'user', 'content': self._get_user_prompt(unit.text)})
+                        if not context:
+                            prompt_content = unit.text
+                            if isinstance(doc, dict):
+                                unit_content = doc.copy()
+                                unit_content[document_key] = unit.text
+                                prompt_content = unit_content
+                            messages.append({'role': 'user', 'content': self._get_user_prompt(prompt_content)})
                         else:
-                            unit_content = doc.copy()
-                            unit_content[document_key] = unit.text
-                            messages.append({'role': 'user', 'content': self._get_user_prompt(unit_content)})
-                    else:
-                        if isinstance(doc, str):
-                            messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
-                        else:
-                            context_content = doc.copy()
-                            context_content[document_key] = context
-                            messages.append({'role': 'user', 'content': self._get_user_prompt(context_content)})
-                        messages.append({'role': 'assistant', 'content': 'Sure, please provide the unit text (e.g., sentence, line, chunk) of interest.'})
-                        messages.append({'role': 'user', 'content': unit.text})
+                            prompt_content = context
+                            if isinstance(doc, dict):
+                                context_content = doc.copy()
+                                context_content[document_key] = context
+                                prompt_content = context_content
+                            messages.append({'role': 'user', 'content': self._get_user_prompt(prompt_content)})
+                            messages.append({'role': 'assistant', 'content': 'Sure, please provide the unit text (e.g., sentence, line, chunk) of interest.'})
+                            messages.append({'role': 'user', 'content': unit.text})
 
-                    await tasks_queue.put({'doc_id': doc_id, 'unit': unit, 'messages': messages})
-
-            for _ in range(llm_concurrency):
-                await tasks_queue.put(None)
+                        await tasks_queue.put({'idx': idx, 'unit': unit, 'messages': messages})
+            finally:
+                # This block will now run even if an error occurs in the producer loop
+                for _ in range(llm_concurrency):
+                    await tasks_queue.put(None)
 
         async def worker():
             while True:
                 task_item = await tasks_queue.get()
                 if task_item is None:
+                    # Once a worker gets a None, it's done.
+                    tasks_queue.task_done()
                     break
 
-                doc_id = task_item['doc_id']
+                idx = task_item['idx']
                 unit = task_item['unit']
-                doc_results = results_store[doc_id]
+                doc_results = results_store[idx]
 
                 try:
                     gen_text = await self.inference_engine.chat_async(
@@ -924,33 +938,39 @@ class DirectFrameExtractor(FrameExtractor):
                         start=unit.start, end=unit.end, text=unit.text, gen_text=gen_text.get("response", "")
                     )
                     doc_results['results'].append(processed_result)
-
                 except Exception as e:
-                    warnings.warn(f"Error processing unit for doc_id {doc_id}: {e}")
+                    warnings.warn(f"Error processing unit for doc idx {idx}: {e}")
                 finally:
                     doc_results['pending'] -= 1
-                    if doc_results['pending'] == 0:
+                    if doc_results['pending'] <= 0:
                         final_frames = self._post_process_and_create_frames(doc_results, case_sensitive, fuzzy_match, fuzzy_buffer_size, fuzzy_score_cutoff, allow_overlap_entities)
-                        output_payload = {'doc_id': doc_id, 'frames': final_frames}
+                        output_payload = {'idx': idx, 'frames': final_frames}
                         if return_messages_log:
                             output_payload['messages_log'] = messages_logger.get_messages_log()
                         await output_queue.put(output_payload)
+                    # task_done() is called for every item, including the final one.
                     tasks_queue.task_done()
-        print("Check 1")
+
+        # Start producer and workers
         producer_task = asyncio.create_task(producer())
         worker_tasks = [asyncio.create_task(worker()) for _ in range(llm_concurrency)]
-        print("Check 2")
+
+        # Main loop to gather results
         docs_completed = 0
         while docs_completed < len(text_contents):
             result = await output_queue.get()
             yield result
             docs_completed += 1
-        print("Check 3")
-        await producer_task
+
+        # Final cleanup
+        await producer_task 
         await tasks_queue.join()
+
+        # Cancel any lingering worker tasks
         for task in worker_tasks:
             task.cancel()
         await asyncio.gather(*worker_tasks, return_exceptions=True)
+
         cpu_executor.shutdown(wait=False)
 
 
