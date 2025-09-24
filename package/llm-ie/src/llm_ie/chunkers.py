@@ -22,12 +22,12 @@ class UnitChunker(abc.ABC):
         """
         return NotImplemented
 
-    async def chunk_async(self, text:str) -> List[FrameExtractionUnit]:
+    async def chunk_async(self, text:str, executor=None) -> List[FrameExtractionUnit]:
         """
         asynchronous version of chunk method.
         """
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, self.chunk, text)
+        return await loop.run_in_executor(executor, self.chunk, text)
 
 class WholeDocumentUnitChunker(UnitChunker):
     def __init__(self):
@@ -156,12 +156,12 @@ class ContextChunker(abc.ABC):
         """
         pass
 
-    async def fit_async(self, text:str, units:List[FrameExtractionUnit]):
+    async def fit_async(self, text:str, units:List[FrameExtractionUnit], executor=None):
         """
         asynchronous version of fit method.
         """
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, self.fit, text, units)
+        return await loop.run_in_executor(executor, self.fit, text, units)
 
     @abc.abstractmethod
     def chunk(self, unit:FrameExtractionUnit) -> str:
@@ -176,12 +176,12 @@ class ContextChunker(abc.ABC):
         """
         return NotImplemented
     
-    async def chunk_async(self, unit:FrameExtractionUnit) -> str:
+    async def chunk_async(self, unit:FrameExtractionUnit, executor=None) -> str:
         """
         asynchronous version of chunk method.
         """
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, self.chunk, unit)
+        return await loop.run_in_executor(executor, self.chunk, unit)
     
 
 class NoContextChunker(ContextChunker):
