@@ -1,7 +1,7 @@
 import warnings
 from llm_ie import DirectFrameExtractor, LLMInformationExtractionFrame
 from llm_ie.engines import InferenceEngine
-from llm_ie.data_types import FrameExtractionUnitResult, FrameExtractionUnit
+from llm_ie.data_types import FrameExtractionUnit
 from llm_ie.chunkers import UnitChunker, WholeDocumentUnitChunker, SentenceUnitChunker
 from llm_ie.chunkers import ContextChunker, NoContextChunker, WholeDocumentContextChunker, SlideWindowContextChunker
 from typing import Any, Union, Dict, List, Generator, Optional
@@ -37,7 +37,7 @@ class AppDirectFrameExtractor(DirectFrameExtractor):
                          context_chunker=context_chunker,
                          **kwrs)
 
-    def stream(self, text_content: Union[str, Dict[str, str]], document_key: str = None) -> Generator[Dict[str, Any], None, List[FrameExtractionUnitResult]]:
+    def stream(self, text_content: Union[str, Dict[str, str]], document_key: str = None) -> Generator[Dict[str, Any], None, List[FrameExtractionUnit]]:
         """
         Streams LLM responses per unit with structured event types,
         and returns collected data for post-processing.
@@ -57,8 +57,6 @@ class AppDirectFrameExtractor(DirectFrameExtractor):
             A list of FrameExtractionUnitResult objects, each containing the
             original unit details and the fully accumulated 'gen_text' from the LLM.
         """
-        collected_results: List[FrameExtractionUnitResult] = []
-
         if isinstance(text_content, str):
             doc_text = text_content
         elif isinstance(text_content, dict):
@@ -119,18 +117,13 @@ class AppDirectFrameExtractor(DirectFrameExtractor):
                     current_gen_text += chunk.get("data", "")
            
             # Store the result for this unit
-            result_for_unit = FrameExtractionUnitResult(
-                start=unit.start,
-                end=unit.end,
-                text=unit.text,
-                gen_text=current_gen_text
-            )
-            collected_results.append(result_for_unit)
+            unit.set_generated_text(current_gen_text)
+            unit.set_status("success")
 
         yield {"type": "info", "data": "All units processed by LLM."}
-        return collected_results
+        return units
 
-    def post_process_frames(self, extraction_results:List[FrameExtractionUnitResult],
+    def post_process_frames(self, extraction_results:List[FrameExtractionUnit],
                             case_sensitive:bool=False, fuzzy_match:bool=True, fuzzy_buffer_size:float=0.2, fuzzy_score_cutoff:float=0.8,
                             allow_overlap_entities:bool=False, return_messages_log:bool=False) -> List[LLMInformationExtractionFrame]:
         """

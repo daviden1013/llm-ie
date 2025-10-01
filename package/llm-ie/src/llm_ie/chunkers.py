@@ -1,6 +1,7 @@
 import abc
 from typing import Set, List, Dict, Tuple, Union, Callable
 import asyncio
+import uuid
 from llm_ie.data_types import FrameExtractionUnit
 
 
@@ -13,7 +14,7 @@ class UnitChunker(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def chunk(self, text:str) -> List[FrameExtractionUnit]:
+    def chunk(self, text:str, doc_id:str=None) -> List[FrameExtractionUnit]:
         """
         Parameters:
         ----------
@@ -22,12 +23,12 @@ class UnitChunker(abc.ABC):
         """
         return NotImplemented
 
-    async def chunk_async(self, text:str, executor=None) -> List[FrameExtractionUnit]:
+    async def chunk_async(self, text:str, doc_id:str=None, executor=None) -> List[FrameExtractionUnit]:
         """
         asynchronous version of chunk method.
         """
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(executor, self.chunk, text)
+        return await loop.run_in_executor(executor, self.chunk, text, doc_id)
 
 class WholeDocumentUnitChunker(UnitChunker):
     def __init__(self):
@@ -36,7 +37,7 @@ class WholeDocumentUnitChunker(UnitChunker):
         """
         super().__init__()
 
-    def chunk(self, text:str) -> List[FrameExtractionUnit]:
+    def chunk(self, text:str, doc_id:str=None) -> List[FrameExtractionUnit]:
         """
         Parameters:
         ----------
@@ -44,6 +45,7 @@ class WholeDocumentUnitChunker(UnitChunker):
             The document text.
         """
         return [FrameExtractionUnit(
+            doc_id=doc_id if doc_id is not None else str(uuid.uuid4()),
             start=0,
             end=len(text),
             text=text
@@ -65,7 +67,7 @@ class SeparatorUnitChunker(UnitChunker):
 
         self.sep = sep
 
-    def chunk(self, text:str) -> List[FrameExtractionUnit]:
+    def chunk(self, text:str, doc_id:str=None) -> List[FrameExtractionUnit]:
         """
         Parameters:
         ----------
@@ -78,12 +80,14 @@ class SeparatorUnitChunker(UnitChunker):
         for paragraph in paragraphs:
             end = start + len(paragraph)
             paragraph_units.append(FrameExtractionUnit(
+                doc_id=doc_id if doc_id is not None else str(uuid.uuid4()),
                 start=start,
                 end=end,
                 text=paragraph
             ))
             start = end + len(self.sep)
         return paragraph_units
+
 
 class SentenceUnitChunker(UnitChunker):
     from nltk.tokenize.punkt import PunktSentenceTokenizer
@@ -93,7 +97,7 @@ class SentenceUnitChunker(UnitChunker):
         """
         super().__init__()
 
-    def chunk(self, text:str) -> List[FrameExtractionUnit]:
+    def chunk(self, text:str, doc_id:str=None) -> List[FrameExtractionUnit]:
         """
         Parameters:
         ----------
@@ -103,6 +107,7 @@ class SentenceUnitChunker(UnitChunker):
         sentences = []
         for start, end in self.PunktSentenceTokenizer().span_tokenize(text):
             sentences.append(FrameExtractionUnit(
+                doc_id=doc_id if doc_id is not None else str(uuid.uuid4()),
                 start=start,
                 end=end,
                 text=text[start:end]
@@ -117,7 +122,7 @@ class TextLineUnitChunker(UnitChunker):
         """
         super().__init__()
 
-    def chunk(self, text:str) -> List[FrameExtractionUnit]:
+    def chunk(self, text:str, doc_id:str=None) -> List[FrameExtractionUnit]:
         """
         Parameters:
         ----------
@@ -130,6 +135,7 @@ class TextLineUnitChunker(UnitChunker):
         for line in lines:
             end = start + len(line)
             line_units.append(FrameExtractionUnit(
+                doc_id=doc_id if doc_id is not None else str(uuid.uuid4()),
                 start=start,
                 end=end,
                 text=line

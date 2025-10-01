@@ -10,7 +10,7 @@ import asyncio
 import nest_asyncio
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Set, List, Dict, Tuple, Union, Callable, Generator, Optional, AsyncGenerator
-from llm_ie.data_types import FrameExtractionUnit, FrameExtractionUnitResult, LLMInformationExtractionFrame, LLMInformationExtractionDocument
+from llm_ie.data_types import FrameExtractionUnit, LLMInformationExtractionFrame, LLMInformationExtractionDocument
 from llm_ie.chunkers import UnitChunker, WholeDocumentUnitChunker, SentenceUnitChunker
 from llm_ie.chunkers import ContextChunker, NoContextChunker, WholeDocumentContextChunker, SlideWindowContextChunker
 from llm_ie.engines import InferenceEngine, MessagesLogger
@@ -406,7 +406,7 @@ class DirectFrameExtractor(FrameExtractor):
 
 
     def extract(self, text_content:Union[str, Dict[str,str]], 
-                document_key:str=None, verbose:bool=False, return_messages_log:bool=False) -> List[FrameExtractionUnitResult]:
+                document_key:str=None, verbose:bool=False, return_messages_log:bool=False) -> List[FrameExtractionUnit]:
         """
         This method inputs a text and outputs a list of outputs per unit.
 
@@ -424,11 +424,9 @@ class DirectFrameExtractor(FrameExtractor):
         return_messages_log : bool, Optional
             if True, a list of messages will be returned.
 
-        Return : List[FrameExtractionUnitResult]
+        Return : List[FrameExtractionUnit]
             the output from LLM for each unit. Contains the start, end, text, and generated text.
         """
-        # define output
-        output = []
         # unit chunking
         if isinstance(text_content, str):
             doc_text = text_content
@@ -447,64 +445,64 @@ class DirectFrameExtractor(FrameExtractor):
 
         # generate unit by unit
         for i, unit in enumerate(units):
-            # construct chat messages
-            messages = []
-            if self.system_prompt:
-                messages.append({'role': 'system', 'content': self.system_prompt})
+            try:
+                # construct chat messages
+                messages = []
+                if self.system_prompt:
+                    messages.append({'role': 'system', 'content': self.system_prompt})
 
-            context = self.context_chunker.chunk(unit)
-            
-            if context == "":
-                # no context, just place unit in user prompt
-                if isinstance(text_content, str):
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(unit.text)})
-                else:
-                    unit_content = text_content.copy()
-                    unit_content[document_key] = unit.text
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(unit_content)})
-            else:
-                # insert context to user prompt
-                if isinstance(text_content, str):
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
-                else:
-                    context_content = text_content.copy()
-                    context_content[document_key] = context
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(context_content)})
-                # simulate conversation where assistant confirms
-                messages.append({'role': 'assistant', 'content': 'Sure, please provide the unit text (e.g., sentence, line, chunk) of interest.'})
-                # place unit of interest
-                messages.append({'role': 'user', 'content': unit.text})
-
-            if verbose:
-                print(f"\n\n{Fore.GREEN}Unit {i}:{Style.RESET_ALL}\n{unit.text}\n")
-                if context != "":
-                    print(f"{Fore.YELLOW}Context:{Style.RESET_ALL}\n{context}\n")
+                context = self.context_chunker.chunk(unit)
                 
-                print(f"{Fore.BLUE}Extraction:{Style.RESET_ALL}")
+                if context == "":
+                    # no context, just place unit in user prompt
+                    if isinstance(text_content, str):
+                        messages.append({'role': 'user', 'content': self._get_user_prompt(unit.text)})
+                    else:
+                        unit_content = text_content.copy()
+                        unit_content[document_key] = unit.text
+                        messages.append({'role': 'user', 'content': self._get_user_prompt(unit_content)})
+                else:
+                    # insert context to user prompt
+                    if isinstance(text_content, str):
+                        messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
+                    else:
+                        context_content = text_content.copy()
+                        context_content[document_key] = context
+                        messages.append({'role': 'user', 'content': self._get_user_prompt(context_content)})
+                    # simulate conversation where assistant confirms
+                    messages.append({'role': 'assistant', 'content': 'Sure, please provide the unit text (e.g., sentence, line, chunk) of interest.'})
+                    # place unit of interest
+                    messages.append({'role': 'user', 'content': unit.text})
 
-            
-            gen_text = self.inference_engine.chat(
-                            messages=messages, 
-                            verbose=verbose,
-                            stream=False,
-                            messages_logger=messages_logger
-                        )
+                if verbose:
+                    print(f"\n\n{Fore.GREEN}Unit {i}:{Style.RESET_ALL}\n{unit.text}\n")
+                    if context != "":
+                        print(f"{Fore.YELLOW}Context:{Style.RESET_ALL}\n{context}\n")
+                    
+                    print(f"{Fore.BLUE}Extraction:{Style.RESET_ALL}")
 
-            # add to output
-            result = FrameExtractionUnitResult(
-                            start=unit.start,
-                            end=unit.end,
-                            text=unit.text,
-                            gen_text=gen_text["response"])
-            output.append(result)
+                
+                gen_text = self.inference_engine.chat(
+                                messages=messages, 
+                                verbose=verbose,
+                                stream=False,
+                                messages_logger=messages_logger
+                            )
+
+                # add generated text to unit
+                unit.set_generated_text(gen_text["response"])
+                unit.set_status("success")
+            except Exception as e:
+                unit.set_status("fail")
+                warnings.warn(f"LLM inference failed for unit {i} ({unit.start}, {unit.end}): {e}", RuntimeWarning)
             
         if return_messages_log:
-            return output, messages_logger.get_messages_log()
+            return units, messages_logger.get_messages_log()
         
-        return output
+        return units
     
     def stream(self, text_content: Union[str, Dict[str, str]], 
-               document_key: str = None) -> Generator[Dict[str, Any], None, List[FrameExtractionUnitResult]]:
+               document_key: str = None) -> Generator[Dict[str, Any], None, List[FrameExtractionUnit]]:
         """
         Streams LLM responses per unit with structured event types,
         and returns collected data for post-processing.
@@ -520,12 +518,10 @@ class DirectFrameExtractor(FrameExtractor):
 
         Returns:
         --------
-        List[FrameExtractionUnitResult]:
-            A list of FrameExtractionUnitResult objects, each containing the
+        List[FrameExtractionUnit]:
+            A list of FrameExtractionUnit objects, each containing the
             original unit details and the fully accumulated 'gen_text' from the LLM.
         """
-        collected_results: List[FrameExtractionUnitResult] = []
-
         if isinstance(text_content, str):
             doc_text = text_content
         elif isinstance(text_content, dict):
@@ -583,19 +579,14 @@ class DirectFrameExtractor(FrameExtractor):
                     current_gen_text += chunk["data"]
            
             # Store the result for this unit
-            result_for_unit = FrameExtractionUnitResult(
-                start=unit.start,
-                end=unit.end,
-                text=unit.text,
-                gen_text=current_gen_text
-            )
-            collected_results.append(result_for_unit)
+            unit.set_generated_text(current_gen_text)
+            unit.set_status("success")
 
         yield {"type": "info", "data": "All units processed by LLM."}
-        return collected_results
+        return units
 
     async def extract_async(self, text_content:Union[str, Dict[str,str]], document_key:str=None, 
-                            concurrent_batch_size:int=32, return_messages_log:bool=False) -> List[FrameExtractionUnitResult]:
+                            concurrent_batch_size:int=32, return_messages_log:bool=False) -> List[FrameExtractionUnit]:
         """
         This is the asynchronous version of the extract() method.
 
@@ -613,7 +604,7 @@ class DirectFrameExtractor(FrameExtractor):
         return_messages_log : bool, Optional
             if True, a list of messages will be returned.
 
-        Return : List[FrameExtractionUnitResult]
+        Return : List[FrameExtractionUnit]
             the output from LLM for each unit. Contains the start, end, text, and generated text.
         """
         if isinstance(text_content, str):
@@ -675,7 +666,6 @@ class DirectFrameExtractor(FrameExtractor):
         async def semaphore_helper(task_data: Dict, **kwrs):
             unit = task_data["unit"]
             messages = task_data["messages"]
-            original_index = task_data["original_index"]
 
             async with semaphore:
                 gen_text = await self.inference_engine.chat_async(
@@ -683,10 +673,8 @@ class DirectFrameExtractor(FrameExtractor):
                     messages_logger=messages_logger
                 )
 
-            out = {"original_index": original_index, "unit": unit, "gen_text": gen_text["response"], "messages": messages}
-            if "reasoning" in gen_text:
-                out["reasoning"] = gen_text["reasoning"]
-            return out
+            unit.set_generated_text(gen_text["response"])
+            unit.set_status("success")
            
         # Create and gather tasks
         tasks = []
@@ -696,31 +684,13 @@ class DirectFrameExtractor(FrameExtractor):
             ))
             tasks.append(task)
 
-        results_raw = await asyncio.gather(*tasks)
+        await asyncio.gather(*tasks)
 
-        # Sort results back into original order using the index stored
-        results_raw.sort(key=lambda x: x["original_index"])
-
-        # Restructure the results
-        output: List[FrameExtractionUnitResult] = []
-
-        for result_data in results_raw:
-            unit = result_data["unit"]
-            gen_text = result_data["gen_text"]
-
-            # Create result object
-            result = FrameExtractionUnitResult(
-                start=unit.start,
-                end=unit.end,
-                text=unit.text,
-                gen_text=gen_text
-            )
-            output.append(result)
-
+        # Return units
         if return_messages_log:
-            return output, messages_logger.get_messages_log()
+            return units, messages_logger.get_messages_log()
         else:
-            return output
+            return units
 
 
     def extract_frames(self, text_content:Union[str, Dict[str,str]], document_key:str=None, 
@@ -781,18 +751,21 @@ class DirectFrameExtractor(FrameExtractor):
                                                 verbose=verbose,
                                                 return_messages_log=return_messages_log)
             
-        llm_output_results, messages_log = extraction_results if return_messages_log else (extraction_results, None)
+        units, messages_log = extraction_results if return_messages_log else (extraction_results, None)
         
         frame_list = []
-        for res in llm_output_results:
+        for unit in units:
             entity_json = []
-            for entity in self._extract_json(gen_text=res.gen_text):
+            if unit.status != "success":
+                warnings.warn(f"Skipping failed unit ({unit.start}, {unit.end}): {unit.text}", RuntimeWarning)
+                continue
+            for entity in self._extract_json(gen_text=unit.gen_text):
                 if ENTITY_KEY in entity:
                     entity_json.append(entity)
                 else:
                     warnings.warn(f'Extractor output "{entity}" does not have entity_key ("{ENTITY_KEY}"). This frame will be dropped.', RuntimeWarning)
 
-            spans = self._find_entity_spans(text=res.text, 
+            spans = self._find_entity_spans(text=unit.text, 
                                             entities=[e[ENTITY_KEY] for e in entity_json], 
                                             case_sensitive=case_sensitive,
                                             fuzzy_match=fuzzy_match,
@@ -802,9 +775,9 @@ class DirectFrameExtractor(FrameExtractor):
             for ent, span in zip(entity_json, spans):
                 if span is not None:
                     start, end = span
-                    entity_text = res.text[start:end]
-                    start += res.start
-                    end += res.start
+                    entity_text = unit.text[start:end]
+                    start += unit.start
+                    end += unit.start
                     attr = {}
                     if "attr" in ent and ent["attr"] is not None:
                         attr = ent["attr"]
@@ -821,12 +794,12 @@ class DirectFrameExtractor(FrameExtractor):
         return frame_list
         
 
-    async def extract_docs_frames(self, text_contents:List[Union[str,Dict[str, any]]], document_key:str="text",
-                                  cpu_concurrency:int=4, llm_concurrency:int=32, case_sensitive:bool=False, 
-                                  fuzzy_match:bool=True, fuzzy_buffer_size:float=0.2, fuzzy_score_cutoff:float=0.8,
-                                  allow_overlap_entities:bool=False, return_messages_log:bool=False) -> AsyncGenerator[Dict[str, any], None]:
+    async def extract_frames_from_documents(self, text_contents:List[Union[str,Dict[str, any]]], document_key:str="text",
+            cpu_concurrency:int=4, llm_concurrency:int=32, case_sensitive:bool=False, 
+            fuzzy_match:bool=True, fuzzy_buffer_size:float=0.2, fuzzy_score_cutoff:float=0.8,
+            allow_overlap_entities:bool=False, return_messages_log:bool=False) -> AsyncGenerator[Dict[str, any], None]:
         """
-        Processes a list of documents concurrently and yields the results for each document as soon as it is complete.
+        This method inputs a list of documents and yields the results for each document as soon as it is complete.
 
         Parameters:
         -----------
@@ -859,27 +832,37 @@ class DirectFrameExtractor(FrameExtractor):
         AsyncGenerator[Dict[str, any], None]
             A dictionary for each completed document, containing its 'idx' and extracted 'frames'.
         """
+        # Validate text_contents must be a list of str or dict, and not both
+        if not isinstance(text_contents, list):
+            raise ValueError("text_contents must be a list of strings or dictionaries.")
+        if all(isinstance(doc, str) for doc in text_contents):
+            pass  
+        elif all(isinstance(doc, dict) for doc in text_contents):
+            pass
+        # Set CPU executor and queues
         cpu_executor = ThreadPoolExecutor(max_workers=cpu_concurrency)
         tasks_queue = asyncio.Queue(maxsize=llm_concurrency * 2)
+        # Store to track units and pending counts
         results_store = {
-            idx: {'pending': 0, 'results': [], 'text': doc if isinstance(doc, str) else doc.get(document_key, "")}
+            idx: {'pending': 0, 'units': [], 'text': doc if isinstance(doc, str) else doc.get(document_key, "")}
             for idx, doc in enumerate(text_contents)
         }
+
         output_queue = asyncio.Queue()
         messages_logger = MessagesLogger() if return_messages_log else None
 
         async def producer():
             try:
-                for idx, doc in enumerate(text_contents):
-                    doc_text = doc if isinstance(doc, str) else doc.get(document_key, "")
-                    if not doc_text:
+                for idx, text_content in enumerate(text_contents):
+                    text = text_content if isinstance(text_content, str) else text_content.get(document_key, "")
+                    if not text:
                         warnings.warn(f"Document at index {idx} is empty or missing the document key '{document_key}'.")
                         # signal that this document is done
                         await output_queue.put({'idx': idx, 'frames': []})
                         continue
 
-                    units = await self.unit_chunker.chunk_async(doc_text, cpu_executor)
-                    await self.context_chunker.fit_async(doc_text, units, cpu_executor)
+                    units = await self.unit_chunker.chunk_async(text, cpu_executor)
+                    await self.context_chunker.fit_async(text, units, cpu_executor)
                     results_store[idx]['pending'] = len(units)
 
                     # Handle cases where a document yields no units
@@ -896,25 +879,27 @@ class DirectFrameExtractor(FrameExtractor):
                             messages.append({'role': 'system', 'content': self.system_prompt})
 
                         if not context:
-                            prompt_content = unit.text
-                            if isinstance(doc, dict):
-                                unit_content = doc.copy()
+                            if isinstance(text_content, str):
+                                messages.append({'role': 'user', 'content': self._get_user_prompt(unit.text)})
+                            else:
+                                unit_content = text_content.copy()
                                 unit_content[document_key] = unit.text
-                                prompt_content = unit_content
-                            messages.append({'role': 'user', 'content': self._get_user_prompt(prompt_content)})
+                                messages.append({'role': 'user', 'content': self._get_user_prompt(unit_content)})
                         else:
-                            prompt_content = context
-                            if isinstance(doc, dict):
-                                context_content = doc.copy()
+                            # insert context to user prompt
+                            if isinstance(text_content, str):
+                                messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
+                            else:
+                                context_content = text_content.copy()
                                 context_content[document_key] = context
-                                prompt_content = context_content
-                            messages.append({'role': 'user', 'content': self._get_user_prompt(prompt_content)})
+                                messages.append({'role': 'user', 'content': self._get_user_prompt(context_content)})
+                            # simulate conversation where assistant confirms
                             messages.append({'role': 'assistant', 'content': 'Sure, please provide the unit text (e.g., sentence, line, chunk) of interest.'})
+                            # place unit of interest
                             messages.append({'role': 'user', 'content': unit.text})
 
                         await tasks_queue.put({'idx': idx, 'unit': unit, 'messages': messages})
             finally:
-                # This block will now run even if an error occurs in the producer loop
                 for _ in range(llm_concurrency):
                     await tasks_queue.put(None)
 
@@ -922,7 +907,6 @@ class DirectFrameExtractor(FrameExtractor):
             while True:
                 task_item = await tasks_queue.get()
                 if task_item is None:
-                    # Once a worker gets a None, it's done.
                     tasks_queue.task_done()
                     break
 
@@ -934,10 +918,9 @@ class DirectFrameExtractor(FrameExtractor):
                     gen_text = await self.inference_engine.chat_async(
                         messages=task_item['messages'], messages_logger=messages_logger
                     )
-                    processed_result = FrameExtractionUnitResult(
-                        start=unit.start, end=unit.end, text=unit.text, gen_text=gen_text.get("response", "")
-                    )
-                    doc_results['results'].append(processed_result)
+                    unit.set_generated_text(gen_text["response"])
+                    unit.set_status("success")
+                    doc_results['units'].append(unit)
                 except Exception as e:
                     warnings.warn(f"Error processing unit for doc idx {idx}: {e}")
                 finally:
@@ -948,7 +931,7 @@ class DirectFrameExtractor(FrameExtractor):
                         if return_messages_log:
                             output_payload['messages_log'] = messages_logger.get_messages_log()
                         await output_queue.put(output_payload)
-                    # task_done() is called for every item, including the final one.
+
                     tasks_queue.task_done()
 
         # Start producer and workers
@@ -978,7 +961,7 @@ class DirectFrameExtractor(FrameExtractor):
         """Helper function to run post-processing logic for a completed document."""
         ENTITY_KEY = "entity_text"
         frame_list = []
-        for res in sorted(doc_results['results'], key=lambda r: r.start):
+        for res in sorted(doc_results['units'], key=lambda r: r.start):
             entity_json = []
             for entity in self._extract_json(gen_text=res.gen_text):
                 if ENTITY_KEY in entity:
@@ -1084,7 +1067,7 @@ class ReviewFrameExtractor(DirectFrameExtractor):
             raise ValueError(f"Cannot find review prompt for {self.__class__.__name__} in the package. Please provide a review_prompt.")
 
     def extract(self, text_content:Union[str, Dict[str,str]], document_key:str=None, 
-                verbose:bool=False, return_messages_log:bool=False) -> List[FrameExtractionUnitResult]:
+                verbose:bool=False, return_messages_log:bool=False) -> List[FrameExtractionUnit]:
         """
         This method inputs a text and outputs a list of outputs per unit.
 
@@ -1105,8 +1088,6 @@ class ReviewFrameExtractor(DirectFrameExtractor):
         Return : List[FrameExtractionUnitResult]
             the output from LLM for each unit. Contains the start, end, text, and generated text.
         """
-        # define output
-        output = []
         # unit chunking
         if isinstance(text_content, str):
             doc_text = text_content
@@ -1189,18 +1170,14 @@ class ReviewFrameExtractor(DirectFrameExtractor):
             elif self.review_mode == "addition":
                 gen_text = initial["response"] + '\n' + review["response"]
 
-            # add to output
-            result = FrameExtractionUnitResult(
-                            start=unit.start,
-                            end=unit.end,
-                            text=unit.text,
-                            gen_text=gen_text)
-            output.append(result)
+            # add generated text to unit
+            unit.set_generated_text(gen_text)
+            unit.set_status("success")
             
         if return_messages_log:
-            return output, messages_logger.get_messages_log()
+            return units, messages_logger.get_messages_log()
         
-        return output
+        return units
 
 
     def stream(self, text_content:Union[str, Dict[str,str]], document_key:str=None) -> Generator[str, None, None]:
@@ -1296,7 +1273,7 @@ class ReviewFrameExtractor(DirectFrameExtractor):
                 yield chunk
 
     async def extract_async(self, text_content:Union[str, Dict[str,str]], document_key:str=None,
-                            concurrent_batch_size:int=32, return_messages_log:bool=False, **kwrs) -> List[FrameExtractionUnitResult]:
+                            concurrent_batch_size:int=32, return_messages_log:bool=False, **kwrs) -> List[FrameExtractionUnit]:
         """
         This is the asynchronous version of the extract() method with the review step.
 
@@ -1328,6 +1305,7 @@ class ReviewFrameExtractor(DirectFrameExtractor):
         else:
             raise TypeError("text_content must be a string or a dictionary.")
 
+        # unit chunking
         units = self.unit_chunker.chunk(doc_text)
 
         # context chunker init
@@ -1452,8 +1430,6 @@ class ReviewFrameExtractor(DirectFrameExtractor):
         final_results_raw.sort(key=lambda x: x["original_index"])
 
         # <--- Process final results --->
-        output: List[FrameExtractionUnitResult] = []
-
         for result_data in final_results_raw:
             unit = result_data["unit"]
             initial_gen = result_data["initial_gen_text"]
@@ -1468,19 +1444,13 @@ class ReviewFrameExtractor(DirectFrameExtractor):
                 final_gen_text = review_gen # Default to revision if mode is somehow invalid
 
             # Create final result object
-            result = FrameExtractionUnitResult(
-                start=unit.start,
-                end=unit.end,
-                text=unit.text,
-                gen_text=final_gen_text # Use the combined/reviewed text
-            )
-            output.append(result)
-
+            unit.set_generated_text(final_gen_text)
+            unit.set_status("success")
 
         if return_messages_log:
-            return output, messages_logger.get_messages_log()
+            return units, messages_logger.get_messages_log()
         else:
-            return output
+            return units
 
 
 class BasicFrameExtractor(DirectFrameExtractor):

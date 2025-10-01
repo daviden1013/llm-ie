@@ -7,13 +7,15 @@ import json
 
 @dataclass
 class FrameExtractionUnit:
-    def __init__(self, start:int, end:int, text:str):
+    def __init__(self, doc_id:str, start:int, end:int, text:str):
         """
         This class holds the unit text for frame extraction, for example, a sentence. 
         FrameExtractor prompt it one at a time to extract frames. 
         
         Parameters
         ----------
+        doc_id : str, Optional
+            document ID.
         start : int
             start character position of the unit text, relative to the whole document
         end : int
@@ -21,9 +23,28 @@ class FrameExtractionUnit:
         text : str
             the unit text. Should be the exact string by [start:end]
         """
+        self.doc_id = doc_id
         self.start = start
         self.end = end
         self.text = text
+        # status: "pending", "success", "fail"
+        self.status = "pending"
+        # generated text by LLM
+        self.gen_text = None
+
+    def get_status(self) -> str:
+        return self.status
+    
+    def set_status(self, status:str):
+        if status not in {"pending", "success", "fail"}:
+            raise ValueError('status must be one of {"pending", "success", "fail"}.')
+        self.status = status
+
+    def get_generated_text(self) -> str:
+        return self.gen_text
+
+    def set_generated_text(self, gen_text:str):
+        self.gen_text = gen_text
 
     def __eq__(self, other):
             if not isinstance(other, FrameExtractionUnit):
@@ -39,43 +60,8 @@ class FrameExtractionUnit:
         return self.start < other.start
         
     def __repr__(self):
-        return f"FrameExtractionUnit(start={self.start}, end={self.end}, text='{self.text[:100]}...')"
+        return f"FrameExtractionUnit(doc_id={self.doc_id}, start={self.start}, end={self.end}, status={self.status}, text='{self.text[:100]}...')"
 
-
-@dataclass
-class FrameExtractionUnitResult:
-    def __init__(self, start:int, end:int, text:str, gen_text:str):
-        """
-        This class holds the unit text for frame extraction, for example, a sentence. 
-        FrameExtractor prompt it one at a time to extract frames. 
-        
-        Parameters
-        ----------
-        start : int
-            start character position of the unit text, relative to the whole document
-        end : int
-            end character position of the unit text, relative to the whole document
-        text : str
-            the unit text. Should be the exact string by [start:end]
-        gen_text : str
-            the generated text by LLM (ideally) following '[{"entity_text": "xxx", "attr": {"key": "value"}}]' format. Does not contain spans (start/end).
-        """
-        self.start = start
-        self.end = end
-        self.text = text
-        self.gen_text = gen_text
-        
-    def __eq__(self, other):
-            if not isinstance(other, FrameExtractionUnit):
-                return NotImplemented
-            return (self.start == other.start and self.end == other.end and self.text == other.text and self.gen_text == other.gen_text)
-
-    def __hash__(self):
-        return hash((self.start, self.end, self.text, self.gen_text))
-
-    def __repr__(self):
-        return f"FrameExtractionUnitResult(start={self.start}, end={self.end}, text='{self.text[:100]}...', gen_text='{self.gen_text[:100]}...')"
-    
 
 @dataclass
 class LLMInformationExtractionFrame:
