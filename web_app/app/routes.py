@@ -25,6 +25,7 @@ from llm_ie.extractors import DirectFrameExtractor # For PromptEditor type hint
 # LLM API Options to pass to the template (could also be managed in app/__init__.py)
 LLM_API_OPTIONS = [
     {"value": "openai_compatible", "name": "OpenAI Compatible"},
+    {"value": "vllm", "name": "vLLM"},
     {"value": "ollama", "name": "Ollama"},
     {"value": "huggingface_hub", "name": "HuggingFace Hub"},
     {"value": "openai", "name": "OpenAI"},

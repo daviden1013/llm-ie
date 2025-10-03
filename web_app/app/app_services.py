@@ -4,7 +4,7 @@ from typing import Dict, Any
 from llm_ie.engines import (
     LLMConfig, BasicLLMConfig, ReasoningLLMConfig, OpenAIReasoningLLMConfig, Qwen3LLMConfig,
     InferenceEngine, OllamaInferenceEngine, OpenAIInferenceEngine, AzureOpenAIInferenceEngine,
-    HuggingFaceHubInferenceEngine, LiteLLMInferenceEngine
+    HuggingFaceHubInferenceEngine, VLLMInferenceEngine, LiteLLMInferenceEngine
 )
 from llm_ie.chunkers import (
     SentenceUnitChunker,
@@ -92,6 +92,14 @@ def create_llm_engine_from_config(config: Dict[str, Any]) -> InferenceEngine:
             if not base_url or not model:
                 raise ValueError("Missing 'llm_base_url' or 'llm_model_openai_comp' for OpenAI Compatible.")
             return OpenAIInferenceEngine(model=model, api_key=api_key, base_url=base_url, config=llm_config_instance)
+        
+        elif api_type == "vllm":
+            base_url = config.get('vllm_base_url', 'http://localhost:8000/v1')
+            model = config.get('vllm_model')
+            api_key = config.get('vllm_api_key', '')
+            if not model:
+                raise ValueError("Missing 'vllm_model' for VLLM.")
+            return VLLMInferenceEngine(model=model, api_key=api_key, base_url=base_url, config=llm_config_instance)
         
         elif api_type == "ollama":
             model = config.get('ollama_model')

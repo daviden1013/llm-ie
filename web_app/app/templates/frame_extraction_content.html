@@ -32,6 +32,22 @@
                 </div>
             </div>
 
+            <div id="fe-vllm-options" class="conditional-options indented-option" style="display: none;">
+                <h3>VLLM Options</h3>
+                <div class="form-group">
+                    <label for="fe-vllm-api-key">API Key:</label>
+                    <input type="password" id="fe-vllm-api-key" name="fe_vllm_api_key" value="" placeholder="Defaults to empty" class="api-input">
+                </div>
+                <div class="form-group">
+                    <label for="fe-vllm-base-url">Base URL:</label>
+                    <input type="url" id="fe-vllm-base-url" name="fe_vllm_base_url" value="http://localhost:8000/v1" placeholder="e.g., http://localhost:8000/v1" class="api-input">
+                </div>
+                <div class="form-group">
+                    <label for="fe-vllm-model">Model Name:</label>
+                    <input type="text" id="fe-vllm-model" name="fe_vllm_model" placeholder="Model name used by the server" class="api-input">
+                </div>
+            </div>
+
             <div id="fe-ollama-options" class="conditional-options indented-option" style="display: none;">
                  <h3>Ollama Options</h3>
                 <div class="form-group">
