@@ -15,7 +15,7 @@ LLM sampling parameters such as temperature, top-p, top-k, and maximum new token
 from llm_ie.engines import OpenAIInferenceEngine, BasicLLMConfig
 
 config = BasicLLMConfig(temperature=0.2, max_new_tokens=4096)
-inference_engine = OpenAIInferenceEngine(model="gpt-4o-mini", config=config)
+inference_engine = OpenAIInferenceEngine(model="gpt-4.1-mini", config=config)
 ```
 
 ## Reasoning models
@@ -25,12 +25,10 @@ To use reasoning models such as OpenAI o-series (e.g., o1, o3, o3-mini, o4-mini)
 Most reasoning models can be configured with `ReasoningLLMConfig`. By specifying the start and end thinking tags, the reasoning tokens will be excluded from model response while stored in messages log (if `return_messages_log=True`).
 
 ```python
-from llm_ie.engines import OpenAIInferenceEngine, ReasoningLLMConfig
+from llm_ie.engines import VLLMInferenceEngine, ReasoningLLMConfig
 
-llm = OpenAIInferenceEngine(base_url="http://localhost:8000/v1", 
-                            model="Qwen/Qwen3-30B-A3B-Thinking-2507", 
-                            api_key="EMPTY", 
-                            config=ReasoningLLMConfig(thinking_token_start="<think>", thinking_token_end="</think>", temperature=0.8, max_tokens=8192))
+llm = VLLMInferenceEngine(model="Qwen/Qwen3-30B-A3B-Thinking-2507", 
+                          config=ReasoningLLMConfig(thinking_token_start="<think>", thinking_token_end="</think>", temperature=0.8, max_new_tokens=8192))
 ```
 
 
@@ -40,7 +38,7 @@ OpenAI o-series reasoning model API does not allow setting system prompts. Conte
 ```python
 from llm_ie.engines import OpenAIInferenceEngine, OpenAIReasoningLLMConfig
 
-inference_engine = OpenAIInferenceEngine(model="o1-mini", 
+inference_engine = OpenAIInferenceEngine(model="o4-mini", 
                                          config=OpenAIReasoningLLMConfig(reasoning_effort="low"))
 ```
 
@@ -51,17 +49,13 @@ Qwen3 has a special way to manage reasoning behavior. The same models have *thin
 a special token "/no_think" is appended to the user prompt, the models generate an empty `<think>... </think>` block. We provide a dedicated configuration class `Qwen3LLMConfig` for these models. 
 
 ```python
-from llm_ie.engines import OpenAIInferenceEngine, Qwen3LLMConfig
+from llm_ie.engines import VLLMInferenceEngine, Qwen3LLMConfig
 
 # Thinking mode
-llm = OpenAIInferenceEngine(base_url="http://localhost:8000/v1", 
-                            model="Qwen/Qwen3-30B-A3B", 
-                            api_key="EMPTY", 
-                            config=Qwen3LLMConfig(thinking_mode=True, temperature=0.8, max_tokens=8192))
+llm = VLLMInferenceEngine(model="Qwen/Qwen3-30B-A3B", 
+                          config=Qwen3LLMConfig(thinking_mode=True, temperature=0.6, top_p=0.95, top_k=20, max_new_tokens=8192))
 
 # Non-thinking mode
-llm = OpenAIInferenceEngine(base_url="http://localhost:8000/v1", 
-                            model="Qwen/Qwen3-30B-A3B", 
-                            api_key="EMPTY", 
-                            config=Qwen3LLMConfig(thinking_mode=False, temperature=0.0, max_tokens=2048))
+llm = VLLMInferenceEngine(model="Qwen/Qwen3-30B-A3B", 
+                          config=Qwen3LLMConfig(thinking_mode=False, temperature=0.0, max_new_tokens=2048))
 ```

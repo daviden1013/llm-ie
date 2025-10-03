@@ -1,26 +1,80 @@
-We provide an interface for different LLM inference engines to work in the information extraction workflow. The built-in engines are `LiteLLMInferenceEngine`, `OpenAIInferenceEngine`, `HuggingFaceHubInferenceEngine`, `OllamaInferenceEngine`, and `LlamaCppInferenceEngine`. For customization, see [customize inference engine](#customize-inference-engine). Inference engines accept a [LLMConfig]() class where **sampling parameters** (e.g., temperature, top-p, top-k, maximum new tokens) and **reasoning configuration** (e.g., OpenAI o-series models, Qwen3) can be set.
+We provide an interface for different LLM inference engines to work in the information extraction workflow. The built-in engines are `VLLMInferenceEngine`, `LiteLLMInferenceEngine`, `OpenAIInferenceEngine`, `HuggingFaceHubInferenceEngine`, `OllamaInferenceEngine`, and `LlamaCppInferenceEngine`. For customization, see [customize inference engine](#customize-inference-engine). Inference engines accept a [LLMConfig](llm_config.md) class where **sampling parameters** (e.g., temperature, top-p, top-k, maximum new tokens) and **reasoning configuration** (e.g., OpenAI o-series models, Qwen3) can be set.
 
-## LiteLLM
-The LiteLLM is an adaptor project that unifies many proprietary and open-source LLM APIs. Popular inferncing servers, including OpenAI, Huggingface Hub, and Ollama are supported via its interface. For more details, refer to [LiteLLM GitHub page](https://github.com/BerriAI/litellm). 
 
-To use LiteLLM with LLM-IE, import the `LiteLLMInferenceEngine` and follow the required model naming.
-```python
-from llm_ie.engines import LiteLLMInferenceEngine
+## vLLM
+The vLLM support follows the [OpenAI Compatible Server](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html). For more parameters, please refer to the documentation. Below are examples for different models.
 
-# Huggingface serverless inferencing
-os.environ['HF_TOKEN']
-inference_engine = LiteLLMInferenceEngine(model="huggingface/meta-llama/Meta-Llama-3-8B-Instruct")
-
-# OpenAI GPT models
-os.environ['OPENAI_API_KEY']
-inference_engine = LiteLLMInferenceEngine(model="openai/gpt-4o-mini")
-
-# OpenAI compatible local server
-inference_engine = LiteLLMInferenceEngine(model="openai/Llama-3.1-8B-Instruct", base_url="http://localhost:8000/v1", api_key="EMPTY")
-
-# Ollama 
-inference_engine = LiteLLMInferenceEngine(model="ollama/llama3.1:8b-instruct-q8_0")
+#### Meta-Llama-3.1-8B-Instruct
+Start the server in command line.
+```cmd
+CUDA_VISIBLE_DEVICES=<GPU#> vllm serve meta-llama/Meta-Llama-3.1-8B-Instruct \
+    --api-key MY_API_KEY \
+    --tensor-parallel-size <# of GPUs to use>
 ```
+Use ```CUDA_VISIBLE_DEVICES``` to specify GPUs to use. The ```--tensor-parallel-size``` should be set accordingly. The ```--api-key``` is optional. 
+the default port is 8000. ```--port``` sets the port. 
+
+Define inference engine
+```python
+from llm_ie.engines import VLLMInferenceEngine
+
+inference_engine = VLLMInferenceEngine(model="meta-llama/Meta-Llama-3.1-8B-Instruct")
+```
+The ```model``` must match the repo name specified in the server.
+
+#### Qwen3-30B-A3B (hybrid thinking mode)
+Start the server in command line. Specify `--reasoning-parser qwen3` to enable the reasoning parser. 
+```cmd
+vllm serve Qwen/Qwen3-30B-A3B \
+    --tensor-parallel-size 4 \
+    --enable-prefix-caching \
+    --gpu-memory-utilization 0.9 \
+    --reasoning-parser qwen3
+```
+Define inference engine
+```python
+from llm_ie.engines import VLLMInferenceEngine, Qwen3LLMConfig
+
+# Thinking mode
+inference_engine = VLLMInferenceEngine(model="Qwen/Qwen3-30B-A3B", 
+                                       config=Qwen3LLMConfig(thinking_mode=True, temperature=0.6, top_p=0.95, top_k=20))
+# Non-thinking mode
+inference_engine = VLLMInferenceEngine(model="Qwen/Qwen3-30B-A3B", 
+                                       config=Qwen3LLMConfig(thinking_mode=False, temperature=0.7, top_p=0.8, top_k=20))
+```
+
+#### Qwen3-30B-Thinking-2507
+Start the server in command line. Specify `--reasoning-parser qwen3` to enable the reasoning parser. 
+```cmd
+vllm serve Qwen/Qwen3-30B-A3B-Thinking-2507 \
+   --tensor-parallel-size 4 \
+   --enable-prefix-caching \
+   --reasoning-parser qwen3
+```
+Define inference engine
+```python
+from llm_ie.engines import VLLMInferenceEngine, ReasoningLLMConfig
+
+inference_engine = VLLMInferenceEngine(model="Qwen/Qwen3-30B-A3B-Thinking-2507", 
+                                       config=ReasoningLLMConfig(temperature=0.6, top_p=0.95, top_k=20))
+```
+
+#### gpt-oss-120b
+Start the server in command line. Specify `--reasoning-parser GptOss` to enable the reasoning parser. 
+```cmd
+vllm serve openai/gpt-oss-120b \
+    --tensor-parallel-size 4 \
+    --enable-prefix-caching \
+    --reasoning-parser GptOss
+```
+Define inference engine
+```python
+from llm_ie.engines import VLLMInferenceEngine, ReasoningLLMConfig
+
+inference_engine = VLLMInferenceEngine(model="openai/gpt-oss-120b", 
+                                       config=ReasoningLLMConfig(temperature=1.0, top_p=1.0, top_k=0))
+``` 
+
 
 ## OpenAI API & Compatible Services
 In bash, save API key to the environmental variable ```OPENAI_API_KEY```.
@@ -31,26 +85,32 @@ export OPENAI_API_KEY=<your_API_key>
 In Python, create inference engine and specify model name. For the available models, refer to [OpenAI webpage](https://platform.openai.com/docs/models). 
 For more parameters, see [OpenAI API reference](https://platform.openai.com/docs/api-reference/introduction).
 
+### OpenAI models
+#### gpt-4.1-mini
 ```python
-from llm_ie.engines import OpenAIInferenceEngine
+from llm_ie.engines import OpenAIInferenceEngine, BasicLLMConfig
 
-inference_engine = OpenAIInferenceEngine(model="gpt-4o-mini")
+inference_engine = OpenAIInferenceEngine(model="gpt-4.1-mini", 
+                                         config=BasicLLMConfig(temperature=0.0, max_new_tokens=1024))
 ```
 
+#### o-series reasoning models
 For OpenAI reasoning models (o-series), pass a `OpenAIReasoningLLMConfig` object to `OpenAIInferenceEngine` constructor. 
 
 ```python
 from llm_ie.engines import OpenAIInferenceEngine, OpenAIReasoningLLMConfig
 
-inference_engine = OpenAIInferenceEngine(model="o1-mini", 
+inference_engine = OpenAIInferenceEngine(model="o4-mini", 
                                          config=OpenAIReasoningLLMConfig(reasoning_effort="low"))
 ```
 
+### OpenAI compatible services
 For OpenAI compatible services (OpenRouter for example):
 ```python
-from llm_ie.engines import OpenAIInferenceEngine
+from llm_ie.engines import OpenAIInferenceEngine, BasicLLMConfig
 
-inference_engine = OpenAIInferenceEngine(base_url="https://openrouter.ai/api/v1", model="meta-llama/llama-4-scout")
+inference_engine = OpenAIInferenceEngine(base_url="https://openrouter.ai/api/v1", model="meta-llama/llama-4-scout",
+                                         config=BasicLLMConfig(temperature=0.0, max_new_tokens=1024))
 ```
 
 ## Azure OpenAI API
@@ -63,16 +123,18 @@ export AZURE_OPENAI_ENDPOINT="<your_endpoint>"
 In Python, create inference engine and specify model name. For the available models, refer to [OpenAI webpage](https://platform.openai.com/docs/models). 
 For more parameters, see [Azure OpenAI reference](https://learn.microsoft.com/en-us/azure/ai-services/openai/quickstart).
 
+#### gpt-4.1-mini
 ```python
-from llm_ie.engines import AzureOpenAIInferenceEngine
+from llm_ie.engines import AzureOpenAIInferenceEngine, BasicLLMConfig
 
-inference_engine = AzureOpenAIInferenceEngine(model="gpt-4o-mini")
+inference_engine = AzureOpenAIInferenceEngine(model="gpt-4.1-mini", config=BasicLLMConfig(temperature=0.0, max_new_tokens=1024))
 ```
 
+#### o-series reasoning models
 For reasoning models (o-series), pass a `OpenAIReasoningLLMConfig` object to `OpenAIInferenceEngine` constructor. 
 
 ```python
-from llm_ie.engines import AzureOpenAIInferenceEngine
+from llm_ie.engines import AzureOpenAIInferenceEngine, OpenAIReasoningLLMConfig
 
 inference_engine = AzureOpenAIInferenceEngine(model="o1-mini", 
                                               config=OpenAIReasoningLLMConfig(reasoning_effort="low"))
@@ -96,24 +158,6 @@ from llm_ie.engines import OllamaInferenceEngine
 inference_engine = OllamaInferenceEngine(model_name="llama3.1:8b-instruct-q8_0", num_ctx=4096, keep_alive=300)
 ```
 
-## vLLM
-The vLLM support follows the [OpenAI Compatible Server](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html). For more parameters, please refer to the documentation.
-
-Start the server
-```cmd
-CUDA_VISIBLE_DEVICES=<GPU#> vllm serve meta-llama/Meta-Llama-3.1-8B-Instruct --api-key MY_API_KEY --tensor-parallel-size <# of GPUs to use>
-```
-Use ```CUDA_VISIBLE_DEVICES``` to specify GPUs to use. The ```--tensor-parallel-size``` should be set accordingly. The ```--api-key``` is optional. 
-the default port is 8000. ```--port``` sets the port. 
-
-Define inference engine
-```python
-from llm_ie.engines import OpenAIInferenceEngine
-inference_engine = OpenAIInferenceEngine(base_url="http://localhost:8000/v1",
-                               api_key="MY_API_KEY",
-                               model="meta-llama/Meta-Llama-3.1-8B-Instruct")
-```
-The ```model``` must match the repo name specified in the server.
 
 ## Llama-cpp-python
 The ```repo_id``` and ```gguf_filename``` must match the ones on the Huggingface repo to ensure the correct model is loaded. ```n_ctx``` determines the context length LLM will consider during text generation. Empirically, longer context length gives better performance, while consuming more memory and increases computation. Note that when ```n_ctx``` is less than the prompt length, Llama.cpp throws exceptions. ```n_gpu_layers``` indicates a number of model layers to offload to GPU. Default is -1 for all layers (entire LLM). Flash attention ```flash_attn``` is supported by Llama.cpp. The ```verbose``` indicates whether model information should be displayed. For more input parameters, see 🦙 [Llama-cpp-python](https://github.com/abetlen/llama-cpp-python). 
@@ -128,6 +172,29 @@ inference_engine = LlamaCppInferenceEngine(repo_id="bullerwins/Meta-Llama-3.1-8B
                                            flash_attn=True,
                                            verbose=False)
 ```
+
+## LiteLLM
+The LiteLLM is an adaptor project that unifies many proprietary and open-source LLM APIs. Popular inferncing servers, including OpenAI, Huggingface Hub, and Ollama are supported via its interface. For more details, refer to [LiteLLM GitHub page](https://github.com/BerriAI/litellm). 
+
+To use LiteLLM with LLM-IE, import the `LiteLLMInferenceEngine` and follow the required model naming.
+```python
+from llm_ie.engines import LiteLLMInferenceEngine
+
+# Huggingface serverless inferencing
+os.environ['HF_TOKEN']
+inference_engine = LiteLLMInferenceEngine(model="huggingface/meta-llama/Meta-Llama-3-8B-Instruct")
+
+# OpenAI GPT models
+os.environ['OPENAI_API_KEY']
+inference_engine = LiteLLMInferenceEngine(model="openai/gpt-4o-mini")
+
+# OpenAI compatible local server
+inference_engine = LiteLLMInferenceEngine(model="openai/Llama-3.1-8B-Instruct", base_url="http://localhost:8000/v1", api_key="EMPTY")
+
+# Ollama 
+inference_engine = LiteLLMInferenceEngine(model="ollama/llama3.1:8b-instruct-q8_0")
+```
+
 
 ## Test inference engine configuration
 To test the inference engine, use the ```chat()``` method. 
