@@ -1,4 +1,5 @@
 import abc
+import os
 import re
 import warnings
 import importlib.util
@@ -798,10 +799,10 @@ class HuggingFaceHubInferenceEngine(InferenceEngine):
         return res_dict
 
 
-class VLLMInferenceEngine(InferenceEngine):
-    def __init__(self, model:str, api_key:str="", base_url:str="http://localhost:8000/v1", config:LLMConfig=None, **kwrs):
+class OpenAICompatibleInferenceEngine(InferenceEngine):
+    def __init__(self, model:str, api_key:str, base_url:str, config:LLMConfig=None, **kwrs):
         """
-        vLLM OpenAI compatible server inference engine.
+        General OpenAI-compatible server inference engine.
         https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html
 
         For parameters and documentation, refer to https://platform.openai.com/docs/api-reference/introduction
@@ -812,7 +813,7 @@ class VLLMInferenceEngine(InferenceEngine):
             model name as shown in the vLLM server
         api_key : str
             the API key for the vLLM server.
-        base_url : str, Optional
+        base_url : str
             the base url for the vLLM server. 
         config : LLMConfig
             the LLM configuration.
@@ -821,6 +822,8 @@ class VLLMInferenceEngine(InferenceEngine):
             raise ImportError("OpenAI Python API library not found. Please install OpanAI (```pip install openai```).")
         
         from openai import OpenAI, AsyncOpenAI
+        from openai.types.chat import ChatCompletionChunk
+        self.ChatCompletionChunk = ChatCompletionChunk
         super().__init__(config)
         self.client = OpenAI(api_key=api_key, base_url=base_url, **kwrs)
         self.async_client = AsyncOpenAI(api_key=api_key, base_url=base_url, **kwrs)
@@ -838,6 +841,18 @@ class VLLMInferenceEngine(InferenceEngine):
             formatted_params.pop("max_new_tokens")
 
         return formatted_params
+    
+    @abc.abstractmethod
+    def _format_response(self, response: Any) -> Dict[str, str]:
+        """
+        This method format the response from OpenAI API to a dict with keys "reasoning" and "response".
+
+        Parameters:
+        ----------
+        response : Any
+            the response from OpenAI-compatible API. Could be a dict, generator, or object.
+        """
+        return NotImplemented
 
     def chat(self, messages:List[Dict[str,str]], verbose:bool=False, stream:bool=False, messages_logger:MessagesLogger=None) -> Union[Dict[str, str], Generator[Dict[str, str], None, None]]:
         """
@@ -872,14 +887,10 @@ class VLLMInferenceEngine(InferenceEngine):
                 res_text = ""
                 for chunk in response_stream:
                     if len(chunk.choices) > 0:
-                        if hasattr(chunk.choices[0].delta, "reasoning_content"):
-                            chunk_text = getattr(chunk.choices[0].delta, "reasoning_content", "")
-                            yield {"type": "reasoning", "data": chunk_text}
-                        else:
-                            chunk_text = getattr(chunk.choices[0].delta, "content", "")
-                            yield {"type": "response", "data": chunk_text}
+                        chunk_dict = self._format_response(chunk)
+                        yield chunk_dict
 
-                        res_text += chunk_text
+                        res_text += chunk_dict["data"]
                         if chunk.choices[0].finish_reason == "length":
                             warnings.warn("Model stopped generating due to context length limit.", RuntimeWarning)
 
@@ -904,12 +915,9 @@ class VLLMInferenceEngine(InferenceEngine):
             res = {"reasoning": "", "response": ""}
             for chunk in response:
                 if len(chunk.choices) > 0:
-                    if hasattr(chunk.choices[0].delta, "reasoning_content"):
-                        chunk_text = getattr(chunk.choices[0].delta, "reasoning_content", "")
-                        res["reasoning"] += chunk_text
-                    else:
-                        chunk_text = getattr(chunk.choices[0].delta, "content", "")
-                        res["response"] += chunk_text
+                    chunk_dict = self._format_response(chunk)
+                    chunk_text = chunk_dict["data"]
+                    res[chunk_dict["type"]] += chunk_text
 
                     print(chunk_text, end="", flush=True)
                     if chunk.choices[0].finish_reason == "length":
@@ -924,8 +932,8 @@ class VLLMInferenceEngine(InferenceEngine):
                 stream=False,
                 **self.formatted_params
             )
-            res = {"reasoning": getattr(response.choices[0].message, "reasoning_content", ""),
-                   "response": getattr(response.choices[0].message, "content", "")}
+            res = self._format_response(response)
+
             if response.choices[0].finish_reason == "length":
                 warnings.warn("Model stopped generating due to context length limit.", RuntimeWarning)
             
@@ -957,8 +965,7 @@ class VLLMInferenceEngine(InferenceEngine):
         if response.choices[0].finish_reason == "length":
             warnings.warn("Model stopped generating due to context length limit.", RuntimeWarning)
 
-        res = {"reasoning": getattr(response.choices[0].message, "reasoning_content", ""),
-               "response": getattr(response.choices[0].message, "content", "")}
+        res = self._format_response(response)
 
         # Postprocess response
         res_dict = self.config.postprocess_response(res)
@@ -971,14 +978,104 @@ class VLLMInferenceEngine(InferenceEngine):
 
         return res_dict
 
+
+class VLLMInferenceEngine(OpenAICompatibleInferenceEngine):
+    def __init__(self, model:str, api_key:str="", base_url:str="http://localhost:8000/v1", config:LLMConfig=None, **kwrs):
+        """
+        vLLM OpenAI compatible server inference engine.
+        https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html
+
+        For parameters and documentation, refer to https://platform.openai.com/docs/api-reference/introduction
+
+        Parameters:
+        ----------
+        model_name : str
+            model name as shown in the vLLM server
+        api_key : str, Optional
+            the API key for the vLLM server.
+        base_url : str, Optional
+            the base url for the vLLM server. 
+        config : LLMConfig
+            the LLM configuration.
+        """
+        super().__init__(model, api_key, base_url, config, **kwrs)
+
+
+    def _format_response(self, response: Any) -> Dict[str, str]:
+        """
+        This method format the response from OpenAI API to a dict with keys "reasoning" and "response".
+
+        Parameters:
+        ----------
+        response : Any
+            the response from OpenAI-compatible API. Could be a dict, generator, or object.
+        """
+        if isinstance(response, self.ChatCompletionChunk):
+            if hasattr(response.choices[0].delta, "reasoning_content") and getattr(response.choices[0].delta, "reasoning_content") is not None:
+                chunk_text = getattr(response.choices[0].delta, "reasoning_content", "")
+                if chunk_text is None:
+                    chunk_text = ""
+                return {"type": "reasoning", "data": chunk_text}
+            else:
+                chunk_text = getattr(response.choices[0].delta, "content", "")
+                if chunk_text is None:
+                    chunk_text = ""
+                return {"type": "response", "data": chunk_text}
+
+        return {"reasoning": getattr(response.choices[0].message, "reasoning_content", ""),
+                "response": getattr(response.choices[0].message, "content", "")}
         
+
+class OpenRouterInferenceEngine(OpenAICompatibleInferenceEngine):
+    def __init__(self, model:str, api_key:str=None, base_url:str="https://openrouter.ai/api/v1", config:LLMConfig=None, **kwrs):
+        """
+        OpenRouter OpenAI-compatible server inference engine.
+
+        Parameters:
+        ----------
+        model_name : str
+            model name as shown in the vLLM server
+        api_key : str, Optional
+            the API key for the vLLM server. If None, will use the key in os.environ['OPENROUTER_API_KEY'].
+        base_url : str, Optional
+            the base url for the vLLM server. 
+        config : LLMConfig
+            the LLM configuration.
+        """
+        super().__init__(model, api_key, base_url, config, **kwrs)
+        self.api_key = api_key
+        if self.api_key is None:
+            self.api_key = os.getenv("OPENROUTER_API_KEY")
+
+    def _format_response(self, response: Any) -> Dict[str, str]:
+        """
+        This method format the response from OpenAI API to a dict with keys "reasoning" and "response".
+
+        Parameters:
+        ----------
+        response : Any
+            the response from OpenAI-compatible API. Could be a dict, generator, or object.
+        """
+        if isinstance(response, self.ChatCompletionChunk):
+            if hasattr(response.choices[0].delta, "reasoning") and getattr(response.choices[0].delta, "reasoning") is not None:
+                chunk_text = getattr(response.choices[0].delta, "reasoning", "")
+                if chunk_text is None:
+                    chunk_text = ""
+                return {"type": "reasoning", "data": chunk_text}
+            else:
+                chunk_text = getattr(response.choices[0].delta, "content", "")
+                if chunk_text is None:
+                    chunk_text = ""
+                return {"type": "response", "data": chunk_text}
+
+        return {"reasoning": getattr(response.choices[0].message, "reasoning", ""),
+                "response": getattr(response.choices[0].message, "content", "")}
+
+
 class OpenAIInferenceEngine(InferenceEngine):
     def __init__(self, model:str, config:LLMConfig=None, **kwrs):
         """
-        The OpenAI API inference engine. Supports OpenAI models and OpenAI compatible servers:
-        - vLLM OpenAI compatible server (https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html)
-        - Llama.cpp OpenAI compatible server (https://llama-cpp-python.readthedocs.io/en/latest/server/)
-
+        The OpenAI API inference engine. 
         For parameters and documentation, refer to https://platform.openai.com/docs/api-reference/introduction
 
         Parameters:
