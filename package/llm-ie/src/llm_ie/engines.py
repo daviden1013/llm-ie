@@ -845,7 +845,7 @@ class OpenAICompatibleInferenceEngine(InferenceEngine):
     @abc.abstractmethod
     def _format_response(self, response: Any) -> Dict[str, str]:
         """
-        This method format the response from OpenAI API to a dict with keys "reasoning" and "response".
+        This method format the response from OpenAI API to a dict with keys "type" and "data".
 
         Parameters:
         ----------
@@ -1003,7 +1003,7 @@ class VLLMInferenceEngine(OpenAICompatibleInferenceEngine):
 
     def _format_response(self, response: Any) -> Dict[str, str]:
         """
-        This method format the response from OpenAI API to a dict with keys "reasoning" and "response".
+        This method format the response from OpenAI API to a dict with keys "type" and "data".
 
         Parameters:
         ----------
@@ -1042,14 +1042,14 @@ class OpenRouterInferenceEngine(OpenAICompatibleInferenceEngine):
         config : LLMConfig
             the LLM configuration.
         """
-        super().__init__(model, api_key, base_url, config, **kwrs)
         self.api_key = api_key
         if self.api_key is None:
             self.api_key = os.getenv("OPENROUTER_API_KEY")
+        super().__init__(model, self.api_key, base_url, config, **kwrs)
 
     def _format_response(self, response: Any) -> Dict[str, str]:
         """
-        This method format the response from OpenAI API to a dict with keys "reasoning" and "response".
+        This method format the response from OpenAI API to a dict with keys "type" and "data".
 
         Parameters:
         ----------
