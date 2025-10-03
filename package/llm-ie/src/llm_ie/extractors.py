@@ -475,7 +475,7 @@ class DirectFrameExtractor(FrameExtractor):
                     messages.append({'role': 'user', 'content': unit.text})
 
                 if verbose:
-                    print(f"\n\n{Fore.GREEN}Unit {i}:{Style.RESET_ALL}\n{unit.text}\n")
+                    print(f"\n\n{Fore.GREEN}Unit {i + 1}/{len(units)}:{Style.RESET_ALL}\n{unit.text}\n")
                     if context != "":
                         print(f"{Fore.YELLOW}Context:{Style.RESET_ALL}\n{context}\n")
                     
@@ -1136,7 +1136,7 @@ class ReviewFrameExtractor(DirectFrameExtractor):
                 messages.append({'role': 'user', 'content': unit.text})
 
             if verbose:
-                print(f"\n\n{Fore.GREEN}Unit {i}:{Style.RESET_ALL}\n{unit.text}\n")
+                print(f"\n\n{Fore.GREEN}Unit {i + 1}/{len(units)}:{Style.RESET_ALL}\n{unit.text}\n")
                 if context != "":
                     print(f"{Fore.YELLOW}Context:{Style.RESET_ALL}\n{context}\n")
                 
