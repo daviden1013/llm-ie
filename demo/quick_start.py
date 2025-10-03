@@ -1,16 +1,16 @@
 import os
-from llm_ie import OpenAIInferenceEngine, BasicLLMConfig, DirectFrameExtractor, PromptEditor, SentenceUnitChunker, SlideWindowContextChunker
+from llm_ie import OpenRouterInferenceEngine, ReasoningLLMConfig, DirectFrameExtractor, PromptEditor, SentenceUnitChunker, SlideWindowContextChunker
 
 # Load synthesized medical note
 with open("/home/daviden1013/David_projects/llm-ie/demo/document/synthesized_note.txt", 'r') as f:
     note_text = f.read()
 
 # Define a LLM inference engine for the prompt editor
-prompt_editor_llm = OpenAIInferenceEngine(base_url="https://openrouter.ai/api/v1", 
-                                          model="meta-llama/llama-4-scout", 
-                                          api_key=os.getenv("OPENROUTER_API_KEY"),
-                                          config=BasicLLMConfig(temperature=0.4, 
-                                                                max_new_tokens=4096))
+prompt_editor_llm = OpenRouterInferenceEngine(model="openai/gpt-oss-120b", 
+                                              config=ReasoningLLMConfig(temperature=1.0, 
+                                                                        top_p=1.0, 
+                                                                        reasoning_effort="low",
+                                                                        max_new_tokens=8192))
 
 # Use LLM to generrate a prompt template
 editor = PromptEditor(prompt_editor_llm, DirectFrameExtractor)
@@ -46,11 +46,11 @@ The text below is from the clinical note:
 """
 
 # Define a LLM inference engine for the extractor
-extractor_llm = OpenAIInferenceEngine(base_url="https://openrouter.ai/api/v1", 
-                                      model="meta-llama/llama-3.1-70b-instruct", 
-                                      api_key=os.getenv("OPENROUTER_API_KEY"),
-                                      config=BasicLLMConfig(temperature=0.0, 
-                                                            max_new_tokens=1024))
+extractor_llm = OpenRouterInferenceEngine(model="openai/gpt-oss-120b", 
+                                          config=ReasoningLLMConfig(temperature=1.0, 
+                                                                    top_p=1.0, 
+                                                                    reasoning_effort="low",
+                                                                    max_new_tokens=8192))
 # Define unit chunker. Prompt sentences-by-sentence.
 unit_chunker = SentenceUnitChunker()
 # Define context chunker. Provides context for units.
