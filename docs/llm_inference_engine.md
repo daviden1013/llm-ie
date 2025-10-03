@@ -140,6 +140,65 @@ inference_engine = AzureOpenAIInferenceEngine(model="o1-mini",
                                               config=OpenAIReasoningLLMConfig(reasoning_effort="low"))
 ```
 
+## OpenRouter
+We provide an interface for OpenRouter service. To use OpenRouter, sign up on their website and get an API key. For more details, refer to [OpenRouter](https://openrouter.ai/).
+
+In bash, save API key to the environmental variable ```OPENROUTER_API_KEY```.
+```bash
+export OPENROUTER_API_KEY=<your_API_key>
+```
+
+#### Meta-Llama-3.1-8B-Instruct
+Define inference engine
+```python
+import os
+from llm_ie.engines import OpenRouterInferenceEngine
+
+inference_engine = OpenRouterInferenceEngine(model="meta-llama/llama-3.1-8b-instruct")
+```
+The `model` must match the repo name specified on OpenRouter.
+
+#### Qwen3-30B-A3B (hybrid thinking mode)
+Define inference engine
+```python
+from llm_ie.engines import OpenRouterInferenceEngine, Qwen3LLMConfig
+
+# Thinking mode
+inference_engine = OpenRouterInferenceEngine(model="qwen/qwen3-30b-a3b", 
+                                             config=Qwen3LLMConfig(thinking_mode=True, temperature=0.6, top_p=0.95, top_k=20))
+# Non-thinking mode
+inference_engine = OpenRouterInferenceEngine(model="qwen/qwen3-30b-a3b", 
+                                             config=Qwen3LLMConfig(thinking_mode=False, temperature=0.7, top_p=0.8, top_k=20))
+```
+
+#### Qwen3-30B-Thinking-2507
+Define inference engine
+```python
+from llm_ie.engines import OpenRouterInferenceEngine, ReasoningLLMConfig
+
+inference_engine = OpenRouterInferenceEngine(model="qwen/qwen3-30b-a3b-thinking-2507",
+                                             config=ReasoningLLMConfig(temperature=0.6, top_p=0.95, top_k=20))
+```
+
+#### gpt-oss-120b
+Define inference engine
+```python
+from llm_ie.engines import OpenRouterInferenceEngine, ReasoningLLMConfig
+
+inference_engine = OpenRouterInferenceEngine(model="openai/gpt-oss-120b", 
+                                             config=ReasoningLLMConfig(temperature=1.0, top_p=1.0, top_k=0))
+``` 
+
+## OpenAI API & Compatible Services
+In bash, save API key to the environmental variable ```OPENAI_API_KEY```.
+```
+export OPENAI_API_KEY=<your_API_key>
+```
+
+In Python, create inference engine and specify model name. For the available models, refer to [OpenAI webpage](https://platform.openai.com/docs/models). 
+For more parameters, see [OpenAI API reference](https://platform.openai.com/docs/api-reference/introduction).
+
+
 ## Huggingface_hub
 The ```model``` can be a model id hosted on the Hugging Face Hub or a URL to a deployed Inference Endpoint. Refer to the [Inference Client](https://huggingface.co/docs/huggingface_hub/en/package_reference/inference_client) documentation for more details. 
 
