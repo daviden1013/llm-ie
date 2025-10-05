@@ -565,15 +565,22 @@ class OllamaInferenceEngine(InferenceEngine):
                     stream=True, 
                     keep_alive=self.keep_alive
                 )
-                res_text = ""
+                res = {"reasoning": "", "response": ""}
                 for chunk in response_stream:
-                    content_chunk = chunk.get('message', {}).get('content')
-                    if content_chunk:
-                        res_text += content_chunk
-                        yield content_chunk
+                    if hasattr(chunk.message, 'thinking') and chunk.message.thinking:
+                        content_chunk = getattr(getattr(chunk, 'message', {}), 'thinking', '')
+                        res["reasoning"] += content_chunk
+                        yield {"type": "reasoning", "data": content_chunk}
+                    else:
+                        content_chunk = getattr(getattr(chunk, 'message', {}), 'content', '')
+                        res["response"] += content_chunk
+                        yield {"type": "response", "data": content_chunk}
+
+                    if chunk.done_reason == "length":
+                        warnings.warn("Model stopped generating due to context length limit.", RuntimeWarning)
                 
                 # Postprocess response
-                res_dict = self.config.postprocess_response(res_text)
+                res_dict = self.config.postprocess_response(res)
                 # Write to messages log
                 if messages_logger:
                     processed_messages.append({"role": "assistant",
@@ -592,11 +599,27 @@ class OllamaInferenceEngine(InferenceEngine):
                             keep_alive=self.keep_alive
                         )
             
-            res = ''
+            res = {"reasoning": "", "response": ""}
+            phase = ""
             for chunk in response:
-                content_chunk = chunk.get('message', {}).get('content')
+                if hasattr(chunk.message, 'thinking') and chunk.message.thinking:
+                    if phase != "reasoning":
+                        print("\n--- Reasoning ---")
+                        phase = "reasoning"
+
+                    content_chunk = getattr(getattr(chunk, 'message', {}), 'thinking', '')
+                    res["reasoning"] += content_chunk
+                else:
+                    if phase != "response":
+                        print("\n--- Response ---")
+                        phase = "response"
+                    content_chunk = getattr(getattr(chunk, 'message', {}), 'content', '')
+                    res["response"] += content_chunk
+
                 print(content_chunk, end='', flush=True)
-                res += content_chunk
+
+                if chunk.done_reason == "length":
+                    warnings.warn("Model stopped generating due to context length limit.", RuntimeWarning)
             print('\n')
 
         else:
@@ -607,8 +630,12 @@ class OllamaInferenceEngine(InferenceEngine):
                                 stream=False,
                                 keep_alive=self.keep_alive
                             )
-            res = response.get('message', {}).get('content')
+            res = {"reasoning": getattr(getattr(response, 'message', {}), 'thinking', ''),
+                   "response": getattr(getattr(response, 'message', {}), 'content', '')}
         
+            if response.done_reason == "length":
+                warnings.warn("Model stopped generating due to context length limit.", RuntimeWarning)
+
         # Postprocess response
         res_dict = self.config.postprocess_response(res)
         # Write to messages log
@@ -635,7 +662,11 @@ class OllamaInferenceEngine(InferenceEngine):
                             keep_alive=self.keep_alive
                         )
         
-        res = response['message']['content']
+        res = {"reasoning": getattr(getattr(response, 'message', {}), 'thinking', ''),
+               "response": getattr(getattr(response, 'message', {}), 'content', '')}
+        
+        if response.done_reason == "length":
+            warnings.warn("Model stopped generating due to context length limit.", RuntimeWarning)
         # Postprocess response
         res_dict = self.config.postprocess_response(res)
         # Write to messages log
@@ -913,11 +944,15 @@ class OpenAICompatibleInferenceEngine(InferenceEngine):
                 **self.formatted_params
             )
             res = {"reasoning": "", "response": ""}
+            phase = ""
             for chunk in response:
                 if len(chunk.choices) > 0:
                     chunk_dict = self._format_response(chunk)
                     chunk_text = chunk_dict["data"]
                     res[chunk_dict["type"]] += chunk_text
+                    if phase != chunk_dict["type"] and chunk_text != "":
+                        print(f"\n--- {chunk_dict['type'].capitalize()} ---")
+                        phase = chunk_dict["type"]
 
                     print(chunk_text, end="", flush=True)
                     if chunk.choices[0].finish_reason == "length":
