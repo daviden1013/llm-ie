@@ -1,16 +1,16 @@
 import os
-from llm_ie import OpenRouterInferenceEngine, ReasoningLLMConfig, DirectFrameExtractor, PromptEditor, SentenceUnitChunker, SlideWindowContextChunker
+from llm_ie import VLLMInferenceEngine, ReasoningLLMConfig, DirectFrameExtractor, PromptEditor, SentenceUnitChunker, SlideWindowContextChunker
 
 # Load synthesized medical note
 with open("/home/daviden1013/David_projects/llm-ie/demo/document/synthesized_note.txt", 'r') as f:
     note_text = f.read()
 
 # Define a LLM inference engine for the prompt editor
-prompt_editor_llm = OpenRouterInferenceEngine(model="openai/gpt-oss-120b", 
-                                              config=ReasoningLLMConfig(temperature=1.0, 
-                                                                        top_p=1.0, 
-                                                                        reasoning_effort="low",
-                                                                        max_new_tokens=8192))
+prompt_editor_llm = VLLMInferenceEngine(model="openai/gpt-oss-120b", 
+                                        config=ReasoningLLMConfig(temperature=1.0, 
+                                                                top_p=1.0, 
+                                                                reasoning_effort="low",
+                                                                max_new_tokens=8192))
 
 # Use LLM to generrate a prompt template
 editor = PromptEditor(prompt_editor_llm, DirectFrameExtractor)
