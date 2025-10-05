@@ -26,6 +26,7 @@ A comprehensive toolkit that provides building blocks for LLM-based named entity
 - [v1.2.0](https://github.com/daviden1013/llm-ie/releases/tag/v1.2.0) (Jun 15, 2025): Attribute extractor for complicated attribute schema. 
 - [v1.2.1](https://github.com/daviden1013/llm-ie/releases/tag/v1.2.1) (Jul 12, 2025): Added exporting/importing chat history functionality to the Prompt Editor.
 - [v1.2.2](https://github.com/daviden1013/llm-ie/releases/tag/v1.2.2) (Aug 25, 2025): Added configs for reasoning LLMs (GPT-OSS, Qwen3).
+- [v1.2.3](https://github.com/daviden1013/llm-ie/releases/tag/v1.2.3) (Oct 2, 2025): Separated vLLM inference engine support to `VLLMInferenceEngine`, OpenRouter support to `OpenRouterInferenceEngine`. 
 
 
 ## 📑Table of Contents
@@ -135,10 +136,8 @@ vllm serve meta-llama/Meta-Llama-3.1-8B-Instruct
 ```
 Define inference engine
 ```python
-from llm_ie.engines import OpenAIInferenceEngine
-inference_engine = OpenAIInferenceEngine(base_url="http://localhost:8000/v1",
-                                         api_key="EMPTY",
-                                         model="meta-llama/Meta-Llama-3.1-8B-Instruct")
+from llm_ie.engines import VLLMInferenceEngine
+inference_engine = VLLMInferenceEngine(model="meta-llama/Meta-Llama-3.1-8B-Instruct")
 ```
 </details>
 
@@ -153,24 +152,27 @@ inference_engine = LlamaCppInferenceEngine(repo_id="bullerwins/Meta-Llama-3.1-8B
 ```
 </details>
 
-In this quick start demo, we use OpenRouter to run Llama-4-Scout for prompt engineering and Llama-3.1-70B-Instruct for entity and attribute extraction.
+In this quick start demo, we use vLLM to run *gpt-oss-120b* for prompt engineering and entity and attribute extraction.
 The outputs might be slightly different with other inference engines, LLMs, or quantization. 
 
 ### Prompt engineering by chatting with LLM agent
-We start with defining prompt editor LLM agent. We store OpenRouter API key in environmental variable `OPENROUTER_API_KEY`.
-```bash
-export OPENROUTER_API_KEY=<OpenRouter API key>
+Start the server in command line. Specify `--reasoning-parser GptOss` to enable the reasoning parser. 
+```cmd
+vllm serve openai/gpt-oss-120b \
+    --tensor-parallel-size 4 \
+    --enable-prefix-caching \
+    --reasoning-parser GptOss
 ```
 
 ```python
-from llm_ie import OpenAIInferenceEngine, BasicLLMConfig, DirectFrameExtractor, PromptEditor, SentenceUnitChunker, SlideWindowContextChunker
+from llm_ie import VLLMInferenceEngine, ReasoningLLMConfig, DirectFrameExtractor, PromptEditor, SentenceUnitChunker, SlideWindowContextChunker
 
 # Define a LLM inference engine for the prompt editor
-prompt_editor_llm = OpenAIInferenceEngine(base_url="https://openrouter.ai/api/v1", 
-                                          model="meta-llama/llama-4-scout", 
-                                          api_key=os.getenv("OPENROUTER_API_KEY"),
-                                          config=BasicLLMConfig(temperature=0.4, 
-                                                                max_new_tokens=4096))
+prompt_editor_llm = VLLMInferenceEngine(model="openai/gpt-oss-120b", 
+                                        config=ReasoningLLMConfig(reasoning_effort="medium", 
+                                                                  temperature=1.0, 
+                                                                  top_p=1.0, 
+                                                                  max_new_tokens=8192))
 # Define LLM prompt editor
 editor = PromptEditor(prompt_editor_llm, DirectFrameExtractor)
 # Start chat
@@ -210,7 +212,7 @@ The text below is from the clinical note:
 ```
 
 ### Design prompting algorithm for information extraction
-Instead of prompting LLMs with the entire document (which, by our experiments, has worse performance), we divide the input document into units (e.g., sentences, text lines, paragraphs). LLM only focus on one unit at a time, before moving to the next unit. This is achieved by the `UnitChunker` classes. In this demo, we use `SentenceUnitChunker` for sentence by sentence prompting. Though LLM only focus on one sentence at a time, we supply a context, in this case, a slide window of 2 sentences as context. This provides LLM with additional information. This is achieved by the `SlideWindowContextChunker` class. For information extraction, we use a smaller LLM, llama-3.1-70b-instruct for lower cost. We set `temperature = 0.0` to improve output stability and reproducibility. 
+Instead of prompting LLMs with the entire document (which, by our experiments, has worse performance), we divide the input document into units (e.g., sentences, text lines, paragraphs). LLM only focus on one unit at a time, before moving to the next unit. This is achieved by the `UnitChunker` classes. In this demo, we use `SentenceUnitChunker` for sentence by sentence prompting. Though LLM only focus on one sentence at a time, we supply a context, in this case, a slide window of 2 sentences as context. This provides LLM with additional information. This is achieved by the `SlideWindowContextChunker` class. For information extraction, we use a lower reasoning effort (`reasoning_effort="low"`) for higher throughput. We set `temperature=1.0` and `top_p=1.0` to following the recommendation.
 
 ```python
 # Load synthesized medical note
@@ -218,11 +220,11 @@ with open("./demo/document/synthesized_note.txt", 'r') as f:
     note_text = f.read()
 
 # Define a LLM inference engine for the extractor
-extractor_llm = OpenAIInferenceEngine(base_url="https://openrouter.ai/api/v1", 
-                                      model="meta-llama/llama-3.1-70b-instruct", 
-                                      api_key=os.getenv("OPENROUTER_API_KEY"),
-                                      config=BasicLLMConfig(temperature=0.0, 
-                                                            max_new_tokens=1024))
+extractor_llm = VLLMInferenceEngine(model="openai/gpt-oss-120b", 
+                                    config=ReasoningLLMConfig(reasoning_effort="low", 
+                                                              temperature=1.0, 
+                                                              top_p=1.0, 
+                                                              max_new_tokens=8192))
 # Define unit chunker. Prompts sentences-by-sentence.
 unit_chunker = SentenceUnitChunker()
 # Define context chunker. Provides context for units.
