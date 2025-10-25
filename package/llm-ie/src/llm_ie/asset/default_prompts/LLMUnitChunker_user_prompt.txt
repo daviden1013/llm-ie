@@ -1,0 +1,129 @@
+### Task description
+You are a helpful assistant that breaks down a text document into semantic units or chunks. Each chunk should represent a coherent section of the text, such as a paragraph, subsection, or topic.
+
+### Schema definition
+You will output a JSON array of objects. Each object should have the following fields:
+    - "title": Generate a brief title summarizing the content of the chunk.
+    - "anchor_text": the first line of text in the chunk used to locate it in the original document. Must be an exact match.
+        - if there is a title or heading for the chunk, use that as the anchor_text.
+        - if there is no title or heading, use the first sentence of the chunk as the anchor_text.
+
+```JSON
+[
+    {
+        "title": "<your title here>",
+        "anchor_text": "<the anchor text of the chunk here>"
+    },
+    {
+        "title": "<your title here>",
+        "anchor_text": "<the anchor text of the chunk here>"
+    }
+]
+```
+
+### Examples
+
+**Input**:
+"# Clinical Note
+
+**Patient Name**: Michael Green  
+**Medical Record Number**: 1122334455  
+**Date of Visit**: January 5, 2025  
+**Provider**: Dr. Emily Carter, MD  
+
+## Reason for Visit  
+Follow-up for poorly controlled type 2 diabetes and complaints of occasional dizziness and blurred vision.
+
+## Summary of Visit  
+Michael Green, a 62-year-old male with a known history of type 2 diabetes, hypertension, and obesity, presents for follow-up regarding his glycemic control. Despite recent adjustments to his treatment plan, his glucose readings have remained elevated, averaging 180-220 mg/dL. He reports occasional episodes of dizziness and blurred vision, particularly in the morning before meals. He denies chest pain, palpitations, or recent falls. He reports compliance with his medication regimen but admits to difficulty following a consistent low-carbohydrate diet.
+
+Michael has been using a glucose meter to monitor his blood sugar levels and logs them daily. His last hemoglobin A1c, performed three months ago, was 9.2%. He reports no recent hospitalizations, infections, or significant stressors.
+
+## Notable History  
+- **Chronic Conditions**:  
+  - Type 2 diabetes mellitus, diagnosed 10 years ago.  
+  - Hypertension, well-controlled on medication.  
+  - Hyperlipidemia, on statin therapy.  
+- **Past Surgical History**:  
+  - Knee arthroscopy for a meniscal tear, age 50.  
+- **Family History**:  
+  - Mother: Deceased at 75, complications from diabetes.  
+  - Father: Deceased at 70, myocardial infarction."
+
+**Output**:
+```JSON
+[
+    {
+        "title": "Patient Information",
+        "anchor_text": "# Clinical Note"
+    },
+    {
+        "title": "Reason for Visit",
+        "anchor_text": "## Reason for Visit"
+    },
+    {
+        "title": "Summary of Visit",
+        "anchor_text": "## Summary of Visit"
+    },
+    {
+        "title": "Notable History",
+        "anchor_text": "## Notable History"
+    }
+]
+```
+
+**Input**:
+"In the [**Hospital1 18**] ED, 35.3 102 133/58 100%AC 500x20, 5, 1.0 with an
+ABG 7.16/66/162. He had a CTH which was unremarkable. He then
+had a CTA chest, afterwhich he went into PEA arrest.
+Rescucitation last approximately 10-15 minutes with multiple
+rounds of epi and bicarb, with ROSC. He was then admitted to the
+MICU for further management.
+.
+Currently, the patient is intubated, sedated, and parlyzed.
+
+Past Medical History:
+Asthma
+Dilated cardiomyopathy
+Multiple admissions for dyspnea this winter ([**1-26**]).
+Anxiety/depression
+CKD
+HLD
+Obesity
+HTN
+
+Social History:
+Unknown
+
+Family History:
+Unknown"
+
+**Output**:
+```JSON
+[
+    {
+        "title": "Patient Presentation and Initial Management",
+        "anchor_text": "In the [**Hospital1 18**] ED, 35.3 102 133/58 100%AC 500x20, 5, 1.0 with an"
+    },
+    {
+        "title": "Current Status of the Patient",
+        "anchor_text": "Currently, the patient is intubated, sedated, and parlyzed."
+    },
+    {
+        "title": "Past Medical History",
+        "anchor_text": "Past Medical History:"
+    },
+    {
+        "title": "Social History",
+        "anchor_text": "Social History:"
+    },
+    {
+        "title": "Family History",
+        "anchor_text": "Family History:"
+    }
+]
+```
+
+### Document text
+
+"{{document_text}}"

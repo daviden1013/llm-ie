@@ -1,8 +1,11 @@
 import abc
-from typing import Set, List, Dict, Tuple, Union, Callable
+from typing import List
 import asyncio
 import uuid
+import importlib.resources
+from llm_ie.utils import extract_json, apply_prompt_template
 from llm_ie.data_types import FrameExtractionUnit
+from llm_ie.engines import InferenceEngine
 
 
 class UnitChunker(abc.ABC):
@@ -74,13 +77,14 @@ class SeparatorUnitChunker(UnitChunker):
         text : str
             The document text.
         """
+        doc_id = doc_id if doc_id is not None else str(uuid.uuid4())
         paragraphs = text.split(self.sep)
         paragraph_units = []
         start = 0
         for paragraph in paragraphs:
             end = start + len(paragraph)
             paragraph_units.append(FrameExtractionUnit(
-                doc_id=doc_id if doc_id is not None else str(uuid.uuid4()),
+                doc_id=doc_id,
                 start=start,
                 end=end,
                 text=paragraph
@@ -104,10 +108,11 @@ class SentenceUnitChunker(UnitChunker):
         text : str
             The document text.
         """
+        doc_id = doc_id if doc_id is not None else str(uuid.uuid4())
         sentences = []
         for start, end in self.PunktSentenceTokenizer().span_tokenize(text):
             sentences.append(FrameExtractionUnit(
-                doc_id=doc_id if doc_id is not None else str(uuid.uuid4()),
+                doc_id=doc_id,
                 start=start,
                 end=end,
                 text=text[start:end]
@@ -129,13 +134,14 @@ class TextLineUnitChunker(UnitChunker):
         text : str
             The document text.
         """
+        doc_id = doc_id if doc_id is not None else str(uuid.uuid4())
         lines = text.split('\n')
         line_units = []
         start = 0
         for line in lines:
             end = start + len(line)
             line_units.append(FrameExtractionUnit(
-                doc_id=doc_id if doc_id is not None else str(uuid.uuid4()),
+                doc_id=doc_id,
                 start=start,
                 end=end,
                 text=line
@@ -143,6 +149,100 @@ class TextLineUnitChunker(UnitChunker):
             start = end + 1 
         return line_units
     
+class LLMUnitChunker(UnitChunker):
+    def __init__(self, inference_engine:InferenceEngine, prompt_template:str=None, system_prompt:str=None):
+        """
+        This class prompt an LLM for document segmentation (e.g., sections, paragraphs).
+
+        Parameters:
+        ----------
+        inference_engine : InferenceEngine
+            the LLM inferencing engine object.
+        prompt_template : str
+            the prompt template that defines how to chunk the document. Must define a JSON schema with 
+            ```json
+            [
+                {
+                    "title": "<your title here>",
+                    "anchor_text": "<the anchor text of the chunk here>"
+                },
+                {
+                    "title": "<your title here>",
+                    "anchor_text": "<the anchor text of the chunk here>"
+                }
+            ]
+            ```
+        system_prompt : str, optional
+            The system prompt.
+        """
+        self.inference_engine = inference_engine
+
+        if prompt_template is None:
+            file_path = importlib.resources.files('llm_ie.asset.default_prompts').joinpath("LLMUnitChunker_user_prompt.txt")
+            with open(file_path, 'r', encoding="utf-8") as f:
+                self.prompt_template = f.read()
+        else:
+            self.prompt_template = prompt_template
+        
+        self.system_prompt = system_prompt
+
+    def chunk(self, text, doc_id=None) -> List[FrameExtractionUnit]:
+        """
+        Parameters:
+        -----------
+        text : str
+            the document text.
+        doc_id : str, optional
+            the document id.
+        """
+        doc_id = doc_id if doc_id is not None else str(uuid.uuid4())
+        user_prompt = apply_prompt_template(prompt_template=self.prompt_template, text_content=text)
+        messages = []
+        if self.system_prompt is not None:
+            messages.append({'role': 'system', 'content': self.system_prompt})
+        messages.append({'role': 'user', 'content': user_prompt})
+
+        gen_text = self.inference_engine.chat(messages=messages)
+
+        header_list = extract_json(gen_text=gen_text["response"])
+        units = []
+        start = 0
+        prev_end = 0
+        for header in header_list:
+            if "anchor_text" not in header:
+                Warning.warn(f"Missing anchor_text in header: {header}. Skipping this header.")
+                continue
+            if not isinstance(header["anchor_text"], str):
+                Warning.warn(f"Invalid anchor_text: {header['anchor_text']}. Skipping this header.")
+                continue
+
+            start = prev_end
+            # find the first instandce of the leading sentence in the rest of the text
+            end = text.find(header["anchor_text"], start)
+            # if not found, skip this header
+            if end == -1:
+                continue
+            # if start == end (empty text), skip this header
+            if start == end:
+                continue
+            # create a frame extraction unit
+            units.append(FrameExtractionUnit(
+                doc_id=doc_id,
+                start=start,
+                end=end,
+                text=text[start:end]
+            ))
+            prev_end = end
+        # add the last section
+        if prev_end < len(text):
+            units.append(FrameExtractionUnit(
+                doc_id=doc_id,
+                start=prev_end,
+                end=len(text),
+                text=text[prev_end:]
+            ))
+        return units
+
 
 class ContextChunker(abc.ABC):
     def __init__(self):
