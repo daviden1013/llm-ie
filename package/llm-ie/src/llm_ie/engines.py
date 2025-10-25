@@ -1060,6 +1060,50 @@ class VLLMInferenceEngine(OpenAICompatibleInferenceEngine):
         return {"reasoning": getattr(response.choices[0].message, "reasoning_content", ""),
                 "response": getattr(response.choices[0].message, "content", "")}
         
+class SGLangInferenceEngine(OpenAICompatibleInferenceEngine):
+    def __init__(self, model:str, api_key:str="", base_url:str="http://localhost:30000/v1", config:LLMConfig=None, **kwrs):
+        """
+        SGLang OpenAI compatible API inference engine.
+        https://docs.sglang.ai/basic_usage/openai_api.html
+
+        Parameters:
+        ----------
+        model_name : str
+            model name as shown in the vLLM server
+        api_key : str, Optional
+            the API key for the vLLM server.
+        base_url : str, Optional
+            the base url for the vLLM server. 
+        config : LLMConfig
+            the LLM configuration.
+        """
+        super().__init__(model, api_key, base_url, config, **kwrs)
+
+
+    def _format_response(self, response: Any) -> Dict[str, str]:
+        """
+        This method format the response from OpenAI API to a dict with keys "type" and "data".
+
+        Parameters:
+        ----------
+        response : Any
+            the response from OpenAI-compatible API. Could be a dict, generator, or object.
+        """
+        if isinstance(response, self.ChatCompletionChunk):
+            if hasattr(response.choices[0].delta, "reasoning_content") and getattr(response.choices[0].delta, "reasoning_content") is not None:
+                chunk_text = getattr(response.choices[0].delta, "reasoning_content", "")
+                if chunk_text is None:
+                    chunk_text = ""
+                return {"type": "reasoning", "data": chunk_text}
+            else:
+                chunk_text = getattr(response.choices[0].delta, "content", "")
+                if chunk_text is None:
+                    chunk_text = ""
+                return {"type": "response", "data": chunk_text}
+
+        return {"reasoning": getattr(response.choices[0].message, "reasoning_content", ""),
+                "response": getattr(response.choices[0].message, "content", "")}
+    
 
 class OpenRouterInferenceEngine(OpenAICompatibleInferenceEngine):
     def __init__(self, model:str, api_key:str=None, base_url:str="https://openrouter.ai/api/v1", config:LLMConfig=None, **kwrs):

@@ -142,6 +142,23 @@ inference_engine = VLLMInferenceEngine(model="meta-llama/Meta-Llama-3.1-8B-Instr
 </details>
 
 <details>
+<summary><img src=docs/readme_img/sglang_logo.png width=20 /> SGLang</summary>
+
+The SGLang support follows the [OpenAI APIs](https://docs.sglang.ai/basic_usage/openai_api_completions.html). For more parameters, please refer to the documentation.
+
+Start the server
+```cmd
+CUDA_VISIBLE_DEVICES=<GPU#> python3 -m sglang.launch_server \
+    --model-path meta-llama/Meta-Llama-3.1-8B-Instruct
+```
+Define inference engine
+```python
+from llm_ie.engines import SGLangInferenceEngine
+inference_engine = SGLangInferenceEngine(model="meta-llama/Meta-Llama-3.1-8B-Instruct")
+```
+</details>
+
+<details>
 <summary>🦙 Llama-cpp-python</summary>
 
 ```python
@@ -156,12 +173,12 @@ In this quick start demo, we use vLLM to run *gpt-oss-120b* for prompt engineeri
 The outputs might be slightly different with other inference engines, LLMs, or quantization. 
 
 ### Prompt engineering by chatting with LLM agent
-Start the server in command line. Specify `--reasoning-parser GptOss` to enable the reasoning parser. 
+Start the server in command line. Specify `--reasoning-parser openai_gptoss` to enable the reasoning parser. 
 ```cmd
 vllm serve openai/gpt-oss-120b \
     --tensor-parallel-size 4 \
     --enable-prefix-caching \
-    --reasoning-parser GptOss
+    --reasoning-parser openai_gptoss
 ```
 
 ```python

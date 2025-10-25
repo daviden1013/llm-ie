@@ -60,12 +60,12 @@ inference_engine = VLLMInferenceEngine(model="Qwen/Qwen3-30B-A3B-Thinking-2507",
 ```
 
 #### gpt-oss-120b
-Start the server in command line. Specify `--reasoning-parser GptOss` to enable the reasoning parser. 
+Start the server in command line. Specify `--reasoning-parser openai_gptoss` to enable the reasoning parser. 
 ```cmd
 vllm serve openai/gpt-oss-120b \
     --tensor-parallel-size 4 \
     --enable-prefix-caching \
-    --reasoning-parser GptOss
+    --reasoning-parser openai_gptoss
 ```
 Define inference engine
 ```python
@@ -74,6 +74,84 @@ from llm_ie.engines import VLLMInferenceEngine, ReasoningLLMConfig
 inference_engine = VLLMInferenceEngine(model="openai/gpt-oss-120b", 
                                        config=ReasoningLLMConfig(temperature=1.0, top_p=1.0, top_k=0))
 ``` 
+
+## SGLang
+The SGLang support follows the [OpenAI APIs](https://docs.sglang.ai/basic_usage/openai_api_completions.html). For more parameters, please refer to the documentation. Below are examples for different models.
+
+#### Meta-Llama-3.1-8B-Instruct
+Start the server in command line. 
+```cmd
+CUDA_VISIBLE_DEVICES=<GPU#> python3 -m sglang.launch_server \
+    --model-path meta-llama/Meta-Llama-3.1-8B-Instruct \
+    --api-key MY_API_KEY \
+    --tensor-parallel-size <# of GPUs to use>
+```
+Use ```CUDA_VISIBLE_DEVICES``` to specify GPUs to use. The ```--tensor-parallel-size``` should be set accordingly. The ```--api-key``` is optional. 
+the default port is 8000. ```--port``` sets the port. 
+
+Define inference engine
+```python
+from llm_ie.engines import SGLangInferenceEngine
+
+inference_engine = SGLangInferenceEngine(model="meta-llama/Meta-Llama-3.1-8B-Instruct")
+```
+The ```model``` must match the repo name specified in the server.
+
+#### Qwen3-30B-A3B (hybrid thinking mode)
+Start the server in command line. Specify `--reasoning-parser qwen3` to enable the reasoning parser.
+```cmd
+python3 -m sglang.launch_server \
+	--model-path Qwen/Qwen3-30B-A3B \
+    --reasoning-parser qwen3 \
+    --tensor-parallel-size <# of GPUs to use> \
+	--context-length 32000 
+```
+Define inference engine
+```python
+from llm_ie.engines import SGLangInferenceEngine, Qwen3LLMConfig
+
+# Thinking mode
+inference_engine = SGLangInferenceEngine(model="Qwen/Qwen3-30B-A3B", 
+                                         config=Qwen3LLMConfig(thinking_mode=True, temperature=0.6, top_p=0.95, top_k=20))
+# Non-thinking mode
+inference_engine = SGLangInferenceEngine(model="Qwen/Qwen3-30B-A3B", 
+                                         config=Qwen3LLMConfig(thinking_mode=False, temperature=0.7, top_p=0.8, top_k=20))
+```
+
+#### Qwen3-30B-Thinking-2507
+Start the server in command line. Specify `--reasoning-parser qwen3-thinking` to enable the reasoning parser.
+```cmd
+python3 -m sglang.launch_server \
+    --model-path Qwen/Qwen3-30B-A3B-Thinking-2507 \
+    --reasoning-parser qwen3-thinking \
+    --tensor-parallel-size 4 <# of GPUs to use> \
+    --context-length 32000
+```
+Define inference engine
+```python
+from llm_ie.engines import SGLangInferenceEngine, ReasoningLLMConfig
+
+inference_engine = SGLangInferenceEngine(model="Qwen/Qwen3-30B-A3B-Thinking-2507", 
+                                         config=ReasoningLLMConfig(temperature=0.6, top_p=0.95, top_k=20))
+```
+
+#### gpt-oss-120b
+Start the server in command line. Specify `--reasoning-parser gpt-oss` to enable the reasoning parser. 
+```cmd
+python3 -m sglang.launch_server \
+  --model-path <model path> \  
+  --served-model-name openai/gpt-oss-120b \
+  --reasoning-parser gpt-oss \
+  --tensor-parallel-size <# of GPUs to use>
+```
+Define inference engine
+```python
+from llm_ie.engines import SGLangInferenceEngine, ReasoningLLMConfig
+
+inference_engine = SGLangInferenceEngine(model="openai/gpt-oss-120b", 
+                                         config=ReasoningLLMConfig(temperature=1.0, top_p=1.0, top_k=0))
+``` 
+
 
 
 ## OpenAI API & Compatible Services
