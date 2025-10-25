@@ -2,6 +2,7 @@ import sys
 import warnings
 from typing import List, Dict, Generator
 import importlib.resources
+from llm_ie.utils import apply_prompt_template
 from llm_ie.engines import InferenceEngine
 from llm_ie.extractors import FrameExtractor
 import re
@@ -45,30 +46,6 @@ class PromptEditor:
 
         # internal memory (history messages) for the `chat` method
         self.messages = []
-
-    def _apply_prompt_template(self, text_content:Dict[str,str], prompt_template:str) -> str:
-        """
-        This method applies text_content to prompt_template and returns a prompt.
-
-        Parameters
-        ----------
-        text_content : Dict[str,str]
-            the input text content to put in prompt template. 
-            all the keys must be included in the prompt template placeholder {{<placeholder name>}}.
-
-        Returns : str
-            a prompt.
-        """
-        pattern = re.compile(r'{{(.*?)}}')
-        placeholders = pattern.findall(prompt_template)
-        if len(placeholders) != len(text_content):
-            raise ValueError(f"Expect text_content ({len(text_content)}) and prompt template placeholder ({len(placeholders)}) to have equal size.")
-        if not all([k in placeholders for k, _ in text_content.items()]):
-            raise ValueError(f"All keys in text_content ({text_content.keys()}) must match placeholders in prompt template ({placeholders}).")
-
-        prompt = pattern.sub(lambda match: re.sub(r'\\', r'\\\\', text_content[match.group(1)]), prompt_template)
-
-        return prompt
     
 
     def rewrite(self, draft:str) -> str:
@@ -80,8 +57,8 @@ class PromptEditor:
         with open(file_path, 'r') as f:
             rewrite_prompt_template = f.read()
 
-        prompt = self._apply_prompt_template(text_content={"draft": draft, "prompt_guideline": self.prompt_guide}, 
-                                             prompt_template=rewrite_prompt_template)
+        prompt = apply_prompt_template(prompt_template=rewrite_prompt_template,
+                                       text_content={"draft": draft, "prompt_guideline": self.prompt_guide})
         messages = [{"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": prompt}]
         res = self.inference_engine.chat(messages, verbose=True)
@@ -96,8 +73,8 @@ class PromptEditor:
         with open(file_path, 'r') as f:
             comment_prompt_template = f.read()
 
-        prompt = self._apply_prompt_template(text_content={"draft": draft, "prompt_guideline": self.prompt_guide}, 
-                                             prompt_template=comment_prompt_template)
+        prompt = apply_prompt_template(prompt_template=comment_prompt_template,
+                                       text_content={"draft": draft, "prompt_guideline": self.prompt_guide})
         messages = [{"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": prompt}]
         res = self.inference_engine.chat(messages, verbose=True)
@@ -254,8 +231,8 @@ class PromptEditor:
             with open(file_path, 'r') as f:
                 chat_prompt_template = f.read()
 
-            guideline = self._apply_prompt_template(text_content={"prompt_guideline": self.prompt_guide}, 
-                                                    prompt_template=chat_prompt_template)
+            guideline = apply_prompt_template(prompt_template=chat_prompt_template, 
+                                              text_content={"prompt_guideline": self.prompt_guide})
 
             self.messages = [{"role": "system", "content": self.system_prompt + guideline}]
 
@@ -288,8 +265,8 @@ class PromptEditor:
         with open(file_path, 'r') as f:
             chat_prompt_template = f.read()
 
-        guideline = self._apply_prompt_template(text_content={"prompt_guideline": self.prompt_guide}, 
-                                                prompt_template=chat_prompt_template)
+        guideline = apply_prompt_template(prompt_template=chat_prompt_template, 
+                                          text_content={"prompt_guideline": self.prompt_guide})
 
         messages = [{"role": "system", "content": self.system_prompt + guideline}] + messages
 

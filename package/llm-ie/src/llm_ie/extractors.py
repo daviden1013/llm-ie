@@ -1,7 +1,5 @@
 import abc
 import re
-import json
-import json_repair
 import inspect
 import importlib.resources
 import warnings
@@ -10,6 +8,7 @@ import asyncio
 import nest_asyncio
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Set, List, Dict, Tuple, Union, Callable, Generator, Optional, AsyncGenerator
+from llm_ie.utils import extract_json, apply_prompt_template
 from llm_ie.data_types import FrameExtractionUnit, LLMInformationExtractionFrame, LLMInformationExtractionDocument
 from llm_ie.chunkers import UnitChunker, WholeDocumentUnitChunker, SentenceUnitChunker
 from llm_ie.chunkers import ContextChunker, NoContextChunker, WholeDocumentContextChunker, SlideWindowContextChunker
@@ -96,79 +95,8 @@ class Extractor:
         Returns : str
             a user prompt.
         """
-        pattern = re.compile(r'{{(.*?)}}')
-        if isinstance(text_content, str):
-            matches = pattern.findall(self.prompt_template)
-            if len(matches) != 1:
-                raise ValueError("When text_content is str, the prompt template must has exactly 1 placeholder {{<placeholder name>}}.")
-            text = re.sub(r'\\', r'\\\\', text_content)
-            prompt = pattern.sub(text, self.prompt_template)
+        return apply_prompt_template(self.prompt_template, text_content)
 
-        elif isinstance(text_content, dict):
-            # Check if all values are str
-            if not all([isinstance(v, str) for v in text_content.values()]):
-                raise ValueError("All values in text_content must be str.")
-            # Check if all keys are in the prompt template
-            placeholders = pattern.findall(self.prompt_template)
-            if len(placeholders) != len(text_content):
-                raise ValueError(f"Expect text_content ({len(text_content)}) and prompt template placeholder ({len(placeholders)}) to have equal size.")
-            if not all([k in placeholders for k, _ in text_content.items()]):
-                raise ValueError(f"All keys in text_content ({text_content.keys()}) must match placeholders in prompt template ({placeholders}).")
-
-            prompt = pattern.sub(lambda match: re.sub(r'\\', r'\\\\', text_content[match.group(1)]), self.prompt_template)
-
-        return prompt
-    
-    def _find_dict_strings(self, text: str) -> List[str]:
-        """
-        Extracts balanced JSON-like dictionaries from a string, even if nested.
-
-        Parameters:
-        -----------
-        text : str
-            the input text containing JSON-like structures.
-
-        Returns : List[str]
-            A list of valid JSON-like strings representing dictionaries.
-        """
-        open_brace = 0
-        start = -1
-        json_objects = []
-
-        for i, char in enumerate(text):
-            if char == '{':
-                if open_brace == 0:
-                    # start of a new JSON object
-                    start = i 
-                open_brace += 1
-            elif char == '}':
-                open_brace -= 1
-                if open_brace == 0 and start != -1:
-                    json_objects.append(text[start:i + 1])
-                    start = -1
-
-        return json_objects
-    
-    
-    def _extract_json(self, gen_text:str) -> List[Dict[str, str]]:
-        """ 
-        This method inputs a generated text and output a JSON of information tuples
-        """
-        out = []
-        dict_str_list = self._find_dict_strings(gen_text)
-        for dict_str in dict_str_list:
-            try:
-                dict_obj = json.loads(dict_str)
-                out.append(dict_obj)
-            except json.JSONDecodeError:
-                dict_obj = json_repair.repair_json(dict_str, skip_json_loads=True, return_objects=True)
-                if dict_obj:
-                    warnings.warn(f'JSONDecodeError detected, fixed with repair_json:\n{dict_str}', RuntimeWarning)
-                    out.append(dict_obj)
-                else:
-                    warnings.warn(f'JSONDecodeError could not be fixed:\n{dict_str}', RuntimeWarning)
-        return out
-    
 
 class FrameExtractor(Extractor):
     from nltk.tokenize import RegexpTokenizer
@@ -759,7 +687,7 @@ class DirectFrameExtractor(FrameExtractor):
             if unit.status != "success":
                 warnings.warn(f"Skipping failed unit ({unit.start}, {unit.end}): {unit.text}", RuntimeWarning)
                 continue
-            for entity in self._extract_json(gen_text=unit.gen_text):
+            for entity in extract_json(gen_text=unit.gen_text):
                 if ENTITY_KEY in entity:
                     entity_json.append(entity)
                 else:
@@ -963,7 +891,7 @@ class DirectFrameExtractor(FrameExtractor):
         frame_list = []
         for res in sorted(doc_results['units'], key=lambda r: r.start):
             entity_json = []
-            for entity in self._extract_json(gen_text=res.gen_text):
+            for entity in extract_json(gen_text=res.gen_text):
                 if ENTITY_KEY in entity:
                     entity_json.append(entity)
                 else:
@@ -1712,7 +1640,7 @@ class AttributeExtractor(Extractor):
                             messages_logger=messages_logger
                         )
 
-        attribute_list = self._extract_json(gen_text=gen_text["response"])
+        attribute_list = extract_json(gen_text=gen_text["response"])
         if isinstance(attribute_list, list) and len(attribute_list) > 0:
             attributes = attribute_list[0]
             if return_messages_log:
@@ -1822,7 +1750,7 @@ class AttributeExtractor(Extractor):
                 messages.append({'role': 'user', 'content': self._get_user_prompt({"context": context, "frame": str(frame.to_dict())})})
 
                 gen_text = await self.inference_engine.chat_async(messages=messages, messages_logger=messages_logger)
-                attribute_list = self._extract_json(gen_text=gen_text["response"])
+                attribute_list = extract_json(gen_text=gen_text["response"])
                 attributes = attribute_list[0] if isinstance(attribute_list, list) and len(attribute_list) > 0 else {}
                 return {"frame": frame, "attributes": attributes, "messages": messages}
 
@@ -2075,7 +2003,7 @@ class BinaryRelationExtractor(RelationExtractor):
         return None
 
     def _post_process_result(self, gen_text: str, pair_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        rel_json = self._extract_json(gen_text)
+        rel_json = extract_json(gen_text)
         if len(rel_json) > 0 and "Relation" in rel_json[0]:
             rel = rel_json[0]["Relation"]
             if (isinstance(rel, bool) and rel) or (isinstance(rel, str) and rel.lower() == 'true'):
@@ -2141,7 +2069,7 @@ class MultiClassRelationExtractor(RelationExtractor):
         return None
 
     def _post_process_result(self, gen_text: str, pair_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        rel_json = self._extract_json(gen_text)
+        rel_json = extract_json(gen_text)
         pos_rel_types = pair_data['pos_rel_types']
         if len(rel_json) > 0 and "RelationType" in rel_json[0]:
             rel_type = rel_json[0]["RelationType"]
