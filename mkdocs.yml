@@ -14,6 +14,7 @@ nav:
       - 'LLM Inference Engine': 'llm_inference_engine.md'
       - 'Prompt Templates': 'prompt_templates.md'
       - 'Prompt Editor': 'prompt_editor.md'
+      - 'Chunkers': 'chunkers.md'
       - 'Extractors': 'extractors.md'
       - 'Visualization': 'visualization.md'
       
