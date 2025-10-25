@@ -9,7 +9,7 @@
       
       
       
-        <link rel="prev" href="../prompt_editor/">
+        <link rel="prev" href="../chunkers/">
       
       
         <link rel="next" href="../visualization/">
@@ -423,6 +423,29 @@
   
   <span class="md-ellipsis">
     Prompt Editor
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../chunkers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Chunkers
     
   </span>
   
@@ -1129,7 +1152,7 @@ The <code>FrameExtractor</code> extracts named entities with attributes ("frames
 </ul>
 <p><img alt="unit-context schema" src="../readme_img/unit_context_schema.png" /></p>
 <h3 id="directframeextractor">DirectFrameExtractor</h3>
-<p>The <code>DirectFrameExtractor</code> implements the unit-context schema. We start by defining the unit using one of the <code>UnitChunker</code>. The <code>SentenceUnitChunker</code> chunks the input document into sentences. Then, we define how context should be provided by choosing one of the <code>ContextChunker</code>. The <code>SlideWindowContextChunker</code> parse 2 units (sentences in this case) before and after each unit as context. For more options, see <a href="../api/chunkers/">Chunkers</a>.</p>
+<p>The <code>DirectFrameExtractor</code> implements the unit-context schema. We start by defining the unit using one of the <code>UnitChunker</code>. The <code>SentenceUnitChunker</code> chunks the input document into sentences. Then, we define how context should be provided by choosing one of the <code>ContextChunker</code>. The <code>SlideWindowContextChunker</code> parse 2 units (sentences in this case) before and after each unit as context. For more options, see <a href="../chunkers/">Chunkers</a>.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span> <span class="nn">llm_ie</span> <span class="kn">import</span> <span class="n">DirectFrameExtractor</span><span class="p">,</span> <span class="n">SentenceUnitChunker</span><span class="p">,</span> <span class="n">SlideWindowContextChunker</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">unit_chunker</span> <span class="o">=</span> <span class="n">SentenceUnitChunker</span><span class="p">()</span>

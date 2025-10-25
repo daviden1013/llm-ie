@@ -512,6 +512,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../chunkers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Chunkers
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../extractors/" class="md-nav__link">
         
   
@@ -885,11 +908,11 @@
 <p><em>LLM-IE</em> works with both <strong>local</strong> and <strong>remote</strong> LLM deployments. In this quick start demo, we use vLLM to run <a href="https://huggingface.co/openai/gpt-oss-120b/">gpt-oss-120b</a> for prompt engineering and for entity and attribute extraction.
 The outputs might be slightly different with other inference engines, LLMs, or quantization. To use other inference engines (e.g., Ollama, Huggingface Hub) and models (e.g., GPT-4.1, Qwen3), see <a href="../llm_inference_engine/">LLM Inference Engine</a> and <a href="../llm_config/">LLM Configuration</a>.</p>
 <h3 id="prompt-engineering-by-chatting-with-llm-agent">Prompt engineering by chatting with LLM agent</h3>
-<p>Start the server in command line. Specify <code>--reasoning-parser GptOss</code> to enable the reasoning parser. 
+<p>Start the server in command line. Specify <code>--reasoning-parser openai_gptoss</code> to enable the reasoning parser. 
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>vllm serve openai/gpt-oss-120b \
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    --tensor-parallel-size 4 \
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    --enable-prefix-caching \
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    --reasoning-parser GptOss
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    --reasoning-parser openai_gptoss
 </code></pre></div></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span> <span class="nn">llm_ie</span> <span class="kn">import</span> <span class="n">VLLMInferenceEngine</span><span class="p">,</span> <span class="n">ReasoningLLMConfig</span><span class="p">,</span> <span class="n">DirectFrameExtractor</span><span class="p">,</span> <span class="n">PromptEditor</span><span class="p">,</span> <span class="n">SentenceUnitChunker</span><span class="p">,</span> <span class="n">SlideWindowContextChunker</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>

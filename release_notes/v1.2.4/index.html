@@ -16,7 +16,7 @@
     
     
       
-        <title>V1.2.2 - LLM-IE Documentation</title>
+        <title>V1.2.4 - LLM-IE Documentation</title>
       
     
     
@@ -96,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              V1.2.2
+              V1.2.4
             
           </span>
         </div>
@@ -707,20 +707,26 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#added-configs-for-reasoning-llms" class="md-nav__link">
+  <a href="#added-specific-inference-engines-for-sglang" class="md-nav__link">
     <span class="md-ellipsis">
-      Added configs for reasoning LLMs
+      Added specific inference engines for SGLang
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Added specific inference engines for SGLang">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-gpt-oss-120b" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example: gpt-oss-120b
     </span>
   </a>
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#messages-log-now-stores-reasoning-tokens" class="md-nav__link">
-    <span class="md-ellipsis">
-      Messages log now stores reasoning tokens
-    </span>
-  </a>
+      </ul>
+    </nav>
   
 </li>
         
@@ -740,9 +746,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#inferenceenginechat-and-inferenceenginechat_async-methods-interface-update" class="md-nav__link">
+  <a href="#added-llm-based-unit-chunker" class="md-nav__link">
     <span class="md-ellipsis">
-      InferenceEngine.chat and InferenceEngine.chat_async methods interface update
+      Added LLM-based unit chunker
     </span>
   </a>
   
@@ -772,70 +778,63 @@
   
 
 
-  <h1>V1.2.2</h1>
+  <h1>V1.2.4</h1>
 
 <h2 id="documentation-site">📐Documentation Site</h2>
 <p>User guide, API reference, and documentation are available at <a href="https://daviden1013.github.io/llm-ie/">Documentation Page</a>.</p>
 <h2 id="highlights">⚡Highlights</h2>
-<h3 id="added-configs-for-reasoning-llms">Added configs for reasoning LLMs</h3>
-<p>As reasoning LLMs show remarkable performance, we added <code>ReasoningLLMConfig</code> for general support. </p>
-<table>
-<thead>
-<tr>
-<th>Config class</th>
-<th>LLMs</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>BasicLLMConfig</code></td>
-<td>Most non-reasoning LLMs <br> <li>Llama4 <li>Qwen3-30B-A3B-Instruct-2507 <li>...</td>
-</tr>
-<tr>
-<td><code>ReasoningLLMConfig</code></td>
-<td>Most reasoning LLMs <br> <li>Qwen3-30B-A3B-Thinking-2507 <li>gpt-oss-120b <li>...</td>
-</tr>
-<tr>
-<td><code>Qwen3LLMConfig</code></td>
-<td>Qwen3 <strong>hybrid thinking</strong> <br> <li>Qwen3-30B-A3B <li>Qwen3-32B <li>...</td>
-</tr>
-<tr>
-<td><code>OpenAIReasoningLLMConfig</code></td>
-<td>OpenAI API reasoning models <br> <li>"o" series (o1, o3, o4) <li>...</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span> <span class="nn">llm_ie.engines</span> <span class="kn">import</span> <span class="n">OpenAIInferenceEngine</span><span class="p">,</span> <span class="n">ReasoningLLMConfig</span><span class="p">,</span> <span class="n">Qwen3LLMConfig</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># Reasoning LLM</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">llm</span> <span class="o">=</span> <span class="n">OpenAIInferenceEngine</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;http://localhost:8000/v1&quot;</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;Qwen/Qwen3-30B-A3B-Thinking-2507&quot;</span><span class="p">,</span> <span class="n">api_key</span><span class="o">=</span><span class="s2">&quot;EMPTY&quot;</span><span class="p">,</span> 
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>                            <span class="n">config</span><span class="o">=</span><span class="n">ReasoningLLMConfig</span><span class="p">(</span><span class="n">thinking_token_start</span><span class="o">=</span><span class="s2">&quot;&lt;think&gt;&quot;</span><span class="p">,</span> <span class="n">thinking_token_end</span><span class="o">=</span><span class="s2">&quot;&lt;/think&gt;&quot;</span><span class="p">))</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1"># Qwen3 hybrid thinking</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="n">llm</span> <span class="o">=</span> <span class="n">OpenAIInferenceEngine</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;http://localhost:8000/v1&quot;</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;Qwen/Qwen3-30B-A3B&quot;</span><span class="p">,</span> <span class="n">api_key</span><span class="o">=</span><span class="s2">&quot;EMPTY&quot;</span><span class="p">,</span> 
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>                            <span class="n">config</span><span class="o">=</span><span class="n">Qwen3LLMConfig</span><span class="p">(</span><span class="n">thinking_mode</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">max_tokens</span><span class="o">=</span><span class="mi">2048</span><span class="p">))</span>
+<h3 id="added-specific-inference-engines-for-sglang">Added specific inference engines for SGLang</h3>
+<p>Due to the increasing interface differences between OpenAI/Azure and OpenAI-compatible services, we now separate the support. SGLang is now supported through <a href="https://daviden1013.github.io/llm-ie/llm_inference_engine/"><code>SGLangInferenceEngine</code></a>. </p>
+<h4 id="example-gpt-oss-120b">Example: gpt-oss-120b</h4>
+<p>Start the server in command line. Specify <code>--reasoning-parser gpt-oss</code> to enable the reasoning parser. 
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python3 -m sglang.launch_server \
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  --model-path &lt;model path&gt; \  
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  --served-model-name openai/gpt-oss-120b \
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  --reasoning-parser gpt-oss \
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  --tensor-parallel-size &lt;# of GPUs to use&gt;
 </code></pre></div>
-<h3 id="messages-log-now-stores-reasoning-tokens">Messages log now stores reasoning tokens</h3>
-<p>In <code>FrameExtractor.extract_frames</code>, <code>AttributeExtractor.extract_attributes</code>, and <code>RelationExtractor.extract_relations</code>, passing <code>return_messages_log=True</code> will return messages log with reasoning tokens.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># extract frames</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">frames</span><span class="p">,</span> <span class="n">messages_log</span> <span class="o">=</span> <span class="n">extractor</span><span class="o">.</span><span class="n">extract_frames</span><span class="p">(</span><span class="n">text_content</span><span class="o">=</span><span class="n">note_text</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">return_messages_log</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="kn">import</span> <span class="nn">json</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">messages_log</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">))</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="sd">&quot;&quot;&quot;</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="sd">&gt; ...</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="sd">&gt; {</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="sd">&gt;    &quot;role&quot;: &quot;assistant&quot;,</span>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="sd">&gt;    &quot;content&quot;: &quot;...&quot;,</span>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="sd">&gt;    &quot;reasoning&quot;: &quot;&lt;think&gt;... &lt;/think&gt;&quot;</span>
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="sd">&gt; }</span>
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="sd">&quot;&quot;&quot;</span>
-</code></pre></div>
+Define inference engine
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span> <span class="nn">llm_ie.engines</span> <span class="kn">import</span> <span class="n">SGLangInferenceEngine</span><span class="p">,</span> <span class="n">ReasoningLLMConfig</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">inference_engine</span> <span class="o">=</span> <span class="n">SGLangInferenceEngine</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;openai/gpt-oss-120b&quot;</span><span class="p">,</span> 
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>                                         <span class="n">config</span><span class="o">=</span><span class="n">ReasoningLLMConfig</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">top_p</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">top_k</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+</code></pre></div></p>
 <h2 id="features-and-changes">📣Features and Changes</h2>
-<h3 id="inferenceenginechat-and-inferenceenginechat_async-methods-interface-update">InferenceEngine.chat and InferenceEngine.chat_async methods interface update</h3>
-<p><code>InferenceEngine.chat</code> now returns <code>Union[Dict[str, str], Generator[Dict[str, str], None, None]]</code>. A dict {"reasoning": <reasoning>, "response": <response>} or Generator {"type": <reasoning or response>, "data": <content>}</p>
-<p><code>InferenceEngine.chat_async</code> now returns <code>Dict[str,str]</code>. A dict {"reasoning": <reasoning>, "response": <response>}</p>
+<h3 id="added-llm-based-unit-chunker">Added LLM-based unit chunker</h3>
+<p>A new <code>LLMUnitChunker</code> is added to chunk documents into units (e.g., paragraphs) using LLMs. This is useful for chunking documents without clear separator patterns. For example, chunking a document into sections based on content.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span> <span class="nn">llm_ie</span> <span class="kn">import</span> <span class="n">VLLMInferenceEngine</span><span class="p">,</span> <span class="n">ReasoningLLMConfig</span><span class="p">,</span> <span class="n">LLMUnitChunker</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">inference_engine</span> <span class="o">=</span> <span class="n">VLLMInferenceEngine</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;openai/gpt-oss-120b&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">ReasoningLLMConfig</span><span class="p">(</span><span class="n">reasoning_effort</span><span class="o">=</span><span class="s2">&quot;medium&quot;</span><span class="p">))</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">chunker</span> <span class="o">=</span> <span class="n">LLMUnitChunker</span><span class="p">(</span><span class="n">inference_engine</span><span class="o">=</span><span class="n">inference_engine</span><span class="p">)</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">units</span> <span class="o">=</span> <span class="n">chunker</span><span class="o">.</span><span class="n">chunk</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+</code></pre></div>
+<p>The units are represented as:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="p">[</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">FrameExtractionUnit</span><span class="p">(</span><span class="n">doc_id</span><span class="o">=</span><span class="mi">01</span><span class="n">a1e9f7</span><span class="o">-</span><span class="mi">8</span><span class="n">aaa</span><span class="o">-</span><span class="mi">4</span><span class="n">df3</span><span class="o">-</span><span class="mi">8</span><span class="n">b26</span><span class="o">-</span><span class="n">df71c279550c</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="mi">166</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="n">pending</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s1">&#39;# Clinical Note</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="o">**</span><span class="n">Patient</span> <span class="n">Name</span><span class="o">**</span><span class="p">:</span> <span class="n">Mary</span> <span class="n">Johnson</span>  
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="o">**</span><span class="n">Medical</span> <span class="n">Record</span> <span class="n">Number</span><span class="o">**</span><span class="p">:</span> <span class="mi">987654321</span>  
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="o">**</span><span class="n">Date</span> <span class="n">of</span> <span class="n">V</span><span class="o">...</span><span class="s1">&#39;), </span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="n">FrameExtractionUnit</span><span class="p">(</span><span class="n">doc_id</span><span class="o">=</span><span class="mi">01</span><span class="n">a1e9f7</span><span class="o">-</span><span class="mi">8</span><span class="n">aaa</span><span class="o">-</span><span class="mi">4</span><span class="n">df3</span><span class="o">-</span><span class="mi">8</span><span class="n">b26</span><span class="o">-</span><span class="n">df71c279550c</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">166</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="mi">240</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="n">pending</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s1">&#39;## Chief Complaint  </span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="n">Severe</span> <span class="n">abdominal</span> <span class="n">pain</span> <span class="ow">and</span> <span class="n">nausea</span> <span class="k">for</span> <span class="mi">48</span> <span class="n">hours</span><span class="o">.</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="o">---</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="o">...</span><span class="s1">&#39;), </span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    <span class="n">FrameExtractionUnit</span><span class="p">(</span><span class="n">doc_id</span><span class="o">=</span><span class="mi">01</span><span class="n">a1e9f7</span><span class="o">-</span><span class="mi">8</span><span class="n">aaa</span><span class="o">-</span><span class="mi">4</span><span class="n">df3</span><span class="o">-</span><span class="mi">8</span><span class="n">b26</span><span class="o">-</span><span class="n">df71c279550c</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">240</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="mi">907</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="n">pending</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s1">&#39;## History of Present Illness  </span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="n">Mary</span> <span class="n">Johnson</span> <span class="ow">is</span> <span class="n">a</span> <span class="mi">34</span><span class="o">-</span><span class="n">year</span><span class="o">-</span><span class="n">old</span> <span class="n">female</span> <span class="n">presenting</span> <span class="k">with</span> <span class="n">a</span> <span class="mi">48</span><span class="o">-</span><span class="n">hour</span> <span class="n">histo</span><span class="o">...</span><span class="s1">&#39;), </span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>    <span class="n">FrameExtractionUnit</span><span class="p">(</span><span class="n">doc_id</span><span class="o">=</span><span class="mi">01</span><span class="n">a1e9f7</span><span class="o">-</span><span class="mi">8</span><span class="n">aaa</span><span class="o">-</span><span class="mi">4</span><span class="n">df3</span><span class="o">-</span><span class="mi">8</span><span class="n">b26</span><span class="o">-</span><span class="n">df71c279550c</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">907</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="mi">1053</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="n">pending</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s1">&#39;## Past Medical History  </span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="o">-</span> <span class="n">Migraines</span><span class="p">,</span> <span class="n">managed</span> <span class="k">with</span> <span class="n">sumatriptan</span> <span class="k">as</span> <span class="n">needed</span><span class="o">.</span>  
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="o">-</span> <span class="n">No</span> <span class="n">history</span> <span class="n">of</span> <span class="n">gastroi</span><span class="o">...</span><span class="s1">&#39;), </span>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>    <span class="n">FrameExtractionUnit</span><span class="p">(</span><span class="n">doc_id</span><span class="o">=</span><span class="mi">01</span><span class="n">a1e9f7</span><span class="o">-</span><span class="mi">8</span><span class="n">aaa</span><span class="o">-</span><span class="mi">4</span><span class="n">df3</span><span class="o">-</span><span class="mi">8</span><span class="n">b26</span><span class="o">-</span><span class="n">df71c279550c</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1053</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="mi">1117</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="n">pending</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s1">&#39;## Past Surgical History  </span>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a><span class="o">-</span> <span class="n">Cholecystectomy</span> <span class="n">at</span> <span class="n">age</span> <span class="mf">29.</span>  
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a><span class="o">---</span>
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a><span class="o">...</span><span class="s1">&#39;)</span>
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a><span class="o">...</span>
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a><span class="p">]</span>
+</code></pre></div></p>
 
 
 
