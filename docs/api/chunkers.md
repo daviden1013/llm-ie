@@ -9,7 +9,9 @@ Unit chunkers determine how a document is divided into smaller pieces for frame 
 ::: llm_ie.chunkers.UnitChunker
 ::: llm_ie.chunkers.WholeDocumentUnitChunker
 ::: llm_ie.chunkers.SentenceUnitChunker
+::: llm_ie.chunkers.SeparatorUnitChunker
 ::: llm_ie.chunkers.TextLineUnitChunker
+::: llm_ie.chunkers.LLMUnitChunker
 
 ## Context Chunkers
 

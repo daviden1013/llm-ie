@@ -10,7 +10,7 @@ Frame extractors in general adopts an **unit-context schema**. The purpose is to
 ![unit-context schema](./readme_img/unit_context_schema.png)
 
 ### DirectFrameExtractor
-The `DirectFrameExtractor` implements the unit-context schema. We start by defining the unit using one of the `UnitChunker`. The `SentenceUnitChunker` chunks the input document into sentences. Then, we define how context should be provided by choosing one of the `ContextChunker`. The `SlideWindowContextChunker` parse 2 units (sentences in this case) before and after each unit as context. For more options, see [Chunkers](./api/chunkers.md).
+The `DirectFrameExtractor` implements the unit-context schema. We start by defining the unit using one of the `UnitChunker`. The `SentenceUnitChunker` chunks the input document into sentences. Then, we define how context should be provided by choosing one of the `ContextChunker`. The `SlideWindowContextChunker` parse 2 units (sentences in this case) before and after each unit as context. For more options, see [Chunkers](./chunkers.md).
 
 ```python
 from llm_ie import DirectFrameExtractor, SentenceUnitChunker, SlideWindowContextChunker

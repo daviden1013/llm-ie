@@ -87,12 +87,12 @@ July 27, 2024
 The outputs might be slightly different with other inference engines, LLMs, or quantization. To use other inference engines (e.g., Ollama, Huggingface Hub) and models (e.g., GPT-4.1, Qwen3), see [LLM Inference Engine](./llm_inference_engine.md) and [LLM Configuration](./llm_config.md).
 
 ### Prompt engineering by chatting with LLM agent
-Start the server in command line. Specify `--reasoning-parser GptOss` to enable the reasoning parser. 
+Start the server in command line. Specify `--reasoning-parser openai_gptoss` to enable the reasoning parser. 
 ```cmd
 vllm serve openai/gpt-oss-120b \
     --tensor-parallel-size 4 \
     --enable-prefix-caching \
-    --reasoning-parser GptOss
+    --reasoning-parser openai_gptoss
 ```
 
 ```python
