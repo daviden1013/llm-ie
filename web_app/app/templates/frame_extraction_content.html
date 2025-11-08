@@ -156,8 +156,14 @@
 
         <hr style="margin: 20px 0;">
 
-        <label for="fe-input-text">Input Text:</label>
-        <textarea id="fe-input-text" rows="10" placeholder="Paste your document text here..."></textarea>
+        <div class="form-group">
+            <label for="fe-txt-upload-area">Upload Input Text (.txt):</label>
+            <div id="fe-txt-upload-area" class="upload-area">
+                <p>Click to choose file or drag and drop (.txt only)</p>
+                <input type="file" id="fe-txt-file-input" accept=".txt, text/plain" style="display: none;">
+            </div>
+            <span id="fe-loaded-filename" class="loaded-filename-span"></span>
+        </div>
 
         <label for="fe-prompt-template">Prompt Template:</label>
         <textarea id="fe-prompt-template" rows="15" placeholder="Enter your prompt template for the extractor..."></textarea>
@@ -193,7 +199,7 @@
     <div class="display-area extraction-display">
          <div class="column">
              <h2>Input Text</h2>
-             <div id="display-input-text"></div>
+             <textarea id="display-input-text" placeholder="Upload a .txt file or paste your text here..."></textarea>
          </div>
          <div class="column">
             <div class="column-header-flex-container"> 

@@ -7,7 +7,7 @@
 }
 .extraction-display .column {
     width: 50%;
-    overflow-y: auto;
+    /* overflow-y: auto; */ /* This might conflict with textarea scrolling */
     border: 1px solid #e0e0e0;
     border-radius: 5px;
     padding: 15px;
@@ -23,7 +23,31 @@
      margin-bottom: 10px;
 }
 
-.extraction-display #display-input-text,
+/* MODIFIED: Changed from DIV to TEXTAREA styling */
+.extraction-display #display-input-text {
+    white-space: pre-wrap; /* Wrap text and preserve whitespace */
+    word-wrap: break-word;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.9em;
+    line-height: 1.4;
+    flex-grow: 1; /* Allow content to take space and enable scrolling */
+    overflow-y: auto; /* Ensure scrolling within the textarea */
+    
+    /* Textarea-specific styles */
+    border: none; /* Remove default textarea border */
+    padding: 0; /* Remove default textarea padding */
+    resize: none; /* Disable user resizing */
+    background-color: #fdfdfd; /* Match column background */
+    color: #212529; /* Default text color */
+}
+
+/* NEW: Added disabled state for the textarea */
+.extraction-display #display-input-text:disabled {
+    background-color: #e9ecef; /* Light gray background when disabled */
+    color: #6c757d; /* Muted text color */
+    cursor: not-allowed;
+}
+
 .extraction-display #extraction-output {
     white-space: pre-wrap; /* Wrap text and preserve whitespace */
     word-wrap: break-word;
@@ -151,4 +175,43 @@ pre.final-result-json {
     /* The .control-panel is already display:flex, flex-direction:column,
        so flex-grow will work on its children. */
     /* resize: vertical; is already in global styles for textareas */
+}
+
+
+/* --- NEW: Added Upload Area Styles (from result_viewer.css) --- */
+.upload-area {
+    border: 2px dashed #ced4da; /* Dashed border */
+    border-radius: 5px;         /* Rounded corners */
+    padding: 20px;              /* Padding inside the area */
+    text-align: center;         /* Center the placeholder text */
+    background-color: #f8f9fa;  /* Light background color */
+    cursor: pointer;            /* Change cursor to pointer on hover */
+    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out; /* Smooth transition for hover */
+    margin-bottom: 10px; /* Space below the upload area */
+}
+
+.upload-area p {
+    margin: 0;
+    color: #495057; /* Text color for the placeholder */
+    font-size: 0.95rem;
+}
+
+.upload-area:hover {
+    background-color: #e9ecef; /* Slightly darker background on hover */
+    border-color: #adb5bd;     /* Darker border on hover */
+}
+
+/* Style for when a file is being dragged over the area */
+.upload-area.dragover {
+    background-color: #e0e7ff; /* A distinct background color for drag over */
+    border-color: #007bff;     /* Highlight border color */
+}
+
+/* NEW: Added style for the loaded filename span */
+#fe-loaded-filename {
+    font-size: 0.9rem;
+    color: #28a745; /* Green color for success/loaded file */
+    margin-top: 8px;
+    font-style: italic;
+    display: block; /* Make it a block to appear on its own line */
 }

@@ -1,7 +1,7 @@
 // static/js/frame_extraction.js
 document.addEventListener('DOMContentLoaded', () => {
     // --- UI Element Selectors ---
-    const inputTextElem = document.getElementById('fe-input-text');
+    // const inputTextElem = document.getElementById('fe-input-text'); // REMOVED
     const promptTemplateElem = document.getElementById('fe-prompt-template');
     const extractionUnitElem = document.getElementById('fe-extraction-unit');
     const contextElem = document.getElementById('fe-context');
@@ -13,7 +13,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearButton = document.getElementById('clear-extraction-btn');
     const downloadButton = document.getElementById('download-frames-btn');
     const outputElem = document.getElementById('extraction-output');
-    const displayInputElem = document.getElementById('display-input-text');
+    
+    // MODIFIED: Changed from div to textarea
+    const displayInputTextarea = document.getElementById('display-input-text'); 
+
+    // NEW: Added elements for .txt file upload
+    const txtUploadArea = document.getElementById('fe-txt-upload-area');
+    const txtFileInput = document.getElementById('fe-txt-file-input');
+    const loadedFilenameSpan = document.getElementById('fe-loaded-filename');
 
     const feLlmApiSelect = document.getElementById('fe-llm-api-select');
     const feLlmConfigTypeSelect = document.getElementById('fe-llm-config-type-select');
@@ -177,7 +184,9 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem(`${feStatePrefix}fe-qwen-thinking-mode`, feQwenThinkingModeCheckbox.checked);
         }
 
-        if (inputTextElem) localStorage.setItem(`${feStatePrefix}inputText`, inputTextElem.value);
+        // MODIFIED: Save the display textarea content
+        if (displayInputTextarea) localStorage.setItem(`${feStatePrefix}displayText`, displayInputTextarea.value);
+        
         if (promptTemplateElem) localStorage.setItem(`${feStatePrefix}promptTemplate`, promptTemplateElem.value);
         if (extractionUnitElem) localStorage.setItem(`${feStatePrefix}extractionUnit`, extractionUnitElem.value);
         if (contextElem) localStorage.setItem(`${feStatePrefix}contextType`, contextElem.value);
@@ -186,7 +195,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (fuzzyMatchElem) localStorage.setItem(`${feStatePrefix}fuzzyMatch`, fuzzyMatchElem.checked);
 
         if (outputElem) localStorage.setItem(`${feStatePrefix}extractionOutput`, outputElem.innerHTML);
-        if (displayInputElem) localStorage.setItem(`${feStatePrefix}displayInputTextOutput`, displayInputElem.innerHTML);
+        // REMOVED: displayInputElem.innerHTML is no longer used
+        // if (displayInputElem) localStorage.setItem(`${feStatePrefix}displayInputTextOutput`, displayInputElem.innerHTML);
     }
 
     function loadFrameExtractionState() {
@@ -219,8 +229,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (savedThinkingMode !== null) feQwenThinkingModeCheckbox.checked = (savedThinkingMode === 'true');
         }
 
-        const savedInputText = localStorage.getItem(`${feStatePrefix}inputText`);
-        if (inputTextElem && savedInputText) inputTextElem.value = savedInputText;
+        // MODIFIED: Load into the display textarea
+        const savedInputText = localStorage.getItem(`${feStatePrefix}displayText`);
+        if (displayInputTextarea && savedInputText) displayInputTextarea.value = savedInputText;
+
         const savedPrompt = localStorage.getItem(`${feStatePrefix}promptTemplate`);
         if (promptTemplateElem && savedPrompt) promptTemplateElem.value = savedPrompt;
         
@@ -259,15 +271,76 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             if (downloadButton) downloadButton.disabled = true;
         }
-        const savedDisplayInputTextOutput = localStorage.getItem(`${feStatePrefix}displayInputTextOutput`);
-        if (displayInputElem && savedDisplayInputTextOutput) {
-            displayInputElem.innerHTML = savedDisplayInputTextOutput;
-        }
+        
+        // REMOVED: displayInputElem.innerHTML is no longer used
+        // const savedDisplayInputTextOutput = localStorage.getItem(`${feStatePrefix}displayInputTextOutput`);
+        // if (displayInputElem && savedDisplayInputTextOutput) {
+        //     displayInputElem.innerHTML = savedDisplayInputTextOutput;
+        // }
 
         setTimeout(() => {
             feUpdateConditionalOptions(); 
             feUpdateConditionalLLMConfigOptions();
         }, 0);
+    }
+
+    // --- NEW: Text File Upload Logic ---
+    function handleTxtFile(file) {
+        if (!file) {
+            loadedFilenameSpan.textContent = 'No file selected.';
+            return;
+        }
+        if (!file.type.startsWith('text/')) {
+            alert('Invalid file type. Please upload a .txt file.');
+            loadedFilenameSpan.textContent = 'Invalid file type.';
+            txtFileInput.value = '';
+            return;
+        }
+
+        loadedFilenameSpan.textContent = `File: ${file.name}`;
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const textContent = e.target.result;
+            if (displayInputTextarea) {
+                displayInputTextarea.value = textContent;
+                // Save state after loading file content
+                saveFrameExtractionState(); 
+            }
+        };
+        reader.onerror = (e) => {
+            console.error("File reading error:", e);
+            loadedFilenameSpan.textContent = 'Error reading file.';
+            alert('Error reading file.');
+        };
+        reader.readAsText(file);
+    }
+
+    if (txtUploadArea && txtFileInput) {
+        txtUploadArea.addEventListener('click', () => {
+            txtFileInput.click(); 
+        });
+
+        txtFileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            handleTxtFile(file);
+        });
+
+        txtUploadArea.addEventListener('dragover', (event) => {
+            event.preventDefault(); 
+            txtUploadArea.classList.add('dragover');
+        });
+
+        txtUploadArea.addEventListener('dragleave', () => {
+            txtUploadArea.classList.remove('dragover');
+        });
+
+        txtUploadArea.addEventListener('drop', (event) => {
+            event.preventDefault();
+            txtUploadArea.classList.remove('dragover');
+            const file = event.dataTransfer.files[0];
+            handleTxtFile(file);
+        });
     }
 
     // --- Event Listeners ---
@@ -284,7 +357,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             feHideApiSelectionWarning();
 
-            const inputText = inputTextElem.value;
+            // MODIFIED: Get text from the display textarea
+            const inputText = displayInputTextarea.value;
             const promptTemplate = promptTemplateElem.value;
             const extractionUnit = extractionUnitElem.value;
             const contextType = contextElem.value;
@@ -298,11 +372,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            displayInputElem.innerHTML = escapeHTML(inputText);
+            // REMOVED: No longer need to copy text to the display
+            // displayInputElem.innerHTML = escapeHTML(inputText);
+            
             outputElem.innerHTML = 'Starting extraction...\n';
             startButton.disabled = true;
             clearButton.disabled = true;
             if (downloadButton) downloadButton.disabled = true; 
+            
+            // NEW: Disable the input textarea
+            if (displayInputTextarea) displayInputTextarea.disabled = true;
+
             currentExtractedFrames = null; 
             saveFrameExtractionState();
 
@@ -311,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const payload = {
                 llmConfig: llmConfig,
-                inputText: inputText,
+                inputText: inputText, // This is now from displayInputTextarea.value
                 extractorConfig: {
                     prompt_template: promptTemplate,
                     extraction_unit_type: extractionUnit, 
@@ -369,6 +449,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         outputElem.scrollTop = outputElem.scrollHeight;
                         startButton.disabled = false;
                         clearButton.disabled = false;
+                        // NEW: Re-enable textarea
+                        if (displayInputTextarea) displayInputTextarea.disabled = false; 
                         currentUnitId = null;
                         saveFrameExtractionState(); 
                         return;
@@ -480,18 +562,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     reader.read().then(processText).catch(error => {
                         outputElem.innerHTML += `<div class="stream-error-message"><strong>Stream Reading Error:</strong> ${escapeHTML(error.toString())}</div>`;
                         startButton.disabled = false; clearButton.disabled = false; if (downloadButton) downloadButton.disabled = true; currentUnitId = null; currentExtractedFrames = null;
+                        // NEW: Re-enable textarea
+                        if (displayInputTextarea) displayInputTextarea.disabled = false; 
                         saveFrameExtractionState(); 
                     });
                 }
                 reader.read().then(processText).catch(initialReadError => {
                     outputElem.innerHTML = `<div class="stream-error-message">Error starting stream: ${escapeHTML(initialReadError.toString())}</div>`;
                     startButton.disabled = false; clearButton.disabled = false; if (downloadButton) downloadButton.disabled = true; currentUnitId = null; currentExtractedFrames = null;
+                    // NEW: Re-enable textarea
+                    if (displayInputTextarea) displayInputTextarea.disabled = false; 
                     saveFrameExtractionState();
                 });
             })
             .catch(error => {
                 outputElem.innerHTML = `<div class="stream-error-message">Error connecting to extraction API: ${escapeHTML(error.toString())}</div>`;
                 startButton.disabled = false; clearButton.disabled = false; if (downloadButton) downloadButton.disabled = true; currentUnitId = null; currentExtractedFrames = null;
+                // NEW: Re-enable textarea
+                if (displayInputTextarea) displayInputTextarea.disabled = false; 
                 saveFrameExtractionState();
             });
         });
@@ -500,13 +588,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (clearButton) {
         clearButton.addEventListener('click', () => {
             outputElem.innerHTML = '';
-            displayInputElem.innerHTML = ''; 
+            // MODIFIED: Clear the display textarea
+            if (displayInputTextarea) displayInputTextarea.value = ''; 
+            
             startButton.disabled = false;
             clearButton.disabled = false;
             if (downloadButton) downloadButton.disabled = true; 
             currentExtractedFrames = null; 
+            
+            // MODIFIED: Remove the correct local storage items
             localStorage.removeItem(`${feStatePrefix}extractionOutput`);
-            localStorage.removeItem(`${feStatePrefix}displayInputTextOutput`);
+            localStorage.removeItem(`${feStatePrefix}displayText`);
+            
+            // NEW: Reset file upload span
+            if (loadedFilenameSpan) loadedFilenameSpan.textContent = '';
+            if (txtFileInput) txtFileInput.value = '';
         });
     }
 
@@ -516,7 +612,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert("No frames available to download.");
                 return;
             }
-            const inputText = inputTextElem.value; 
+            // MODIFIED: Get text from the display textarea
+            const inputText = displayInputTextarea.value; 
             if (!inputText) {
                 alert("Input text is missing, cannot create a complete .llmie file.");
                 return;
@@ -576,8 +673,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // MODIFIED: Update elements to save
     const feElementsToSaveOnInputOrChange = [
-        inputTextElem, promptTemplateElem, 
+        displayInputTextarea, // MODIFIED
+        promptTemplateElem, 
         extractionUnitElem, contextElem, 
         temperatureElem, maxTokensElem, fuzzyMatchElem,
         ...allFeApiOptionElements,
