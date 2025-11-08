@@ -16,7 +16,8 @@
     flex-direction: column; /* Stack title and content */
 }
 
-.extraction-display .column h2 {
+/* MODIFIED: Changed selector to only target h2 elements that are DIRECT children of .column */
+.extraction-display .column > h2 {
      flex-shrink: 0; /* Prevent title from shrinking */
      padding-bottom: 10px;
      border-bottom: 1px solid #e0e0e0;
@@ -215,3 +216,47 @@ pre.final-result-json {
     font-style: italic;
     display: block; /* Make it a block to appear on its own line */
 }
+
+/* --- Start of modified section --- */
+.column-header-flex-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 10px; /* Space between the line and content below */
+    border-bottom: 1px solid #e0e0e0; /* MODIFIED: Added this line back */
+    margin-bottom: 10px; /* Space below, before the <pre> tag */
+}
+
+.column-header-flex-container h2 {
+    margin-bottom: 0; /* Remove default bottom margin from h2 */
+    border-bottom: none; /* Ensure h2 itself doesn't have a conflicting border */
+}
+
+.extraction-display .column .icon-button { /* Make selector slightly less specific if it was too tied to previous structure */
+    background: none;
+    border: none;
+    color: #495057; 
+    padding: 5px;   
+    cursor: pointer;
+    font-size: 1.1rem; 
+    line-height: 1;
+    border-radius: 4px; 
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+
+.extraction-display .column .icon-button:hover:not(:disabled) {
+    color: #007bff; /* Icon color on hover */
+    background-color: #e9ecef; /* Subtle background on hover */
+}
+
+.extraction-display .column .icon-button:disabled {
+    color: #adb5bd; /* Muted color when disabled */
+    cursor: not-allowed;
+    background-color: transparent; /* Ensure no background when disabled */
+}
+
+/* If the button contains an <i> tag for the icon */
+.extraction-display .column .icon-button i {
+    vertical-align: middle; /* Helps align the icon nicely */
+}
+/* --- End of modified section --- */

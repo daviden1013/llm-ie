@@ -246,7 +246,3 @@
     display: block; /* Or width: 100%; though pre is block by default */
     box-sizing: border-box; /* If padding/border would make it overflow */
 }
-
-.assistant-message .message-content {
-    /* Ensure it's distinct from reasoning if they are visually close */
-}
