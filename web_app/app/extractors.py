@@ -1,4 +1,5 @@
 import warnings
+from llm_ie.utils import extract_json, apply_prompt_template
 from llm_ie import DirectFrameExtractor, LLMInformationExtractionFrame
 from llm_ie.engines import InferenceEngine
 from llm_ie.data_types import FrameExtractionUnit
@@ -158,7 +159,7 @@ class AppDirectFrameExtractor(DirectFrameExtractor):
         frame_list = []
         for res in llm_output_results:
             entity_json = []
-            for entity in self._extract_json(gen_text=res.gen_text):
+            for entity in extract_json(gen_text=res.gen_text):
                 if ENTITY_KEY in entity:
                     entity_json.append(entity)
                 else:
