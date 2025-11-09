@@ -30,6 +30,9 @@ function initializePromptEditor() {
     let conversationHistory = [];
     let markedOptionsAreSet = false;
     const SCROLL_THRESHOLD = 20; // Pixels from bottom to trigger auto-scroll
+    
+    // NEW: Add a variable to hold the AbortController for the current chat stream
+    let currentChatStreamController = null;
 
     function ensureMarkedOptions() {
         if (markedOptionsAreSet) return;
@@ -385,13 +388,17 @@ function initializePromptEditor() {
         return config;
     }
 
-    function startChatStream(currentMessages, llmConfig) {
+    // MODIFIED: Renamed function and added controller parameter
+    function startChatStream(currentMessages, llmConfig, controller) {
         userInput.disabled = true;
-        sendButton.disabled = true;
+        // MODIFIED: Button is now handled by the sendButton click listener
+        // sendButton.disabled = true; 
         
         fetch('/api/prompt-editor/chat', {
            method: 'POST',
            headers: { 'Content-Type': 'application/json' },
+           // MODIFIED: Pass the AbortSignal to the fetch request
+           signal: controller.signal, 
            body: JSON.stringify({ messages: currentMessages, llmConfig: llmConfig })
         })
         .then(response => {
@@ -427,8 +434,10 @@ function initializePromptEditor() {
                         }
                     }
                     savePromptEditorState();
-                    userInput.disabled = false;
-                    sendButton.disabled = false;
+                    
+                    // MODIFIED: Reset UI and controller
+                    resetChatUI();
+                    
                     userInput.focus();
                     return;
                 }
@@ -465,21 +474,55 @@ function initializePromptEditor() {
             return reader.read().then(processStream);
         })
         .catch(error => {
-            console.error('Chat stream or fetch error:', error);
-            updateLastAssistantMessageDOM('error', error.message); // Show error in the message area
-            userInput.disabled = false;
-            sendButton.disabled = false;
-            userInput.focus();
-            
-            // Update conversationHistory with the error
-            const lastMsgIndex = conversationHistory.length - 1;
-            if (lastMsgIndex >= 0 && conversationHistory[lastMsgIndex].role === 'assistant' && 
-                (conversationHistory[lastMsgIndex].content === '...' || conversationHistory[lastMsgIndex].content === '')) {
-                conversationHistory[lastMsgIndex].content = `**Error:** ${error.message}`;
-                savePromptEditorState();
+            // MODIFIED: Handle AbortError specifically
+            if (error.name === 'AbortError') {
+                console.log('Chat stream aborted by user.');
+                updateLastAssistantMessageDOM('error', '[Generation stopped by user]');
+                
+                // Save the incomplete message (with the stop notice) to history
+                const lastMsgIndex = conversationHistory.length - 1;
+                if (lastMsgIndex >= 0 && conversationHistory[lastMsgIndex].role === 'assistant') {
+                    const lastMessageDiv = chatHistory.querySelector('.assistant-message:last-child');
+                    if (lastMessageDiv) {
+                         const mainContentDiv = lastMessageDiv.querySelector('.message-content');
+                         conversationHistory[lastMsgIndex].content = mainContentDiv ? (lastMessageDiv.dataset.rawText || mainContentDiv.textContent || "") : '[Generation stopped by user]';
+                         
+                         const reasoningTokensPre = lastMessageDiv.querySelector('.reasoning-tokens');
+                         if (reasoningTokensPre && reasoningTokensPre.textContent) {
+                             conversationHistory[lastMsgIndex].reasoning = reasoningTokensPre.textContent;
+                         }
+                    }
+                    savePromptEditorState();
+                }
+            } else {
+                console.error('Chat stream or fetch error:', error);
+                updateLastAssistantMessageDOM('error', error.message); // Show error in the message area
+                
+                // Update conversationHistory with the error
+                const lastMsgIndex = conversationHistory.length - 1;
+                if (lastMsgIndex >= 0 && conversationHistory[lastMsgIndex].role === 'assistant' && 
+                    (conversationHistory[lastMsgIndex].content === '...' || conversationHistory[lastMsgIndex].content === '')) {
+                    conversationHistory[lastMsgIndex].content = `**Error:** ${error.message}`;
+                    savePromptEditorState();
+                }
             }
+
+            // MODIFIED: Reset UI and controller in all error/abort cases
+            resetChatUI();
+            userInput.focus();
         });
     }
+
+    // NEW: Helper function to reset the chat UI state
+    function resetChatUI() {
+        userInput.disabled = false;
+        sendButton.disabled = false;
+        sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>'; // MODIFIED: Use icon
+        sendButton.title = 'Send message'; // MODIFIED: Update title
+        sendButton.classList.remove('stop-button');
+        currentChatStreamController = null; // Clear the controller
+    }
+
 
     // Initial setup
     loadPromptEditorState(); 
@@ -509,7 +552,18 @@ function initializePromptEditor() {
 
 
     if (sendButton) {
+        // MODIFIED: Updated sendButton click listener
         sendButton.addEventListener('click', () => {
+            
+            // Check if a stream is currently active
+            if (currentChatStreamController) {
+                // If active, abort the stream
+                currentChatStreamController.abort();
+                // resetChatUI() will be called from the fetch's catch block
+                return;
+            }
+
+            // If no stream is active, send a new message
             const userText = userInput.value.trim();
             if (!userText) return;
 
@@ -534,7 +588,18 @@ function initializePromptEditor() {
             
             savePromptEditorState();
 
-            startChatStream(conversationHistory.slice(0, -1), llmConfig);
+            // NEW: Create a new AbortController for this request
+            currentChatStreamController = new AbortController();
+            
+            // NEW: Change button to "Stop"
+            sendButton.innerHTML = '<i class="fas fa-stop"></i>'; // MODIFIED: Use icon
+            sendButton.title = 'Stop generation'; // MODIFIED: Update title
+            sendButton.classList.add('stop-button');
+            sendButton.disabled = false; // Ensure it's enabled to be clicked as "Stop"
+            userInput.disabled = true; // Keep textarea disabled
+
+            // MODIFIED: Pass the controller to the stream function
+            startChatStream(conversationHistory.slice(0, -1), llmConfig, currentChatStreamController);
         });
     }
 
@@ -542,18 +607,28 @@ function initializePromptEditor() {
         userInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                sendButton.click();
+                // Trigger click only if a stream is NOT active
+                if (!currentChatStreamController) {
+                    sendButton.click();
+                }
             }
         });
     }
 
     if (clearChatButton) {
         clearChatButton.addEventListener('click', () => {
+            // NEW: If a stream is active, stop it before clearing
+            if (currentChatStreamController) {
+                currentChatStreamController.abort();
+            }
+
             if (chatHistory) chatHistory.innerHTML = '';
             conversationHistory = [];
             savePromptEditorState(); // Save empty state
-            userInput.disabled = false;
-            sendButton.disabled = false;
+            
+            // MODIFIED: Use resetChatUI to ensure button is correct
+            resetChatUI(); 
+            
             hideApiSelectionWarning();
         });
     }
@@ -645,4 +720,3 @@ function initializePromptEditor() {
     window.promptEditorInitialized = true;
     console.log("Prompt Editor UI and event listeners initialized.");
 }
-

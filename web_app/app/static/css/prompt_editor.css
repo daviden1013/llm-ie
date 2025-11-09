@@ -68,24 +68,72 @@
     border-top: 1px solid #dee2e6;
     padding-top: 15px;
     flex-shrink: 0; /* Prevent input area from shrinking */
+    
+    /* NEW: Add container styles */
+    background-color: #f8f9fa; /* Light background for the container */
+    border: 1px solid #ced4da;  /* Border for the container */
+    border-radius: 8px;         /* Rounded corners for the container */
+    padding: 8px 12px;        /* Padding inside the container */
+    align-items: center;        /* Vertically align textarea and button */
+    border-top: 1px solid #ced4da; /* Keep the top separator */
+    padding-top: 8px; /* Adjust padding since border-top is now here */
 }
 
 .chat-input textarea {
     flex-grow: 1;
-    height: 60px;
+    min-height: 44px; /* Adjust height to fit button */
+    height: auto;     /* Allow it to grow */
+    max-height: 150px; /* Limit growth */
     resize: none;
     border-radius: 5px;
     padding: 10px 15px;
-    border: 1px solid #ced4da;
+    border: none; /* Remove default border */
+    outline: none; /* Remove outline on focus */
+    box-shadow: none; /* Remove any focus shadow */
     font-size: 1rem;
+    background-color: transparent; /* Make textarea background transparent */
 }
 
 .chat-input button {
-    height: 60px; /* Match textarea */
-    margin-top: 0; /* Override default margin */
+    height: 44px; /* Match textarea min-height */
+    width: 44px;  /* Make it square */
+    margin-top: 0; 
     border-radius: 5px; 
-    padding: 0 20px; /* Adjust padding */
-    flex-shrink: 0; /* Prevent button shrinking */
+    padding: 0; /* Remove padding */
+    flex-shrink: 0; 
+    font-size: 1.1rem; /* Icon size */
+    line-height: 1;
+    
+    /* NEW: Make button background transparent */
+    background-color: transparent;
+    border: none;
+    color: #007bff; /* Icon color */
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* NEW: Hover state for the send button */
+.chat-input button:not(:disabled):hover {
+    background-color: #e9ecef; /* Light background on hover */
+    color: #0056b3; /* Darker blue */
+}
+
+/* NEW: Disabled state */
+.chat-input button:disabled {
+    color: #adb5bd;
+    background-color: transparent;
+}
+
+
+/* NEW: Style for the "Stop" button state */
+.chat-input button.stop-button {
+    background-color: #fddfe2; /* Light red background */
+    border-color: transparent;
+    color: #dc3545; /* Red icon */
+}
+.chat-input button.stop-button:hover {
+    background-color: #f9c5c9; /* Darker light red on hover */
+    border-color: transparent;
+    color: #c82333; /* Darker red icon */
 }
 
 
@@ -157,10 +205,10 @@
 }
 
 .extraction-display .column > h2 { /* This targets h2s that are DIRECT children of .column */
-    flex-shrink: 0;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #e0e0e0; /* This might be the original line source */
-    margin-bottom: 10px;
+     flex-shrink: 0;
+     padding-bottom: 10px;
+     border-bottom: 1px solid #e0e0e0; /* This might be the original line source */
+     margin-bottom: 10px;
 }
 
 /* Styles for the header and button container within the column */
