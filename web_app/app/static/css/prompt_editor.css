@@ -74,7 +74,7 @@
     flex-grow: 1;
     height: 60px;
     resize: none;
-    border-radius: 20px; /* Rounded input */
+    border-radius: 5px;
     padding: 10px 15px;
     border: 1px solid #ced4da;
     font-size: 1rem;
@@ -83,7 +83,7 @@
 .chat-input button {
     height: 60px; /* Match textarea */
     margin-top: 0; /* Override default margin */
-    border-radius: 20px; /* Rounded button */
+    border-radius: 5px; 
     padding: 0 20px; /* Adjust padding */
     flex-shrink: 0; /* Prevent button shrinking */
 }

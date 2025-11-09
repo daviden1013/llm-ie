@@ -275,8 +275,7 @@ main {
     margin-right: 8px;
     vertical-align: middle;
 }
-.form-group label[for*="-checkbox"],
-.form-group label[for$="-model"] {
+.form-group label[for*="-checkbox"] {
     display: inline-block;
     font-weight: normal;
     margin-bottom: 0;
