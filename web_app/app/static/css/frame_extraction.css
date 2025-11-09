@@ -260,3 +260,20 @@ pre.final-result-json {
     vertical-align: middle; /* Helps align the icon nicely */
 }
 /* --- End of modified section --- */
+
+/* --- NEW: Container for the Start and Clear buttons --- */
+.fe-button-container {
+    display: flex;
+    justify-content: space-between;
+}
+
+/* --- NEW: Stop Button Style --- */
+.control-panel button.stop-button {
+    background-color: #dc3545; /* Red */
+    border-color: #dc3545;
+}
+
+.control-panel button.stop-button:hover {
+    background-color: #c82333; /* Darker red on hover */
+    border-color: #c82333;
+}

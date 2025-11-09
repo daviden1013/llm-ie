@@ -62,6 +62,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const feQwenThinkingModeCheckbox = document.getElementById('fe-qwen-thinking-mode');
 
     let currentExtractedFrames = null; 
+    
+    // NEW: Add a variable to hold the AbortController for the current extraction stream
+    let currentExtractionController = null; 
 
     // --- Helper Functions ---
     function escapeHTML(str) {
@@ -342,10 +345,39 @@ document.addEventListener('DOMContentLoaded', () => {
             handleTxtFile(file);
         });
     }
+    
+    // NEW: Helper function to reset the UI after stream ends/aborts
+    function resetExtractionUI() {
+        if (startButton) {
+            startButton.disabled = false;
+            startButton.innerHTML = 'Start Extraction';
+            startButton.classList.remove('stop-button');
+            startButton.title = 'Start Extraction';
+        }
+        if (clearButton) {
+            clearButton.disabled = false;
+        }
+        if (displayInputTextarea) {
+            displayInputTextarea.disabled = false; 
+        }
+        currentExtractionController = null; // Clear the controller
+    }
+
 
     // --- Event Listeners ---
     if (startButton) {
+        // MODIFIED: Updated startButton click listener
         startButton.addEventListener('click', () => {
+            
+            // Check if a stream is currently active
+            if (currentExtractionController) {
+                // If active, abort the stream
+                currentExtractionController.abort();
+                // The fetch's catch block will handle resetting the UI
+                return;
+            }
+            
+            // --- If no stream is active, send a new message ---
             const llmConfig = feGetLlmConfiguration();
             if (!llmConfig.api_type) {
                 feShowApiSelectionWarning();
@@ -375,8 +407,20 @@ document.addEventListener('DOMContentLoaded', () => {
             // REMOVED: No longer need to copy text to the display
             // displayInputElem.innerHTML = escapeHTML(inputText);
             
+            // --- All checks passed, start the extraction ---
+            
+            // NEW: Create a new AbortController for this request
+            currentExtractionController = new AbortController();
+
             outputElem.innerHTML = 'Starting extraction...\n';
-            startButton.disabled = true;
+            
+            // NEW: Change button to "Stop" state
+            startButton.disabled = false; // Keep it enabled so it can be clicked to stop
+            startButton.innerHTML = 'Stop'; 
+            startButton.classList.add('stop-button');
+            startButton.title = 'Stop Extraction';
+
+            // Disable other controls
             clearButton.disabled = true;
             if (downloadButton) downloadButton.disabled = true; 
             
@@ -405,7 +449,8 @@ document.addEventListener('DOMContentLoaded', () => {
             fetch('/api/frame-extraction/stream', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload),
+                signal: currentExtractionController.signal // NEW: Pass the abort signal
             })
             .then(response => {
                 if (!response.ok) {
@@ -447,10 +492,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             currentExtractedFrames = null;
                         }
                         outputElem.scrollTop = outputElem.scrollHeight;
-                        startButton.disabled = false;
-                        clearButton.disabled = false;
-                        // NEW: Re-enable textarea
-                        if (displayInputTextarea) displayInputTextarea.disabled = false; 
+                        
+                        // MODIFIED: Call UI reset function
+                        resetExtractionUI();
+                        
                         currentUnitId = null;
                         saveFrameExtractionState(); 
                         return;
@@ -559,27 +604,55 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (wasScrolledToBottom) {
                         outputElem.scrollTop = outputElem.scrollHeight;
                     }
+                    
+                    // MODIFIED: Added catch block for reader.read()
                     reader.read().then(processText).catch(error => {
-                        outputElem.innerHTML += `<div class="stream-error-message"><strong>Stream Reading Error:</strong> ${escapeHTML(error.toString())}</div>`;
-                        startButton.disabled = false; clearButton.disabled = false; if (downloadButton) downloadButton.disabled = true; currentUnitId = null; currentExtractedFrames = null;
-                        // NEW: Re-enable textarea
-                        if (displayInputTextarea) displayInputTextarea.disabled = false; 
+                        // NEW: Handle AbortError
+                        if (error.name === 'AbortError') {
+                            console.log('Extraction aborted by user.');
+                            outputElem.innerHTML += `<div class="info-message"><strong>INFO:</strong> Extraction stopped by user.</div>`;
+                        } else {
+                            outputElem.innerHTML += `<div class="stream-error-message"><strong>Stream Reading Error:</strong> ${escapeHTML(error.toString())}</div>`;
+                        }
+                        // MODIFIED: Call UI reset function
+                        resetExtractionUI();
+                        currentUnitId = null; 
+                        currentExtractedFrames = null;
+                        if (downloadButton) downloadButton.disabled = true;
                         saveFrameExtractionState(); 
                     });
                 }
+                
+                // MODIFIED: Added catch block for initial reader.read()
                 reader.read().then(processText).catch(initialReadError => {
-                    outputElem.innerHTML = `<div class="stream-error-message">Error starting stream: ${escapeHTML(initialReadError.toString())}</div>`;
-                    startButton.disabled = false; clearButton.disabled = false; if (downloadButton) downloadButton.disabled = true; currentUnitId = null; currentExtractedFrames = null;
-                    // NEW: Re-enable textarea
-                    if (displayInputTextarea) displayInputTextarea.disabled = false; 
+                     // NEW: Handle AbortError
+                    if (initialReadError.name === 'AbortError') {
+                        console.log('Extraction aborted by user (initial read).');
+                        outputElem.innerHTML += `<div class="info-message"><strong>INFO:</strong> Extraction stopped by user.</div>`;
+                    } else {
+                        outputElem.innerHTML = `<div class="stream-error-message">Error starting stream: ${escapeHTML(initialReadError.toString())}</div>`;
+                    }
+                    // MODIFIED: Call UI reset function
+                    resetExtractionUI();
+                    currentUnitId = null; 
+                    currentExtractedFrames = null;
+                    if (downloadButton) downloadButton.disabled = true;
                     saveFrameExtractionState();
                 });
             })
             .catch(error => {
-                outputElem.innerHTML = `<div class="stream-error-message">Error connecting to extraction API: ${escapeHTML(error.toString())}</div>`;
-                startButton.disabled = false; clearButton.disabled = false; if (downloadButton) downloadButton.disabled = true; currentUnitId = null; currentExtractedFrames = null;
-                // NEW: Re-enable textarea
-                if (displayInputTextarea) displayInputTextarea.disabled = false; 
+                // MODIFIED: Handle fetch-level errors, including abort
+                if (error.name === 'AbortError') {
+                    console.log('Extraction aborted by user (fetch level).');
+                    outputElem.innerHTML += `<div class="info-message"><strong>INFO:</strong> Extraction stopped by user.</div>`;
+                } else {
+                    outputElem.innerHTML = `<div class="stream-error-message">Error connecting to extraction API: ${escapeHTML(error.toString())}</div>`;
+                }
+                // MODIFIED: Call UI reset function
+                resetExtractionUI();
+                currentUnitId = null; 
+                currentExtractedFrames = null;
+                if (downloadButton) downloadButton.disabled = true;
                 saveFrameExtractionState();
             });
         });
@@ -587,12 +660,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (clearButton) {
         clearButton.addEventListener('click', () => {
+            // NEW: If a stream is active, stop it before clearing
+            if (currentExtractionController) {
+                currentExtractionController.abort();
+                // resetExtractionUI() will be called by the catch block
+            }
+            
             outputElem.innerHTML = '';
             // MODIFIED: Clear the display textarea
             if (displayInputTextarea) displayInputTextarea.value = ''; 
             
-            startButton.disabled = false;
-            clearButton.disabled = false;
+            // This is safe to call even if resetExtractionUI() was just called
+            resetExtractionUI(); 
+            
             if (downloadButton) downloadButton.disabled = true; 
             currentExtractedFrames = null; 
             
