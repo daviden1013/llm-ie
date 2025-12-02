@@ -7,7 +7,7 @@ Prompt Template Design:
    List the attributes to extract, and provide clear definitions for each one. 
 
 3. Output Format Definition:  
-   The output should be a JSON list, where each attribute be a key. The values could be any structure (e.g., str, int, List[str]).
+   The output should be a JSON, where each attribute be a key. The values could be any structure (e.g., str, int, List[str]).
 
 4. Optional: Hints:  
    Provide itemized hints for the information extractors to guide the extraction process. Remind the prompted agent to be truthful. Emphasize that the prompted agent is supposed to perform the task instead of writting code or instruct other agents to do it.
@@ -37,7 +37,7 @@ Example:
     Your output should follow the JSON format:
     {"Date": "<MM/DD/YYYY>", "Status": "<status>"}
 
-    I am only interested in the content between []. Do not explain your answer. 
+    I am only interested in the content between {}. Do not explain your answer. 
 
     ### Hints
     - If the date is not complete, use the first available date in the context. For example, if the date is 01/2023, you should return 01/01/2023.
