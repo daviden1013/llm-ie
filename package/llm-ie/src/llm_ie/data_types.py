@@ -141,7 +141,7 @@ class LLMInformationExtractionFrame:
 
 
 class LLMInformationExtractionDocument:
-    def __init__(self, doc_id:str=None, filename:str=None, text:str=None, 
+    def __init__(self, doc_id:str=None, filename:str=None, text:str=None, struct:Dict=None,
                  frames:List[LLMInformationExtractionFrame]=None, relations:List[Dict[str,str]]=None):
         """
         This class holds LLM-extracted frames, handles save/ load.
@@ -154,6 +154,8 @@ class LLMInformationExtractionDocument:
             the directory to a yaml file of a saved LLMInformationExtractionDocument
         text : str, Optional
             document text
+        struct : Dict, Optional
+            a dictionary of unanchored structure information
         frames : List[LLMInformationExtractionFrame], Optional
             a list of LLMInformationExtractionFrame
         relations : List[Dict[str,str]], Optional
@@ -168,12 +170,28 @@ class LLMInformationExtractionDocument:
                 llm_ie = json.load(json_file)
             if 'doc_id' in llm_ie.keys():
                 self.doc_id = llm_ie['doc_id']
+            else: 
+                raise ValueError("doc_id key not found in the file.")
+            
             if 'text' in llm_ie.keys():
                 self.text = llm_ie['text']
+            else:
+                raise ValueError("text key not found in the file.")
+            
+            if 'struct' in llm_ie.keys():
+                self.struct = llm_ie['struct']
+            else:
+                self.struct = {}
+
             if 'frames' in llm_ie.keys():
                 self.frames = [LLMInformationExtractionFrame.from_dict(d) for d in llm_ie['frames']]
+            else:
+                self.frames = []
+
             if 'relations' in llm_ie.keys():
                 self.relations = llm_ie['relations']
+            else:
+                self.relations = []
 
         # create object from raw inputs
         else:
@@ -181,9 +199,15 @@ class LLMInformationExtractionDocument:
                 raise TypeError("doc_id must be a string.")
             self.doc_id = doc_id
             self.text = text
+            self.struct = struct.copy() if struct is not None else {}
             self.frames = frames.copy() if frames is not None else []
             self.relations = relations.copy() if relations is not None else []
 
+    def has_struct(self) -> bool:
+        """
+        This method checks if there is any unanchored structure information.
+        """
+        return bool(self.struct)
 
     def has_frame(self) -> bool:
         """
@@ -228,6 +252,18 @@ class LLMInformationExtractionDocument:
 
         return None
 
+    def set_struct(self, struct:Dict):
+        """
+        This method sets the unanchored structure information.
+
+        Parameters
+        ----------
+        struct : Dict
+            a dictionary of unanchored structure information
+        """
+        if not isinstance(struct, Dict):
+            raise TypeError("struct must be a dictionary.")
+        self.struct = struct.copy()
     
     def add_frame(self, frame:LLMInformationExtractionFrame, valid_mode:str=None, create_id:bool=False) -> bool:
         """
@@ -326,10 +362,12 @@ class LLMInformationExtractionDocument:
 
     def __repr__(self, N_top_chars:int=100) -> str:
         text_to_print = self.text[0:N_top_chars]
+        struct_key_count = len(self.struct.keys())
         frame_count = len(self.frames)
         relation_count = len(self.relations)
         return ''.join((f'LLMInformationExtractionDocument(doc_id: "{self.doc_id}"\n',
                         f'text: "{text_to_print}...",\n',
+                        f'struct keys: {struct_key_count}\n',
                         f'frames: {frame_count}\n',
                         f'relations: {relation_count}'))
 
@@ -338,6 +376,7 @@ class LLMInformationExtractionDocument:
         with open(filename, 'w') as json_file:
             json.dump({'doc_id': self.doc_id, 
                         'text': self.text, 
+                        'struct': self.struct,
                         'frames': [frame.to_dict() for frame in self.frames],
                         'relations': self.relations}, 
                         json_file, indent=4)
@@ -346,16 +385,22 @@ class LLMInformationExtractionDocument:
 
     def _viz_preprocess(self) -> Tuple:
         """
-        This method preprocesses the entities and relations for visualization.
+        This method preprocesses the struct, entities and relations for visualization.
         """
         if importlib.util.find_spec("ie_viz") is None:
-            raise ImportError("ie_viz not found. Please install ie_viz (```pip install ie-viz```).")
+            raise ImportError("ie_viz not found. Please install ie_viz (```pip install -U ie-viz```).")
 
+        # Struct
+        if self.has_struct():
+            struct = self.struct
+        else:
+            struct = {}
+        # Entities
         if self.has_frame():
             entities = [{"entity_id": frame.frame_id, "start": frame.start, "end": frame.end, "attr": frame.attr} for frame in self.frames]
         else:
-            raise ValueError("No frames in the document.")
-        
+            entities = None
+        # Relations
         if self.has_relation():
             relations = []
             for relation in self.relations:
@@ -364,7 +409,7 @@ class LLMInformationExtractionDocument:
         else:
             relations = None
 
-        return entities, relations
+        return struct, entities, relations
 
 
     def viz_serve(self, host: str = '0.0.0.0', port: int = 5000, theme:str = "light", title:str="Frames Visualization",
@@ -388,29 +433,20 @@ class LLMInformationExtractionDocument:
             The function to be used for mapping the entity attributes to colors. When provided, the color_attr_key and 
             theme will be overwritten. The function must take an entity dictionary as input and return a color string (hex).
         """
-        entities, relations = self._viz_preprocess()
+        struct, entities, relations = self._viz_preprocess()
         from ie_viz import serve
 
-        try:
-            serve(text=self.text,
-                    entities=entities,
-                    relations=relations,
-                    host=host,
-                    port=port,
-                    theme=theme,
-                    title=title,
-                    color_attr_key=color_attr_key,
-                    color_map_func=color_map_func)
-        except TypeError:
-            warnings.warn("The version of ie_viz is not the latest. Please update to the latest version (pip install --upgrade ie-viz) for complete features.", UserWarning)
-            serve(text=self.text,
-                    entities=entities,
-                    relations=relations,
-                    host=host,
-                    port=port,
-                    theme=theme,
-                    color_attr_key=color_attr_key,
-                    color_map_func=color_map_func)
+        serve(text=self.text,
+              struct=struct,
+              entities=entities,
+              relations=relations,
+              host=host,
+              port=port,
+              theme=theme,
+              title=title,
+              color_attr_key=color_attr_key,
+              color_map_func=color_map_func)
+
     
     def viz_render(self, theme:str = "light", color_attr_key:str=None, color_map_func:Callable=None,
                    title:str="Frames Visualization") -> str:
@@ -429,22 +465,14 @@ class LLMInformationExtractionDocument:
         title : str, Optional
             the title of the HTML.
         """
-        entities, relations = self._viz_preprocess()
+        struct, entities, relations = self._viz_preprocess()
         from ie_viz import render
 
-        try:
-            return render(text=self.text,
-                        entities=entities,
-                        relations=relations,
-                        theme=theme,
-                        title=title,
-                        color_attr_key=color_attr_key,
-                        color_map_func=color_map_func)
-        except TypeError:
-                warnings.warn("The version of ie_viz is not the latest. Please update to the latest version (pip install --upgrade ie-viz) for complete features.", UserWarning)
-                return render(text=self.text,
-                        entities=entities,
-                        relations=relations,
-                        theme=theme,
-                        color_attr_key=color_attr_key,
-                        color_map_func=color_map_func)
+        return render(text=self.text,
+                      struct=struct,
+                      entities=entities,
+                      relations=relations,
+                      theme=theme,
+                      title=title,
+                      color_attr_key=color_attr_key,
+                      color_map_func=color_map_func)
