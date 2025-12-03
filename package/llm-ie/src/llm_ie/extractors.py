@@ -491,6 +491,33 @@ class StructExtractor(Extractor):
         return struct
 
 
+class BasicStructExtractor(StructExtractor):
+    def __init__(self, inference_engine:InferenceEngine, prompt_template:str, 
+                 system_prompt:str=None, aggregation_func:Callable=None):
+        """
+        This class prompts the LLM with the whole document at once for structured information extraction.
+        Input LLM inference engine, system prompt (optional), prompt template (with instruction, few-shot examples).
+
+        Parameters:
+        ----------
+        inference_engine : InferenceEngine
+            the LLM inferencing engine object. Must implements the chat() method.
+        prompt_template : str
+            prompt template with "{{<placeholder name>}}" placeholder.
+        system_prompt : str, Optional
+            system prompt.
+        aggregation_func : Callable
+            a function that inputs a list of structured information (dict) 
+            and outputs an aggregated structured information (dict).
+            if not specified, the default is to merge all dicts by updating keys and overwriting values sequentially.
+        """
+        super().__init__(inference_engine=inference_engine,
+                         unit_chunker=WholeDocumentUnitChunker(),
+                         prompt_template=prompt_template,
+                         system_prompt=system_prompt,
+                         context_chunker=WholeDocumentContextChunker())
+        
+
 class FrameExtractor(Extractor):
     from nltk.tokenize import RegexpTokenizer
     def __init__(self, inference_engine:InferenceEngine, unit_chunker:UnitChunker, 
