@@ -27,6 +27,7 @@ A comprehensive toolkit that provides building blocks for LLM-based named entity
 - [v1.2.1](https://github.com/daviden1013/llm-ie/releases/tag/v1.2.1) (Jul 12, 2025): Added exporting/importing chat history functionality to the Prompt Editor.
 - [v1.2.2](https://github.com/daviden1013/llm-ie/releases/tag/v1.2.2) (Aug 25, 2025): Added configs for reasoning LLMs (GPT-OSS, Qwen3).
 - [v1.2.3](https://github.com/daviden1013/llm-ie/releases/tag/v1.2.3) (Oct 2, 2025): Separated vLLM inference engine support to `VLLMInferenceEngine`, OpenRouter support to `OpenRouterInferenceEngine`. 
+- [v1.3.0](https://github.com/daviden1013/llm-ie/releases/tag/v1.3.0) (Dec 2, 2025): Added `StructExtractor` for non-entity structured data extraction.
 
 
 ## 📑Table of Contents
