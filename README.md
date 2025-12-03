@@ -11,7 +11,7 @@ A comprehensive toolkit that provides building blocks for LLM-based named entity
 |----------|----------|
 | **LLM Agent for prompt writing** | :white_check_mark: Web App, Interactive chat |
 | **Named Entity Recognition (NER)** | :white_check_mark: Customizable granularity (e.g., sentence-level, document-level) |
-| **Entity Attributes Extraction** | :white_check_mark: Flexible formats |
+| **Entity Attributes Extraction (AE)** | :white_check_mark: Flexible formats |
 | **Relation Extraction (RE)** | :white_check_mark: Binary & Multiclass relations |
 | **Visualization** | :white_check_mark: Web App, Built-in entity & relation visualization |
 

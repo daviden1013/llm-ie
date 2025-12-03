@@ -1,13 +1,61 @@
-An extractor implements a prompting algorithm for information extraction. There are three extractor families: `FrameExtractor`, `AttributeExtractor` and `RelationExtractor`. 
+An extractor implements a prompting algorithm for information extraction. There are four extractor families: `StrctExtractor`, `FrameExtractor`, `AttributeExtractor` and `RelationExtractor`. 
+The `StructExtractor` extracts document level structured data that is not entity-based. 
 The `FrameExtractor` extracts named entities with attributes ("frames"). The `AttributeExtractor` extracts additional attributes and serve as an assistant class for `FrameExtractor`. The `RelationExtractor` extracts the relations (and relation types) between frames. Under `FrameExtractor`, we made pre-packaged extractors that does not require much configuation and are often sufficient for regular use case ([Convenience FrameExtractor](#convenience-frameextractor)).
 
-## FrameExtractor
-Frame extractors in general adopts an **unit-context schema**. The purpose is to avoid having LLM to process long context and suffer from *needle in the haystack* challenge. We split an input document into multiple units. LLM only process a unit of text at a time. 
+![Extractors](./readme_img/extractors_diagram.png)
+
+## Unit-Context Schema
+Struct extractor and Frame extractors in general adopts an **unit-context schema**. The purpose is to avoid having LLM to process long context and suffer from *needle in the haystack* challenge. We split an input document into multiple units. LLM only process a unit of text at a time. 
 
 - **Unit:** a text snippet that LLM extrator will process at a time. It could be a sentence, a line of text, or a paragraph. 
 - **Context:** the context around the unit. For exapmle, a slidewindow of 2 sentences before and after. Context is optional. 
 
 ![unit-context schema](./readme_img/unit_context_schema.png)
+
+## StructExtractor
+The `StructExtractor` extracts document-level structured data that is not entity-based. The extracted information does not have to be mentioned in the text. For example, given a clinical note, we want to extract the *Document Type* (e.g., Discharge Summary, Radiology Report, etc.), *Author Specialty* (e.g., Cardiologist, Radiologist, etc.), and *Urgency Level* (e.g., Routine, Stat, etc.). These information might not be explicitly mentioned in the note text. Another usage is when we do not care about the entity spans, but only care about the overall information in the document. For example, in a pathology report, we want to extract the *Cancer Type* (e.g., Lung Cancer, Breast Cancer, etc.) and *Stage* (e.g., Stage I, Stage II, etc.).
+
+The information to be extracted is defined in the `prompt_template`. The schema must be a JSON/dict format with key-value pairs. The keys are the field names, and the values are the field descriptions. For example, the prompt template could be:
+
+```json
+{
+    "Cancer_type": "the type of cancer mentioned in the pathology report (e.g., Lung Cancer, Breast Cancer, etc.)",
+    "Stage": "the stage of the cancer mentioned in the pathology report (e.g., Stage I, Stage II, etc.)"
+}
+```
+
+To define a `StructExtractor`:
+```python
+from llm_ie import BasicStructExtractor
+
+extractor = BasicStructExtractor(
+    inference_engine=llm,
+    prompt_template=prompt_temp,
+)
+
+cancer_info = extractor.extract_struct(note_text)
+```
+
+Alternatively, we can define the unit and context chunkers explicitly. For example, using `SentenceUnitChunker` to chunk the document into sentences, and `SlideWindowContextChunker` to provide a slide window of 2 sentences before and after each sentence as context. For each sentence, the extractor will prompt LLM to extract the structured information defined in the `prompt_template`. After processing all sentences, the extractor will aggregate the outputs from all sentences to generate the final structured output for the entire document (see ). Custom aggregation functions can be defined by passing in the `aggregation_func` parameter in the `StructExtractor` constructor.
+
+```python
+from llm_ie import SentenceUnitChunker, SlideWindowContextChunker, StructExtractor
+
+sentence_chunker = SentenceUnitChunker()
+context_chunker = SlideWindowContextChunker(window_size=2)
+extractor = StructExtractor(
+    unit_chunker=sentence_chunker,
+    context_chunker=context_chunker,
+    inference_engine=llm,
+    prompt_template=prompt_temp,
+)
+
+cancer_info = extractor.extract_struct(note_text)
+```
+
+
+## FrameExtractor
+The `FrameExtractor` extracts named entities with attributes ("frames") from the input document. The extracted frame includes a subtext `entity_text` that must be present in the input document, along with optional attributes defined in the `prompt_template`. The typical usage is to extract mentions of medical concepts (e.g., diagnoses, medications, procedures, etc.) from clinical notes. 
 
 ### DirectFrameExtractor
 The `DirectFrameExtractor` implements the unit-context schema. We start by defining the unit using one of the `UnitChunker`. The `SentenceUnitChunker` chunks the input document into sentences. Then, we define how context should be provided by choosing one of the `ContextChunker`. The `SlideWindowContextChunker` parse 2 units (sentences in this case) before and after each unit as context. For more options, see [Chunkers](./chunkers.md).
