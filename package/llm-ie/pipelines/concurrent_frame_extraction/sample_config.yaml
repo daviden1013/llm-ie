@@ -1,0 +1,12 @@
+---
+  run_name: sample_config
+  engine_config: <your_engine_config>
+  system_pormpt_dir: <your_system_prompt_path>
+  frame_prompt_dir: <your_user_prompt_path>
+  concurrent_batch_size: <max_concurrent_requests_per_document>
+  max_concurrent_requests: <global max_concurrent_requests>
+
+  data_dir: <your_data_path>
+  base_url: <your_base_url>
+  out_dir: <your_output_path>
+  messages_log_dir: <your_messages_log_path>
