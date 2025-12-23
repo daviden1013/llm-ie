@@ -28,6 +28,9 @@ A comprehensive toolkit that provides building blocks for LLM-based named entity
 - [v1.2.2](https://github.com/daviden1013/llm-ie/releases/tag/v1.2.2) (Aug 25, 2025): Added configs for reasoning LLMs (GPT-OSS, Qwen3).
 - [v1.2.3](https://github.com/daviden1013/llm-ie/releases/tag/v1.2.3) (Oct 2, 2025): Separated vLLM inference engine support to `VLLMInferenceEngine`, OpenRouter support to `OpenRouterInferenceEngine`. 
 - [v1.3.0](https://github.com/daviden1013/llm-ie/releases/tag/v1.3.0) (Dec 2, 2025): Added `StructExtractor` for non-entity structured data extraction.
+- [v1.4.0](https://github.com/daviden1013/llm-ie/releases/tag/v1.4.0) (Dec 23, 2025): 
+  - Added async extract methods for all extractors.
+  - Moved InferenceEngines implementation to standalone package [llm-inference-engine](https://github.com/daviden1013/llm-inference-engine).
 
 
 ## 📑Table of Contents
@@ -163,10 +166,9 @@ inference_engine = SGLangInferenceEngine(model="meta-llama/Meta-Llama-3.1-8B-Ins
 <summary>🦙 Llama-cpp-python</summary>
 
 ```python
-from llm_ie.engines import LlamaCppInferenceEngine
+from llm_ie.engines import OpenAICompatibleInferenceEngine
 
-inference_engine = LlamaCppInferenceEngine(repo_id="bullerwins/Meta-Llama-3.1-8B-Instruct-GGUF",
-                                           gguf_filename="Meta-Llama-3.1-8B-Instruct-Q8_0.gguf")
+inference_engine = OpenAICompatibleInferenceEngine(model="meta-llama/Meta-Llama-3.1-8B-Instruct", api_key="", base_url="http://localhost:8080/v1")
 ```
 </details>
 
