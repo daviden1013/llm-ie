@@ -6,8 +6,7 @@ import warnings
 import itertools
 import asyncio
 import nest_asyncio
-from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Set, List, Dict, Tuple, Union, Callable, Generator, Optional, AsyncGenerator
+from typing import Any, Set, List, Dict, Tuple, Union, Callable, Generator, Optional
 from llm_ie.utils import extract_json, apply_prompt_template
 from llm_ie.data_types import FrameExtractionUnit, LLMInformationExtractionFrame, LLMInformationExtractionDocument
 from llm_ie.chunkers import UnitChunker, WholeDocumentUnitChunker, SentenceUnitChunker
@@ -306,7 +305,7 @@ class StructExtractor(Extractor):
         yield {"type": "info", "data": "All units processed by LLM."}
         return units
 
-    async def extract_async(self, text_content:Union[str, Dict[str,str]], document_key:str=None, 
+    async def _extract_async(self, text_content:Union[str, Dict[str,str]], document_key:str=None, 
                             concurrent_batch_size:int=32, return_messages_log:bool=False) -> List[FrameExtractionUnit]:
         """
         This is the asynchronous version of the extract() method.
@@ -422,6 +421,28 @@ class StructExtractor(Extractor):
         for struct in structs:
             aggregated_struct.update(struct)
         return aggregated_struct
+    
+    def _post_process_struct(self, units: List[FrameExtractionUnit]) -> Dict[str, Any]:
+        """
+        Helper method to post-process units into a structured dictionary.
+        Shared by extract_struct and extract_struct_async.
+        """
+        struct_json = []
+        for unit in units:
+            if unit.status != "success":
+                continue
+            try:
+                unit_struct_json = extract_json(unit.get_generated_text())
+                struct_json.extend(unit_struct_json)
+            except Exception as e:
+                unit.set_status("fail")
+                warnings.warn(f"Struct extraction failed for unit ({unit.start}, {unit.end}): {e}", RuntimeWarning)
+        
+        if self.aggregation_func is None:
+            struct = self._default_struct_aggregate(struct_json)
+        else: 
+            struct = self.aggregation_func(struct_json)
+        return struct
 
     
     def extract_struct(self, text_content:Union[str, Dict[str,str]], document_key:str=None, 
@@ -457,7 +478,7 @@ class StructExtractor(Extractor):
                 warnings.warn("verbose=True is not supported in concurrent mode.", RuntimeWarning)
 
             nest_asyncio.apply() # For Jupyter notebook. Terminal does not need this.
-            extraction_results = asyncio.run(self.extract_async(text_content=text_content, 
+            extraction_results = asyncio.run(self._extract_async(text_content=text_content, 
                                                 document_key=document_key,
                                                 concurrent_batch_size=concurrent_batch_size,
                                                 return_messages_log=return_messages_log)
@@ -470,22 +491,25 @@ class StructExtractor(Extractor):
             
         units, messages_log = extraction_results if return_messages_log else (extraction_results, None)
 
-        struct_json = []
-        for unit in units:
-            if unit.status != "success":
-                continue
-            try:
-                unit_struct_json = extract_json(unit.get_generated_text())
-                struct_json.extend(unit_struct_json)
-            except Exception as e:
-                unit.set_status("fail")
-                warnings.warn(f"Struct extraction failed for unit ({unit.start}, {unit.end}): {e}", RuntimeWarning)
-        
-        if self.aggregation_func is None:
-            struct = self._default_struct_aggregate(struct_json)
-        else: 
-            struct = self.aggregation_func(struct_json)
+        struct = self._post_process_struct(units)
 
+        if return_messages_log:
+            return struct, messages_log
+        return struct
+
+    async def extract_struct_async(self, text_content:Union[str, Dict[str,str]], document_key:str=None, 
+                                   concurrent_batch_size:int=32, return_messages_log:bool=False) -> Dict[str, Any]:
+        """
+        This is the async version of extract_struct.
+        """
+        extraction_results = await self._extract_async(text_content=text_content, 
+                                                      document_key=document_key,
+                                                      concurrent_batch_size=concurrent_batch_size,
+                                                      return_messages_log=return_messages_log)
+        
+        units, messages_log = extraction_results if return_messages_log else (extraction_results, None)
+        struct = self._post_process_struct(units)
+        
         if return_messages_log:
             return struct, messages_log
         return struct
@@ -725,6 +749,14 @@ class FrameExtractor(Extractor):
         """
         return NotImplemented
     
+    @abc.abstractmethod
+    async def extract_frames_async(self, text_content:Union[str, Dict[str,str]], entity_key:str, 
+                                   document_key:str=None, return_messages_log:bool=False, **kwrs) -> List[LLMInformationExtractionFrame]:
+        """
+        This is the async version of extract_frames.
+        """
+        return NotImplemented
+    
 
 class DirectFrameExtractor(FrameExtractor):
     def __init__(self, inference_engine:InferenceEngine, unit_chunker:UnitChunker, 
@@ -933,7 +965,7 @@ class DirectFrameExtractor(FrameExtractor):
         yield {"type": "info", "data": "All units processed by LLM."}
         return units
 
-    async def extract_async(self, text_content:Union[str, Dict[str,str]], document_key:str=None, 
+    async def _extract_async(self, text_content:Union[str, Dict[str,str]], document_key:str=None, 
                             concurrent_batch_size:int=32, return_messages_log:bool=False) -> List[FrameExtractionUnit]:
         """
         This is the asynchronous version of the extract() method.
@@ -1040,6 +1072,45 @@ class DirectFrameExtractor(FrameExtractor):
         else:
             return units
 
+    def _post_process_units_to_frames(self, units, case_sensitive, fuzzy_match, fuzzy_buffer_size, fuzzy_score_cutoff, allow_overlap_entities):
+        ENTITY_KEY = "entity_text"
+        frame_list = []
+        for unit in units:
+            entity_json = []
+            if unit.status != "success":
+                warnings.warn(f"Skipping failed unit ({unit.start}, {unit.end}): {unit.text}", RuntimeWarning)
+                continue
+            for entity in extract_json(gen_text=unit.gen_text):
+                if ENTITY_KEY in entity:
+                    entity_json.append(entity)
+                else:
+                    warnings.warn(f'Extractor output "{entity}" does not have entity_key ("{ENTITY_KEY}"). This frame will be dropped.', RuntimeWarning)
+
+            spans = self._find_entity_spans(text=unit.text, 
+                                            entities=[e[ENTITY_KEY] for e in entity_json], 
+                                            case_sensitive=case_sensitive,
+                                            fuzzy_match=fuzzy_match,
+                                            fuzzy_buffer_size=fuzzy_buffer_size,
+                                            fuzzy_score_cutoff=fuzzy_score_cutoff,
+                                            allow_overlap_entities=allow_overlap_entities)
+            for ent, span in zip(entity_json, spans):
+                if span is not None:
+                    start, end = span
+                    entity_text = unit.text[start:end]
+                    start += unit.start
+                    end += unit.start
+                    attr = {}
+                    if "attr" in ent and ent["attr"] is not None:
+                        attr = ent["attr"]
+                       
+                    frame = LLMInformationExtractionFrame(frame_id=f"{len(frame_list)}", 
+                                start=start,
+                                end=end,
+                                entity_text=entity_text,
+                                attr=attr)
+                    frame_list.append(frame)
+        return frame_list
+
 
     def extract_frames(self, text_content:Union[str, Dict[str,str]], document_key:str=None, 
                        verbose:bool=False, concurrent:bool=False, concurrent_batch_size:int=32,
@@ -1088,7 +1159,7 @@ class DirectFrameExtractor(FrameExtractor):
                 warnings.warn("verbose=True is not supported in concurrent mode.", RuntimeWarning)
 
             nest_asyncio.apply() # For Jupyter notebook. Terminal does not need this.
-            extraction_results = asyncio.run(self.extract_async(text_content=text_content, 
+            extraction_results = asyncio.run(self._extract_async(text_content=text_content, 
                                                 document_key=document_key,
                                                 concurrent_batch_size=concurrent_batch_size,
                                                 return_messages_log=return_messages_log)
@@ -1101,248 +1172,31 @@ class DirectFrameExtractor(FrameExtractor):
             
         units, messages_log = extraction_results if return_messages_log else (extraction_results, None)
         
-        frame_list = []
-        for unit in units:
-            entity_json = []
-            if unit.status != "success":
-                warnings.warn(f"Skipping failed unit ({unit.start}, {unit.end}): {unit.text}", RuntimeWarning)
-                continue
-            for entity in extract_json(gen_text=unit.gen_text):
-                if ENTITY_KEY in entity:
-                    entity_json.append(entity)
-                else:
-                    warnings.warn(f'Extractor output "{entity}" does not have entity_key ("{ENTITY_KEY}"). This frame will be dropped.', RuntimeWarning)
+        frame_list = self._post_process_units_to_frames(units, case_sensitive, fuzzy_match, fuzzy_buffer_size, fuzzy_score_cutoff, allow_overlap_entities)
 
-            spans = self._find_entity_spans(text=unit.text, 
-                                            entities=[e[ENTITY_KEY] for e in entity_json], 
-                                            case_sensitive=case_sensitive,
-                                            fuzzy_match=fuzzy_match,
-                                            fuzzy_buffer_size=fuzzy_buffer_size,
-                                            fuzzy_score_cutoff=fuzzy_score_cutoff,
-                                            allow_overlap_entities=allow_overlap_entities)
-            for ent, span in zip(entity_json, spans):
-                if span is not None:
-                    start, end = span
-                    entity_text = unit.text[start:end]
-                    start += unit.start
-                    end += unit.start
-                    attr = {}
-                    if "attr" in ent and ent["attr"] is not None:
-                        attr = ent["attr"]
-                       
-                    frame = LLMInformationExtractionFrame(frame_id=f"{len(frame_list)}", 
-                                start=start,
-                                end=end,
-                                entity_text=entity_text,
-                                attr=attr)
-                    frame_list.append(frame)
+        if return_messages_log:
+            return frame_list, messages_log
+        return frame_list
+
+    async def extract_frames_async(self, text_content:Union[str, Dict[str,str]], document_key:str=None, 
+                                   concurrent_batch_size:int=32, case_sensitive:bool=False, 
+                                   fuzzy_match:bool=True, fuzzy_buffer_size:float=0.2, fuzzy_score_cutoff:float=0.8,
+                                   allow_overlap_entities:bool=False, return_messages_log:bool=False) -> List[LLMInformationExtractionFrame]:
+        """
+        This is the async version of extract_frames.
+        """
+        extraction_results = await self._extract_async(text_content=text_content, 
+                                                      document_key=document_key,
+                                                      concurrent_batch_size=concurrent_batch_size,
+                                                      return_messages_log=return_messages_log)
+        
+        units, messages_log = extraction_results if return_messages_log else (extraction_results, None)
+        frame_list = self._post_process_units_to_frames(units, case_sensitive, fuzzy_match, fuzzy_buffer_size, fuzzy_score_cutoff, allow_overlap_entities)
 
         if return_messages_log:
             return frame_list, messages_log
         return frame_list
         
-
-    async def extract_frames_from_documents(self, text_contents:List[Union[str,Dict[str, any]]], document_key:str="text",
-            cpu_concurrency:int=4, llm_concurrency:int=32, case_sensitive:bool=False, 
-            fuzzy_match:bool=True, fuzzy_buffer_size:float=0.2, fuzzy_score_cutoff:float=0.8,
-            allow_overlap_entities:bool=False, return_messages_log:bool=False) -> AsyncGenerator[Dict[str, any], None]:
-        """
-        This method inputs a list of documents and yields the results for each document as soon as it is complete.
-
-        Parameters:
-        -----------
-        text_contents : List[Union[str,Dict[str, any]]]
-            a list of input text contents to put in prompt template. 
-            If str, the prompt template must has only 1 placeholder {{<placeholder name>}}, regardless of placeholder name.
-            If dict, all the keys must be included in the prompt template placeholder {{<placeholder name>}}.
-        document_key: str, optional
-            The key in the `text_contents` dictionaries that holds the document text.
-        cpu_concurrency: int, optional
-            The number of parallel threads to use for CPU-bound tasks like chunking.
-        llm_concurrency: int, optional
-            The number of concurrent requests to make to the LLM.
-        case_sensitive : bool, Optional
-            if True, entity text matching will be case-sensitive.
-        fuzzy_match : bool, Optional
-            if True, fuzzy matching will be applied to find entity text.
-        fuzzy_buffer_size : float, Optional
-            the buffer size for fuzzy matching. Default is 20% of entity text length.
-        fuzzy_score_cutoff : float, Optional
-            the Jaccard score cutoff for fuzzy matching. 
-            Matched entity text must have a score higher than this value or a None will be returned.
-        allow_overlap_entities : bool, Optional
-            if True, entities can overlap in the text.
-        return_messages_log : bool, Optional
-            if True, a list of messages will be returned.
-
-        Yields:
-        -------
-        AsyncGenerator[Dict[str, any], None]
-            A dictionary for each completed document, containing its 'idx' and extracted 'frames'.
-        """
-        # Validate text_contents must be a list of str or dict, and not both
-        if not isinstance(text_contents, list):
-            raise ValueError("text_contents must be a list of strings or dictionaries.")
-        if all(isinstance(doc, str) for doc in text_contents):
-            pass  
-        elif all(isinstance(doc, dict) for doc in text_contents):
-            pass
-        # Set CPU executor and queues
-        cpu_executor = ThreadPoolExecutor(max_workers=cpu_concurrency)
-        tasks_queue = asyncio.Queue(maxsize=llm_concurrency * 2)
-        # Store to track units and pending counts
-        results_store = {
-            idx: {'pending': 0, 'units': [], 'text': doc if isinstance(doc, str) else doc.get(document_key, "")}
-            for idx, doc in enumerate(text_contents)
-        }
-
-        output_queue = asyncio.Queue()
-        messages_logger = MessagesLogger() if return_messages_log else None
-
-        async def producer():
-            try:
-                for idx, text_content in enumerate(text_contents):
-                    text = text_content if isinstance(text_content, str) else text_content.get(document_key, "")
-                    if not text:
-                        warnings.warn(f"Document at index {idx} is empty or missing the document key '{document_key}'.")
-                        # signal that this document is done
-                        await output_queue.put({'idx': idx, 'frames': []})
-                        continue
-
-                    units = await self.unit_chunker.chunk_async(text, cpu_executor)
-                    await self.context_chunker.fit_async(text, units, cpu_executor)
-                    results_store[idx]['pending'] = len(units)
-
-                    # Handle cases where a document yields no units
-                    if not units: 
-                        # signal that this document is done
-                        await output_queue.put({'idx': idx, 'frames': []})
-                        continue
-
-                    # Iterate through units
-                    for unit in units:
-                        context = await self.context_chunker.chunk_async(unit, cpu_executor)
-                        messages = []
-                        if self.system_prompt:
-                            messages.append({'role': 'system', 'content': self.system_prompt})
-
-                        if not context:
-                            if isinstance(text_content, str):
-                                messages.append({'role': 'user', 'content': self._get_user_prompt(unit.text)})
-                            else:
-                                unit_content = text_content.copy()
-                                unit_content[document_key] = unit.text
-                                messages.append({'role': 'user', 'content': self._get_user_prompt(unit_content)})
-                        else:
-                            # insert context to user prompt
-                            if isinstance(text_content, str):
-                                messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
-                            else:
-                                context_content = text_content.copy()
-                                context_content[document_key] = context
-                                messages.append({'role': 'user', 'content': self._get_user_prompt(context_content)})
-                            # simulate conversation where assistant confirms
-                            messages.append({'role': 'assistant', 'content': 'Sure, please provide the unit text (e.g., sentence, line, chunk) of interest.'})
-                            # place unit of interest
-                            messages.append({'role': 'user', 'content': unit.text})
-
-                        await tasks_queue.put({'idx': idx, 'unit': unit, 'messages': messages})
-            finally:
-                for _ in range(llm_concurrency):
-                    await tasks_queue.put(None)
-
-        async def worker():
-            while True:
-                task_item = await tasks_queue.get()
-                if task_item is None:
-                    tasks_queue.task_done()
-                    break
-
-                idx = task_item['idx']
-                unit = task_item['unit']
-                doc_results = results_store[idx]
-
-                try:
-                    gen_text = await self.inference_engine.chat_async(
-                        messages=task_item['messages'], messages_logger=messages_logger
-                    )
-                    unit.set_generated_text(gen_text["response"])
-                    unit.set_status("success")
-                    doc_results['units'].append(unit)
-                except Exception as e:
-                    warnings.warn(f"Error processing unit for doc idx {idx}: {e}")
-                finally:
-                    doc_results['pending'] -= 1
-                    if doc_results['pending'] <= 0:
-                        final_frames = self._post_process_and_create_frames(doc_results, case_sensitive, fuzzy_match, fuzzy_buffer_size, fuzzy_score_cutoff, allow_overlap_entities)
-                        output_payload = {'idx': idx, 'frames': final_frames}
-                        if return_messages_log:
-                            output_payload['messages_log'] = messages_logger.get_messages_log()
-                        await output_queue.put(output_payload)
-
-                    tasks_queue.task_done()
-
-        # Start producer and workers
-        producer_task = asyncio.create_task(producer())
-        worker_tasks = [asyncio.create_task(worker()) for _ in range(llm_concurrency)]
-
-        # Main loop to gather results
-        docs_completed = 0
-        while docs_completed < len(text_contents):
-            result = await output_queue.get()
-            yield result
-            docs_completed += 1
-
-        # Final cleanup
-        await producer_task 
-        await tasks_queue.join()
-
-        # Cancel any lingering worker tasks
-        for task in worker_tasks:
-            task.cancel()
-        await asyncio.gather(*worker_tasks, return_exceptions=True)
-
-        cpu_executor.shutdown(wait=False)
-
-
-    def _post_process_and_create_frames(self, doc_results, case_sensitive, fuzzy_match, fuzzy_buffer_size, fuzzy_score_cutoff, allow_overlap_entities):
-        """Helper function to run post-processing logic for a completed document."""
-        ENTITY_KEY = "entity_text"
-        frame_list = []
-        for res in sorted(doc_results['units'], key=lambda r: r.start):
-            entity_json = []
-            for entity in extract_json(gen_text=res.gen_text):
-                if ENTITY_KEY in entity:
-                    entity_json.append(entity)
-                else:
-                    warnings.warn(f'Extractor output "{entity}" does not have entity_key ("{ENTITY_KEY}"). This frame will be dropped.', RuntimeWarning)
-
-            spans = self._find_entity_spans(
-                text=res.text,
-                entities=[e[ENTITY_KEY] for e in entity_json],
-                case_sensitive=case_sensitive,
-                fuzzy_match=fuzzy_match,
-                fuzzy_buffer_size=fuzzy_buffer_size,
-                fuzzy_score_cutoff=fuzzy_score_cutoff,
-                allow_overlap_entities=allow_overlap_entities
-            )
-            for ent, span in zip(entity_json, spans):
-                if span is not None:
-                    start, end = span
-                    entity_text = res.text[start:end]
-                    start += res.start
-                    end += res.start
-                    attr = ent.get("attr", {}) or {}
-                    frame = LLMInformationExtractionFrame(
-                        frame_id=f"{len(frame_list)}",
-                        start=start,
-                        end=end,
-                        entity_text=entity_text,
-                        attr=attr
-                    )
-                    frame_list.append(frame)
-        return frame_list
-
 
 class ReviewFrameExtractor(DirectFrameExtractor):
     def __init__(self, unit_chunker:UnitChunker, context_chunker:ContextChunker, inference_engine:InferenceEngine, 
@@ -1620,7 +1474,7 @@ class ReviewFrameExtractor(DirectFrameExtractor):
             for chunk in response_stream:
                 yield chunk
 
-    async def extract_async(self, text_content:Union[str, Dict[str,str]], document_key:str=None,
+    async def _extract_async(self, text_content:Union[str, Dict[str,str]], document_key:str=None,
                             concurrent_batch_size:int=32, return_messages_log:bool=False, **kwrs) -> List[FrameExtractionUnit]:
         """
         This is the asynchronous version of the extract() method with the review step.
@@ -2123,7 +1977,7 @@ class AttributeExtractor(Extractor):
             return (new_frames, messages_log) if return_messages_log else new_frames
 
 
-    async def extract_async(self, frames:List[LLMInformationExtractionFrame], text:str, context_size:int=256,
+    async def _extract_async(self, frames:List[LLMInformationExtractionFrame], text:str, context_size:int=256,
                             concurrent_batch_size:int=32, inplace:bool=True, return_messages_log:bool=False) -> Union[None, List[LLMInformationExtractionFrame]]:
         """
         This method extracts attributes from the document asynchronously.
@@ -2195,6 +2049,16 @@ class AttributeExtractor(Extractor):
         else:
             return (new_frames, messages_logger.get_messages_log()) if return_messages_log else new_frames
 
+    async def extract_attributes_async(self, frames:List[LLMInformationExtractionFrame], text:str, context_size:int=256,
+                                       concurrent_batch_size:int=32, inplace:bool=True, 
+                                       return_messages_log:bool=False) -> Union[None, List[LLMInformationExtractionFrame]]:
+        """
+        This is the async version of extract_attributes.
+        """
+        return await self._extract_async(frames=frames, text=text, context_size=context_size,
+                            concurrent_batch_size=concurrent_batch_size, inplace=inplace, return_messages_log=return_messages_log)
+
+
     def extract_attributes(self, frames:List[LLMInformationExtractionFrame], text:str, context_size:int=256, 
                            concurrent:bool=False, concurrent_batch_size:int=32, verbose:bool=False, 
                            return_messages_log:bool=False, inplace:bool=True) -> Union[None, List[LLMInformationExtractionFrame]]:
@@ -2230,7 +2094,7 @@ class AttributeExtractor(Extractor):
 
             nest_asyncio.apply() # For Jupyter notebook. Terminal does not need this.
 
-            return asyncio.run(self.extract_async(frames=frames, text=text, context_size=context_size,
+            return asyncio.run(self._extract_async(frames=frames, text=text, context_size=context_size,
                                                   concurrent_batch_size=concurrent_batch_size, 
                                                   inplace=inplace, return_messages_log=return_messages_log))
         else:
@@ -2375,6 +2239,17 @@ class RelationExtractor(Extractor):
             return asyncio.run(self._extract_async(doc, buffer_size, concurrent_batch_size, return_messages_log))
         else:
             return self._extract(doc, buffer_size, verbose, return_messages_log)
+
+    async def extract_relations_async(self, doc: LLMInformationExtractionDocument, buffer_size: int = 128, concurrent_batch_size: int = 32, return_messages_log: bool = False) -> Union[List[Dict], Tuple[List[Dict], List]]:
+        """
+        This is the async version of extract_relations.
+        """
+        if not doc.has_frame():
+            raise ValueError("Input document must have frames.")
+        if doc.has_duplicate_frame_ids():
+            raise ValueError("All frame_ids in the input document must be unique.")
+        
+        return await self._extract_async(doc, buffer_size, concurrent_batch_size, return_messages_log)
     
 
 class BinaryRelationExtractor(RelationExtractor):
