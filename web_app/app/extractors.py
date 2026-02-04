@@ -106,9 +106,8 @@ class AppDirectFrameExtractor(DirectFrameExtractor):
 
             current_gen_text = ""
 
-            response_stream = self.inference_engine.chat(
-                messages=messages,
-                stream=True
+            response_stream = self.inference_engine.chat_stream(
+                messages=messages
             )
             # chunk is a generator Dict[str, str]. {"type": "response", "data": <token>} or {"type": "reasoning", "data": <token>}
             for chunk in response_stream:

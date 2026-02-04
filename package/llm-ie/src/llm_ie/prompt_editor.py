@@ -270,5 +270,5 @@ class PromptEditor:
 
         messages = [{"role": "system", "content": self.system_prompt + guideline}] + messages
 
-        stream_generator = self.inference_engine.chat(messages, stream=True)
+        stream_generator = self.inference_engine.chat_stream(messages)
         yield from stream_generator

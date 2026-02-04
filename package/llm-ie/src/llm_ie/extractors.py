@@ -205,7 +205,6 @@ class StructExtractor(Extractor):
                 gen_text = self.inference_engine.chat(
                                 messages=messages, 
                                 verbose=verbose,
-                                stream=False,
                                 messages_logger=messages_logger
                             )
 
@@ -289,9 +288,8 @@ class StructExtractor(Extractor):
 
             current_gen_text = ""
 
-            response_stream = self.inference_engine.chat(
-                messages=messages,
-                stream=True
+            response_stream = self.inference_engine.chat_stream(
+                messages=messages
             )
             for chunk in response_stream:
                 yield chunk
@@ -865,7 +863,6 @@ class DirectFrameExtractor(FrameExtractor):
                 gen_text = self.inference_engine.chat(
                                 messages=messages, 
                                 verbose=verbose,
-                                stream=False,
                                 messages_logger=messages_logger
                             )
 
@@ -949,9 +946,8 @@ class DirectFrameExtractor(FrameExtractor):
 
             current_gen_text = ""
 
-            response_stream = self.inference_engine.chat(
-                messages=messages,
-                stream=True
+            response_stream = self.inference_engine.chat_stream(
+                messages=messages
             )
             for chunk in response_stream:
                 yield chunk
@@ -1348,7 +1344,6 @@ class ReviewFrameExtractor(DirectFrameExtractor):
             initial = self.inference_engine.chat(
                             messages=messages, 
                             verbose=verbose,
-                            stream=False,
                             messages_logger=messages_logger
                         )
 
@@ -1362,7 +1357,6 @@ class ReviewFrameExtractor(DirectFrameExtractor):
             review = self.inference_engine.chat(
                             messages=messages, 
                             verbose=verbose,
-                            stream=False,
                             messages_logger=messages_logger
                         )
 
@@ -1450,9 +1444,8 @@ class ReviewFrameExtractor(DirectFrameExtractor):
             
             yield f"{Fore.BLUE}Extraction:{Style.RESET_ALL}\n"
 
-            response_stream = self.inference_engine.chat(
-                            messages=messages, 
-                            stream=True
+            response_stream = self.inference_engine.chat_stream(
+                            messages=messages 
                         )
             
             initial = ""
@@ -1466,9 +1459,8 @@ class ReviewFrameExtractor(DirectFrameExtractor):
             messages.append({'role': 'assistant', 'content': initial})
             messages.append({'role': 'user', 'content': self.review_prompt})
 
-            response_stream = self.inference_engine.chat(
-                            messages=messages, 
-                            stream=True
+            response_stream = self.inference_engine.chat_stream(
+                            messages=messages 
                         )
             
             for chunk in response_stream:
@@ -1910,7 +1902,6 @@ class AttributeExtractor(Extractor):
         gen_text = self.inference_engine.chat(
                             messages=messages,
                             verbose=verbose,
-                            stream=False,
                             messages_logger=messages_logger
                         )
 
