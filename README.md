@@ -340,8 +340,7 @@ Stream frame extraction and download outputs.
 
 ## 🔧Useful Scripts
 Template data pipelines for processing many documents are available [here](package/llm-ie/pipelines/). Please modify according to use cases.
-- [Process many documents sequentially](package/llm-ie/pipelines/sequential_frame_extraction.py)
-- [Process many documents with multithreading](package/llm-ie/pipelines/multithread_frame_extraction.py)
+- [Process many documents with concurrent processing](package/llm-ie/pipelines/concurrent_frame_extraction/concurrent_frame_extraction.py)
 
 ## 📐User Guide
 The detailed User Guide is available on our [Documentation Page](https://daviden1013.github.io/llm-ie/)
