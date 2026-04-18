@@ -19,7 +19,7 @@ async def process_file_worker(doc_id, text_content, frame_extractor: SentenceFra
         start_time = time.time()
         
         # extract frames
-        frames, messages_log = await frame_extractor.extract_frame_async(text_content=text_content, return_messages_log=True)
+        frames, messages_log = await frame_extractor.extract_frames_async(text_content=text_content, return_messages_log=True)
     
         # Process and save llmie doc
         llmie = LLMInformationExtractionDocument(doc_id=doc_id, text=text_content)
