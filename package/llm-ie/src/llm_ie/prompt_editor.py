@@ -1,17 +1,16 @@
 import sys
-import warnings
 from typing import List, Dict, Generator
 import importlib.resources
+import importlib.util
 from llm_ie.utils import apply_prompt_template
 from llm_ie.engines import InferenceEngine
-from llm_ie.extractors import FrameExtractor
-import re
+from llm_ie.extractors import Extractor
 import json
 from colorama import Fore, Style
 
     
 class PromptEditor:
-    def __init__(self, inference_engine:InferenceEngine, extractor:FrameExtractor, prompt_guide:str=None):
+    def __init__(self, inference_engine:InferenceEngine, extractor:Extractor, prompt_guide:str=None):
         """
         This class is a LLM agent that rewrite or comment a prompt draft based on the prompt guide of an extractor.
 
@@ -19,8 +18,8 @@ class PromptEditor:
         ----------
         inference_engine : InferenceEngine
             the LLM inferencing engine object. Must implements the chat() method.
-        extractor : FrameExtractor
-            a FrameExtractor. 
+        extractor : Extractor
+            an Extractor (FrameExtractor, StructExtractor, etc.).
         prompt_guide : str, optional
             the prompt guide for the extractor. 
             All built-in extractors have a prompt guide in the asset folder. Passing values to this parameter 
@@ -197,20 +196,18 @@ class PromptEditor:
 
             # Append user message to conversation
             self.messages.append({"role": "user", "content": user_input})
-            print(f"User: {user_input}")
-            
+
             # Display the user message
             with output_area:
                 display(HTML(f'<pre><span style="color: green;">User: </span>{user_input}</pre>'))
 
             # Get assistant's response and append it to conversation
-            print("Assistant: ", end="")
             response = self.inference_engine.chat(self.messages, verbose=True)
             self.messages.append({"role": "assistant", "content": response["response"]})
 
             # Display the assistant's response
             with output_area:
-                display(HTML(f'<pre><span style="color: blue;">Assistant: </span>{response}</pre>'))
+                display(HTML(f'<pre><span style="color: blue;">Assistant: </span>{response["response"]}</pre>'))
 
         # Bind the user input to the handle_input function
         input_box.on_submit(handle_input)
