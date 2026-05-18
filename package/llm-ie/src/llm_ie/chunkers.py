@@ -2,7 +2,9 @@ import abc
 from typing import List
 import asyncio
 import uuid
+import warnings
 import importlib.resources
+from nltk.tokenize.punkt import PunktSentenceTokenizer
 from llm_ie.utils import extract_json, apply_prompt_template
 from llm_ie.data_types import FrameExtractionUnit
 from llm_ie.engines import InferenceEngine
@@ -94,12 +96,12 @@ class SeparatorUnitChunker(UnitChunker):
 
 
 class SentenceUnitChunker(UnitChunker):
-    from nltk.tokenize.punkt import PunktSentenceTokenizer
     def __init__(self):
         """
         This class uses the NLTK PunktSentenceTokenizer to chunk a document into sentences.
         """
         super().__init__()
+        self._tokenizer = PunktSentenceTokenizer()
 
     def chunk(self, text:str, doc_id:str=None) -> List[FrameExtractionUnit]:
         """
@@ -110,7 +112,7 @@ class SentenceUnitChunker(UnitChunker):
         """
         doc_id = doc_id if doc_id is not None else str(uuid.uuid4())
         sentences = []
-        for start, end in self.PunktSentenceTokenizer().span_tokenize(text):
+        for start, end in self._tokenizer.span_tokenize(text):
             sentences.append(FrameExtractionUnit(
                 doc_id=doc_id,
                 start=start,
@@ -210,10 +212,10 @@ class LLMUnitChunker(UnitChunker):
         prev_end = 0
         for header in header_list:
             if "anchor_text" not in header:
-                Warning.warn(f"Missing anchor_text in header: {header}. Skipping this header.")
+                warnings.warn(f"Missing anchor_text in header: {header}. Skipping this header.")
                 continue
             if not isinstance(header["anchor_text"], str):
-                Warning.warn(f"Invalid anchor_text: {header['anchor_text']}. Skipping this header.")
+                warnings.warn(f"Invalid anchor_text: {header['anchor_text']}. Skipping this header.")
                 continue
 
             start = prev_end
