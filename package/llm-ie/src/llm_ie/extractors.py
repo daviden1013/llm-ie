@@ -616,23 +616,35 @@ class FrameExtractor(Extractor):
             return None, 0
 
         text_tokens, text_spans = self._get_word_tokens(text)
+        if not text_tokens or not pattern:
+            return None, 0
+
         pattern_tokens, _ = self._get_word_tokens(pattern)
+        if not pattern_tokens:
+            return None, 0
+
         pattern_tokens_set = set(pattern_tokens)
         window_size = len(pattern_tokens)
         window_size_min = max(1, int(window_size * (1 - buffer_size)))
         window_size_max = int(window_size * (1 + buffer_size)) + 1
         closest_substring_span = None
         best_score = 0
-        
-        for i in range(len(text_tokens) - window_size_max):
-            for w in range(window_size_min, window_size_max): 
+
+        # Ensure we scan every valid start position, even when text is shorter than the
+        # maximum window. Without max(1, ...) short texts produced an empty range and
+        # fuzzy matches were silently missed.
+        for i in range(max(1, len(text_tokens) - window_size_min + 1)):
+            if text_tokens[i] != pattern_tokens[0]:
+                continue
+            for w in range(window_size_min, window_size_max):
                 sub_str_tokens = text_tokens[i:i + w]
-                if len(sub_str_tokens) > 0 and sub_str_tokens[0] == pattern_tokens[0]:
-                    score = self._jaccard_score(set(sub_str_tokens), pattern_tokens_set)
-                    if score > best_score:
-                        best_score = score
-                        sub_string_word_spans = text_spans[i:i + w]
-                        closest_substring_span = (sub_string_word_spans[0][0], sub_string_word_spans[-1][-1])
+                if not sub_str_tokens:
+                    continue
+                score = self._jaccard_score(set(sub_str_tokens), pattern_tokens_set)
+                if score > best_score:
+                    best_score = score
+                    sub_string_word_spans = text_spans[i:i + w]
+                    closest_substring_span = (sub_string_word_spans[0][0], sub_string_word_spans[-1][-1])
 
         return closest_substring_span, best_score
 
@@ -722,22 +734,21 @@ class FrameExtractor(Extractor):
     
     
     @abc.abstractmethod
-    def extract_frames(self, text_content:Union[str, Dict[str,str]], entity_key:str, 
+    def extract_frames(self, text_content:Union[str, Dict[str,str]],
                        document_key:str=None, return_messages_log:bool=False, **kwrs) -> List[LLMInformationExtractionFrame]:
         """
         This method inputs text content and outputs a list of LLMInformationExtractionFrame
         It use the extract() method and post-process outputs into frames.
+        Extractions that do not include the "entity_text" key will be dropped.
 
         Parameters:
         ----------
         text_content : Union[str, Dict[str,str]]
-            the input text content to put in prompt template. 
+            the input text content to put in prompt template.
             If str, the prompt template must has only 1 placeholder {{<placeholder name>}}, regardless of placeholder name
             If dict, all the keys must be included in the prompt template placeholder {{<placeholder name>}}.
-        entity_key : str
-            the key (in ouptut JSON) for entity text. Any extraction that does not include entity key will be dropped.
         document_key : str, Optional
-            specify the key in text_content where document text is. 
+            specify the key in text_content where document text is.
             If text_content is str, this parameter will be ignored.
         return_messages_log : bool, Optional
             if True, a list of messages will be returned.
@@ -746,9 +757,9 @@ class FrameExtractor(Extractor):
             a list of frames.
         """
         return NotImplemented
-    
+
     @abc.abstractmethod
-    async def extract_frames_async(self, text_content:Union[str, Dict[str,str]], entity_key:str, 
+    async def extract_frames_async(self, text_content:Union[str, Dict[str,str]],
                                    document_key:str=None, return_messages_log:bool=False, **kwrs) -> List[LLMInformationExtractionFrame]:
         """
         This is the async version of extract_frames.
@@ -1239,28 +1250,33 @@ class ReviewFrameExtractor(DirectFrameExtractor):
             self.review_prompt = None
             original_class_name = self.__class__.__name__
 
-            current_class_name = original_class_name
             for current_class_in_mro in self.__class__.__mro__:
-                if current_class_in_mro is object: 
+                if current_class_in_mro is object:
                     continue
 
                 current_class_name = current_class_in_mro.__name__
+                file_path = importlib.resources.files('llm_ie.asset.default_prompts').\
+                    joinpath(f"{current_class_name}_{self.review_mode}_review_prompt.txt")
                 try:
-                    file_path = importlib.resources.files('llm_ie.asset.default_prompts').\
-                        joinpath(f"{self.__class__.__name__}_{self.review_mode}_review_prompt.txt")
                     with open(file_path, 'r', encoding="utf-8") as f:
                         self.review_prompt = f.read()
+                    if current_class_in_mro is not self.__class__:
+                        warnings.warn(
+                            f"Default review prompt for '{original_class_name}' not found. "
+                            f"Using prompt from ancestor: '{current_class_name}_{self.review_mode}_review_prompt.txt'.",
+                            UserWarning
+                        )
+                    break
                 except FileNotFoundError:
-                    pass
-
+                    continue
                 except Exception as e:
                     warnings.warn(
                         f"Error attempting to read default review prompt for '{current_class_name}' "
                         f"from '{str(file_path)}': {e}. Trying next in MRO.",
                         UserWarning
                     )
-                    continue 
-            
+                    continue
+
         if self.review_prompt is None:
             raise ValueError(f"Cannot find review prompt for {self.__class__.__name__} in the package. Please provide a review_prompt.")
 
@@ -1908,9 +1924,12 @@ class AttributeExtractor(Extractor):
         attribute_list = extract_json(gen_text=gen_text["response"])
         if isinstance(attribute_list, list) and len(attribute_list) > 0:
             attributes = attribute_list[0]
-            if return_messages_log:
-                return attributes, messages_logger.get_messages_log()
-            return attributes
+        else:
+            attributes = {}
+
+        if return_messages_log:
+            return attributes, messages_logger.get_messages_log()
+        return attributes
 
 
     def extract(self, frames:List[LLMInformationExtractionFrame], text:str, context_size:int=256, verbose:bool=False, 
@@ -2319,25 +2338,24 @@ class MultiClassRelationExtractor(RelationExtractor):
         super().__init__(inference_engine=inference_engine,
                          prompt_template=prompt_template,
                          system_prompt=system_prompt)
-        
-        if possible_relation_types_func:
-            # Check if possible_relation_types_func is a function
-            if not callable(possible_relation_types_func):
-                raise TypeError(f"Expect possible_relation_types_func as a function, received {type(possible_relation_types_func)} instead.")
-            
-            sig = inspect.signature(possible_relation_types_func)
-            # Check if frame_1, frame_2 are in input parameters
-            if len(sig.parameters) != 2:
-                raise ValueError("The possible_relation_types_func must have exactly frame_1 and frame_2 as parameters.")
-            if "frame_1" not in sig.parameters.keys():
-                raise ValueError("The possible_relation_types_func is missing frame_1 as a parameter.")
-            if "frame_2" not in sig.parameters.keys():
-                raise ValueError("The possible_relation_types_func is missing frame_2 as a parameter.")
-            # Check if output is a List
-            if sig.return_annotation not in {inspect._empty, List, List[str]}:
-                raise ValueError(f"Expect possible_relation_types_func to output a List of string, current type hint suggests {sig.return_annotation} instead.")
 
-            self.possible_relation_types_func = possible_relation_types_func
+        # Check if possible_relation_types_func is a function
+        if not callable(possible_relation_types_func):
+            raise TypeError(f"Expect possible_relation_types_func as a function, received {type(possible_relation_types_func)} instead.")
+
+        sig = inspect.signature(possible_relation_types_func)
+        # Check if frame_1, frame_2 are in input parameters
+        if len(sig.parameters) != 2:
+            raise ValueError("The possible_relation_types_func must have exactly frame_1 and frame_2 as parameters.")
+        if "frame_1" not in sig.parameters.keys():
+            raise ValueError("The possible_relation_types_func is missing frame_1 as a parameter.")
+        if "frame_2" not in sig.parameters.keys():
+            raise ValueError("The possible_relation_types_func is missing frame_2 as a parameter.")
+        # Check if output is a List
+        if sig.return_annotation not in {inspect._empty, List, List[str]}:
+            raise ValueError(f"Expect possible_relation_types_func to output a List of string, current type hint suggests {sig.return_annotation} instead.")
+
+        self.possible_relation_types_func = possible_relation_types_func
 
 
     def _get_task_if_possible(self, frame_1: LLMInformationExtractionFrame, frame_2: LLMInformationExtractionFrame, 
