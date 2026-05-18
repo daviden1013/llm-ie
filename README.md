@@ -31,6 +31,7 @@ A comprehensive toolkit that provides building blocks for LLM-based named entity
 - [v1.4.0](https://github.com/daviden1013/llm-ie/releases/tag/v1.4.0) (Dec 23, 2025): 
   - Added async extract methods for all extractors.
   - Moved InferenceEngines implementation to standalone package [llm-inference-engine](https://github.com/daviden1013/llm-inference-engine).
+- [v1.4.2](https://github.com/daviden1013/llm-ie/releases/tag/v1.4.2) (May 17, 2026): Fixed cornor case bugs and performance improvements. 
 
 
 ## 📑Table of Contents
