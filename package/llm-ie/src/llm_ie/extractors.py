@@ -537,7 +537,8 @@ class BasicStructExtractor(StructExtractor):
                          unit_chunker=WholeDocumentUnitChunker(),
                          prompt_template=prompt_template,
                          system_prompt=system_prompt,
-                         context_chunker=WholeDocumentContextChunker())
+                         context_chunker=NoContextChunker(),
+                         aggregation_func=aggregation_func)
         
 
 class FrameExtractor(Extractor):
