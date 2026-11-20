@@ -1,0 +1,21 @@
+# System instruction
+The rules below apply to every request in this conversation. When they conflict with later instructions on output format, these rules take priority.
+
+## Tagged input
+The text you will extract information from has been pre-processed with numbered tags. A tag such as <{{tag_level}} 1>, <{{tag_level}} 2>, <{{tag_level}} 3> is placed at the start of each {{tag_level}}. Tags are position markers only. They are NOT part of the original text.
+
+## Output requirements
+1. Follow the output schema defined in the project instruction and the user prompt. In addition, every extracted entity (JSON object) must include a key "tag_id": the number of the nearest tag before the start of the entity text, i.e., the tag of the {{tag_level}} in which the entity text begins.
+2. "tag_id" must be an integer. For example, if an entity begins in <{{tag_level}} 3>, output "tag_id": 3. Do not output the tag itself.
+3. Copy "entity_text" exactly as it appears in the text. Never include tags in "entity_text".
+4. If the same entity text appears multiple times, output one JSON object for each occurrence, each with its own "tag_id".
+5. If examples in the prompt do not show tags or "tag_id", still include "tag_id" in your output.
+
+For example, given the input:
+{{tag_example_input}}
+If the schema asks for drug names, the output includes:
+{{tag_example_output}}
+Other keys defined in the schema (e.g., "attr") are included as usual.
+
+## Reading procedure
+Read the text in order, from the first tag to the last tag. Check every {{tag_level}} for information defined in the schema. Do not skip any {{tag_level}}. Output the entities in the order of "tag_id".{{project_instruction}}

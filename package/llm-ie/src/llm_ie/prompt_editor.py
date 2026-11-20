@@ -10,7 +10,7 @@ from colorama import Fore, Style
 
     
 class PromptEditor:
-    def __init__(self, inference_engine:InferenceEngine, extractor:Extractor, prompt_guide:str=None):
+    def __init__(self, inference_engine:InferenceEngine, extractor:Extractor, prompt_guide:str=None, input_mode:str=None):
         """
         This class is a LLM agent that rewrite or comment a prompt draft based on the prompt guide of an extractor.
 
@@ -19,12 +19,15 @@ class PromptEditor:
         inference_engine : InferenceEngine
             the LLM inferencing engine object. Must implements the chat() method.
         extractor : Extractor
-            an Extractor (FrameExtractor, StructExtractor, etc.).
+            an Extractor (FrameExtractor, StructExtractor, etc.). Can be a class or an instance.
         prompt_guide : str, optional
-            the prompt guide for the extractor. 
-            All built-in extractors have a prompt guide in the asset folder. Passing values to this parameter 
+            the prompt guide for the extractor.
+            All built-in extractors have a prompt guide in the asset folder. Passing values to this parameter
             will override the built-in prompt guide which is not recommended.
             For custom extractors, this parameter must be provided.
+        input_mode : str, optional
+            the input mode of FrameExtractors. Must be one of {"plain_text", "tagged"}. Selects the prompt guide.
+            If not provided, the input mode of the extractor instance is used ("plain_text" for an extractor class).
         """
         self.inference_engine = inference_engine
 
@@ -33,7 +36,12 @@ class PromptEditor:
             self.prompt_guide = prompt_guide
         # if prompt_guide is not provided, get it from the extractor
         else:
-            self.prompt_guide = extractor.get_prompt_guide()
+            if input_mode is None:
+                input_mode = getattr(extractor, "input_mode", None) if not isinstance(extractor, type) else None
+            if input_mode is None:
+                self.prompt_guide = extractor.get_prompt_guide()
+            else:
+                self.prompt_guide = extractor.get_prompt_guide(input_mode=input_mode)
             # when extractor does not have a prompt guide (e.g. custom extractor), ValueError
             if self.prompt_guide is None:
                 raise ValueError(f"Prompt guide for {extractor.__class__.__name__} is not available. Use `prompt_guide` parameter to provide a prompt guide.")

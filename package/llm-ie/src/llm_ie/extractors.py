@@ -7,9 +7,9 @@ import itertools
 import asyncio
 import nest_asyncio
 from typing import Any, Set, List, Dict, Tuple, Union, Callable, Generator, Optional
-from llm_ie.utils import extract_json, apply_prompt_template
+from llm_ie.utils import extract_json, apply_prompt_template, TextTagger
 from llm_ie.data_types import FrameExtractionUnit, LLMInformationExtractionFrame, LLMInformationExtractionDocument
-from llm_ie.chunkers import UnitChunker, WholeDocumentUnitChunker, SentenceUnitChunker
+from llm_ie.chunkers import UnitChunker, WholeDocumentUnitChunker, SentenceUnitChunker, TextLineUnitChunker
 from llm_ie.chunkers import ContextChunker, NoContextChunker, WholeDocumentContextChunker, SlideWindowContextChunker
 from llm_ie.engines import InferenceEngine, MessagesLogger
 from colorama import Fore, Style        
@@ -36,12 +36,21 @@ class Extractor:
 
 
     @classmethod
-    def get_prompt_guide(cls) -> str:
+    def get_prompt_guide(cls, input_mode:str="plain_text") -> str:
         """
         This method returns the pre-defined prompt guideline for the extractor from the package asset.
         It searches for a guide specific to the current class first, if not found, it will search
         for the guide in its ancestors by traversing the class's method resolution order (MRO).
+
+        Parameters:
+        ----------
+        input_mode : str, Optional
+            the input mode of frame extractors. Must be one of {"plain_text", "tagged"}. Default is "plain_text".
+            "tagged" returns the guide for the tagged input mode (shared by all FrameExtractors).
         """
+        if input_mode not in {"plain_text", "tagged"}:
+            raise ValueError('input_mode must be one of {"plain_text", "tagged"}.')
+        guide_suffix = "_prompt_guide.txt" if input_mode == "plain_text" else "_tagged_prompt_guide.txt"
         original_class_name = cls.__name__ 
 
         for current_class_in_mro in cls.__mro__:
@@ -51,15 +60,16 @@ class Extractor:
             current_class_name = current_class_in_mro.__name__
             
             try:
-                file_path_obj = importlib.resources.files('llm_ie.asset.prompt_guide').joinpath(f"{current_class_name}_prompt_guide.txt")
+                file_path_obj = importlib.resources.files('llm_ie.asset.prompt_guide').joinpath(f"{current_class_name}{guide_suffix}")
                 
                 with open(file_path_obj, 'r', encoding="utf-8") as f:
                     prompt_content = f.read()
                     # If the guide was found for an ancestor, not the original class, issue a warning.
-                    if cls is not current_class_in_mro:
+                    # The tagged guide is shared by all FrameExtractors, so no warning for that fallback.
+                    if cls is not current_class_in_mro and not (input_mode == "tagged" and current_class_name == "FrameExtractor"):
                         warnings.warn(
                             f"Prompt guide for '{original_class_name}' not found. "
-                            f"Using guide from ancestor: '{current_class_name}_prompt_guide.txt'.",
+                            f"Using guide from ancestor: '{current_class_name}{guide_suffix}'.",
                             UserWarning
                         )
                     return prompt_content
@@ -68,7 +78,7 @@ class Extractor:
 
             except Exception as e:
                 warnings.warn(
-                    f"Error attempting to read prompt guide for '{current_class_name}' "
+                    f"Error attempting to read prompt guide for '{current_class_name}' ({input_mode}) "
                     f"from '{str(file_path_obj)}': {e}. Trying next in MRO.",
                     UserWarning
                 )
@@ -76,7 +86,7 @@ class Extractor:
 
         # If the loop completes, no prompt guide was found for the original class or any of its ancestors.
         raise FileNotFoundError(
-            f"Prompt guide for '{original_class_name}' not found in the package asset. "
+            f"Prompt guide for '{original_class_name}' ({input_mode}) not found in the package asset. "
             f"Is it a custom extractor?"
         )
 
@@ -543,8 +553,13 @@ class BasicStructExtractor(StructExtractor):
 
 class FrameExtractor(Extractor):
     from nltk.tokenize import RegexpTokenizer
-    def __init__(self, inference_engine:InferenceEngine, unit_chunker:UnitChunker, 
-                 prompt_template:str, system_prompt:str=None, context_chunker:ContextChunker=None):
+    INPUT_MODES = ("plain_text", "tagged")
+    ENTITY_KEY = "entity_text"
+    TAG_KEY = "tag_id"
+
+    def __init__(self, inference_engine:InferenceEngine, unit_chunker:UnitChunker,
+                 prompt_template:str, system_prompt:str=None, context_chunker:ContextChunker=None,
+                 input_mode:str="plain_text", tag_level:str="sentence"):
         """
         This is the abstract class for frame extraction.
         Input LLM inference engine, system prompt (optional), prompt template (with instruction, few-shot examples).
@@ -558,21 +573,149 @@ class FrameExtractor(Extractor):
         prompt_template : str
             prompt template with "{{<placeholder name>}}" placeholder.
         system_prompt : str, Optional
-            system prompt.
+            system prompt. In "tagged" input mode, it is placed in the "Project instruction" section
+            after the built-in system instruction.
         context_chunker : ContextChunker
             the context chunker object that determines how to get context for each unit.
+        input_mode : str, Optional
+            how the unit text is presented to the LLM. Must be one of {"plain_text", "tagged"}.
+            "plain_text" (default): the unit text is placed in the prompt as-is. Entity spans are found by
+                matching the entity text in the unit text.
+            "tagged": numbered tags (e.g., "<sentence 1>") are inserted into the unit text. A built-in system
+                instruction asks the LLM to output a "tag_id" (the nearest tag before the entity) for each entity.
+                Entity spans are found by matching the entity text after that tag. Entities without a valid
+                "tag_id" are dropped.
+        tag_level : str, Optional
+            only used when input_mode is "tagged". The segment level to tag.
+            Must be one of {"paragraph", "sentence", "line", "word"}. Default is "sentence".
         """
         super().__init__(inference_engine=inference_engine,
                          prompt_template=prompt_template,
                          system_prompt=system_prompt)
-                
+
         self.unit_chunker = unit_chunker
         if context_chunker is None:
             self.context_chunker = NoContextChunker()
         else:
             self.context_chunker = context_chunker
-        
+
         self.tokenizer = self.RegexpTokenizer(r'\w+|[^\w\s]')
+
+        # input mode
+        if input_mode not in self.INPUT_MODES:
+            raise ValueError(f'input_mode must be one of {set(self.INPUT_MODES)}.')
+        self.input_mode = input_mode
+        self.tag_level = tag_level
+        self.text_tagger = None
+        self.tagged_system_instruction = None
+        if self.input_mode == "tagged":
+            self.text_tagger = TextTagger(tag_level=tag_level)
+            file_path = importlib.resources.files('llm_ie.asset.default_prompts').joinpath("FrameExtractor_tagged_system_prompt.txt")
+            with open(file_path, 'r', encoding="utf-8") as f:
+                instruction = f.read()
+            example_input, example_output = self._get_tagged_example()
+            self.tagged_system_instruction = instruction.replace("{{tag_level}}", tag_level)\
+                                                        .replace("{{tag_example_input}}", example_input)\
+                                                        .replace("{{tag_example_output}}", example_output)
+
+            # warn when the unit is not larger than the tag segment (only one tag per unit)
+            if (isinstance(unit_chunker, SentenceUnitChunker) and tag_level in {"sentence", "paragraph"}) or \
+               (isinstance(unit_chunker, TextLineUnitChunker) and tag_level in {"line", "paragraph"}):
+                warnings.warn(f'tag_level "{tag_level}" is not smaller than the unit ({unit_chunker.__class__.__name__}). '
+                              'Each unit will have only one tag. Consider a smaller tag_level or a larger unit.', UserWarning)
+
+
+    def _get_tagged_example(self) -> Tuple[str, str]:
+        """
+        This method generates the example (input and output) in the tagged system instruction with the actual
+        tagger, so that tag placement in the example is consistent with the tag_level.
+        """
+        sep = {"paragraph": "\n\n", "line": "\n"}.get(self.tag_level, " ")
+        text = f"Aspirin 81 mg was started.{sep}The patient tolerated aspirin well."
+        tagged_text, tag_starts = self.text_tagger.tag(text)
+        outputs = []
+        for entity_start, entity_text in [(0, "Aspirin"), (text.rindex("aspirin"), "aspirin")]:
+            tag_id = sum(1 for s in tag_starts if s <= entity_start)
+            outputs.append(f'    {{"entity_text": "{entity_text}", "{self.TAG_KEY}": {tag_id}}}')
+        return tagged_text, "[\n" + ",\n".join(outputs) + "\n]"
+
+
+    def _get_system_prompt(self) -> Optional[str]:
+        """
+        This method returns the system prompt to send to the LLM.
+        "plain_text" mode: the custom system prompt as-is (None if not provided).
+        "tagged" mode: the built-in system instruction, followed by the custom system prompt as project instruction.
+        """
+        if self.input_mode != "tagged":
+            return self.system_prompt
+
+        if self.system_prompt:
+            project_instruction = f"\n\n# Project instruction\n{self.system_prompt}"
+        else:
+            project_instruction = ""
+        return self.tagged_system_instruction.replace("{{project_instruction}}", project_instruction)
+
+
+    def _get_unit_text_for_prompt(self, unit:FrameExtractionUnit) -> str:
+        """
+        This method returns the unit text as presented to the LLM (tagged in "tagged" mode).
+        """
+        if self.input_mode == "tagged":
+            if self.text_tagger.has_tag_collision(unit.text):
+                warnings.warn(f"Unit text ({unit.start}, {unit.end}) contains tag-like strings (e.g., \"<{self.tag_level} 1>\"). "
+                              "This might confuse the LLM.", RuntimeWarning)
+            tagged_text, _ = self.text_tagger.tag(unit.text)
+            return tagged_text
+        return unit.text
+
+
+    def _build_unit_messages(self, unit:FrameExtractionUnit, text_content:Union[str, Dict[str,str]],
+                             document_key:str=None) -> Tuple[List[Dict[str,str]], str]:
+        """
+        This method constructs the chat messages for a unit.
+
+        Parameters:
+        ----------
+        unit : FrameExtractionUnit
+            the unit to extract from.
+        text_content : Union[str, Dict[str,str]]
+            the input text content (see extract()).
+        document_key : str, Optional
+            the key in text_content where document text is.
+
+        Returns : Tuple[List[Dict[str,str]], str]
+            the chat messages, and the context string ("" if no context).
+        """
+        messages = []
+        system_prompt = self._get_system_prompt()
+        if system_prompt:
+            messages.append({'role': 'system', 'content': system_prompt})
+
+        context = self.context_chunker.chunk(unit)
+        unit_text = self._get_unit_text_for_prompt(unit)
+
+        if context == "":
+            # no context, just place unit in user prompt
+            if isinstance(text_content, str):
+                messages.append({'role': 'user', 'content': self._get_user_prompt(unit_text)})
+            else:
+                unit_content = text_content.copy()
+                unit_content[document_key] = unit_text
+                messages.append({'role': 'user', 'content': self._get_user_prompt(unit_content)})
+        else:
+            # insert context to user prompt
+            if isinstance(text_content, str):
+                messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
+            else:
+                context_content = text_content.copy()
+                context_content[document_key] = context
+                messages.append({'role': 'user', 'content': self._get_user_prompt(context_content)})
+            # simulate conversation where assistant confirms
+            messages.append({'role': 'assistant', 'content': 'Sure, please provide the unit text (e.g., sentence, line, chunk) of interest.'})
+            # place unit of interest
+            messages.append({'role': 'user', 'content': unit_text})
+
+        return messages, context
 
 
     def _jaccard_score(self, s1:Set[str], s2:Set[str]) -> float:
@@ -595,7 +738,7 @@ class FrameExtractor(Extractor):
         return tokens, spans
 
 
-    def _get_closest_substring(self, text:str, pattern:str, buffer_size:float=0.2) -> Tuple[Tuple[int, int], float]:
+    def _get_closest_substring(self, text:str, pattern:str, buffer_size:float=0.2, max_start:int=None) -> Tuple[Tuple[int, int], float]:
         """
         This method finds the closest (highest Jaccard score) substring in text that matches the pattern.
         the substring must start with the same word token as the pattern. This is due to the observation that 
@@ -609,6 +752,8 @@ class FrameExtractor(Extractor):
             the pattern to match.
         buffer_size : float, Optional
             the buffer size for the matching window. Default is 20% of pattern length.
+        max_start : int, Optional
+            if provided, only substrings starting before this character position are considered.
 
         Returns : Tuple[Tuple[int, int], float]
             a tuple of 2-tuple span and Jaccard score.
@@ -635,6 +780,8 @@ class FrameExtractor(Extractor):
         # maximum window. Without max(1, ...) short texts produced an empty range and
         # fuzzy matches were silently missed.
         for i in range(max(1, len(text_tokens) - window_size_min + 1)):
+            if max_start is not None and text_spans[i][0] >= max_start:
+                break
             if text_tokens[i] != pattern_tokens[0]:
                 continue
             for w in range(window_size_min, window_size_max):
@@ -714,6 +861,86 @@ class FrameExtractor(Extractor):
 
         return entity_spans
 
+
+    def _find_entity_spans_tagged(self, text:str, entities:List[str], tag_ids:List[Optional[int]],
+                                  case_sensitive:bool=False, fuzzy_match:bool=True, fuzzy_buffer_size:float=0.2,
+                                  fuzzy_score_cutoff:float=0.8, allow_overlap_entities:bool=False) -> List[Tuple[int]]:
+        """
+        This function is the "tagged" input mode version of _find_entity_spans().
+        For each entity, it searches the entity text AFTER its tag. The match must start before the next tag
+        (i.e., within the tagged segment), while it may end after the next tag.
+        Entities with invalid tag_id, or not found after the tag, will be None in output.
+        The whole text is never searched.
+
+        Parameters:
+        ----------
+        text : str
+            the original (untagged) unit text that contains entities.
+        entities : List[str]
+            a list of entity text to find in the text.
+        tag_ids : List[Optional[int]]
+            a list of parsed tag_id (1-based) for each entity. None if invalid.
+        case_sensitive : bool, Optional
+            if True, entity text matching will be case-sensitive.
+        fuzzy_match : bool, Optional
+            if True, fuzzy matching will be applied (within the tagged segment) to find entity text.
+        fuzzy_buffer_size : float, Optional
+            the buffer size for fuzzy matching. Default is 20% of entity text length.
+        fuzzy_score_cutoff : float, Optional
+            the Jaccard score cutoff for fuzzy matching.
+        allow_overlap_entities : bool, Optional
+            if True, entities can overlap in the text.
+        """
+        tag_starts = self.text_tagger.get_tag_starts(text)
+        n_tags = len(tag_starts)
+
+        # Handle case sensitivity. Positions must not shift, so fall back to case-sensitive if lower() changes length.
+        if not case_sensitive:
+            lowered = text.lower()
+            if len(lowered) == len(text):
+                text = lowered
+            else:
+                case_sensitive = True
+
+        entity_spans = []
+        for entity, tag_id in zip(entities, tag_ids):
+            if not isinstance(entity, str) or tag_id is None or not (1 <= tag_id <= n_tags):
+                entity_spans.append(None)
+                continue
+
+            entity = self.text_tagger.strip_tags(entity)
+            if not entity:
+                entity_spans.append(None)
+                continue
+            if not case_sensitive:
+                entity = entity.lower()
+
+            seg_start = tag_starts[tag_id - 1]
+            next_start = tag_starts[tag_id] if tag_id < n_tags else len(text)
+            span = None
+
+            # Exact match: first occurrence after the tag, must start before the next tag
+            idx = text.find(entity, seg_start)
+            if idx != -1 and idx < next_start:
+                span = (idx, idx + len(entity))
+
+            # Fuzzy match: within the tagged segment (allowing to spill over the next tag)
+            elif fuzzy_match:
+                region_end = min(len(text), next_start + 2 * len(entity))
+                region = text[seg_start:region_end]
+                sub_span, best_score = self._get_closest_substring(region, entity, buffer_size=fuzzy_buffer_size,
+                                                                   max_start=next_start - seg_start)
+                if sub_span and best_score >= fuzzy_score_cutoff:
+                    span = (seg_start + sub_span[0], seg_start + sub_span[1])
+
+            if span is not None and not allow_overlap_entities:
+                # Replace the found entity with spaces to avoid finding the same instance again
+                text = text[:span[0]] + ' ' * (span[1] - span[0]) + text[span[1]:]
+
+            entity_spans.append(span)
+
+        return entity_spans
+
     @abc.abstractmethod
     def extract(self, text_content:Union[str, Dict[str,str]], return_messages_log:bool=False, **kwrs) -> str:
         """
@@ -770,7 +997,8 @@ class FrameExtractor(Extractor):
 
 class DirectFrameExtractor(FrameExtractor):
     def __init__(self, inference_engine:InferenceEngine, unit_chunker:UnitChunker, 
-                 prompt_template:str, system_prompt:str=None, context_chunker:ContextChunker=None):
+                 prompt_template:str, system_prompt:str=None, context_chunker:ContextChunker=None,
+                 input_mode:str="plain_text", tag_level:str="sentence"):
         """
         This class is for general unit-context frame extraction.
         Input LLM inference engine, system prompt (optional), prompt template (with instruction, few-shot examples).
@@ -787,12 +1015,19 @@ class DirectFrameExtractor(FrameExtractor):
             system prompt.
         context_chunker : ContextChunker
             the context chunker object that determines how to get context for each unit.
+        input_mode : str, Optional
+            how the unit text is presented to the LLM. Must be one of {"plain_text", "tagged"}. Default is "plain_text".
+            See FrameExtractor for details.
+        tag_level : str, Optional
+            only used when input_mode is "tagged". Must be one of {"paragraph", "sentence", "line", "word"}. Default is "sentence".
         """
         super().__init__(inference_engine=inference_engine,
                          unit_chunker=unit_chunker,
                          prompt_template=prompt_template,
                          system_prompt=system_prompt,
-                         context_chunker=context_chunker)
+                         context_chunker=context_chunker,
+                         input_mode=input_mode,
+                         tag_level=tag_level)
 
 
     def extract(self, text_content:Union[str, Dict[str,str]], 
@@ -837,32 +1072,7 @@ class DirectFrameExtractor(FrameExtractor):
         for i, unit in enumerate(units):
             try:
                 # construct chat messages
-                messages = []
-                if self.system_prompt:
-                    messages.append({'role': 'system', 'content': self.system_prompt})
-
-                context = self.context_chunker.chunk(unit)
-                
-                if context == "":
-                    # no context, just place unit in user prompt
-                    if isinstance(text_content, str):
-                        messages.append({'role': 'user', 'content': self._get_user_prompt(unit.text)})
-                    else:
-                        unit_content = text_content.copy()
-                        unit_content[document_key] = unit.text
-                        messages.append({'role': 'user', 'content': self._get_user_prompt(unit_content)})
-                else:
-                    # insert context to user prompt
-                    if isinstance(text_content, str):
-                        messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
-                    else:
-                        context_content = text_content.copy()
-                        context_content[document_key] = context
-                        messages.append({'role': 'user', 'content': self._get_user_prompt(context_content)})
-                    # simulate conversation where assistant confirms
-                    messages.append({'role': 'assistant', 'content': 'Sure, please provide the unit text (e.g., sentence, line, chunk) of interest.'})
-                    # place unit of interest
-                    messages.append({'role': 'user', 'content': unit.text})
+                messages, context = self._build_unit_messages(unit, text_content, document_key)
 
                 if verbose:
                     print(f"\n\n{Fore.GREEN}Unit {i + 1}/{len(units)}:{Style.RESET_ALL}\n{unit.text}\n")
@@ -931,30 +1141,9 @@ class DirectFrameExtractor(FrameExtractor):
             unit_info_payload = {"id": i, "text": unit.text, "start": unit.start, "end": unit.end}
             yield {"type": "unit", "data": unit_info_payload}
 
-            messages = []
-            if self.system_prompt:
-                messages.append({'role': 'system', 'content': self.system_prompt})
-
-            context_str = self.context_chunker.chunk(unit)
-
-            # Construct prompt input based on whether text_content was str or dict
+            messages, context_str = self._build_unit_messages(unit, text_content, document_key)
             if context_str:
                 yield {"type": "context", "data": context_str}
-                prompt_input_for_context = context_str
-                if isinstance(text_content, dict):
-                    context_content_dict = text_content.copy()
-                    context_content_dict[document_key] = context_str
-                    prompt_input_for_context = context_content_dict
-                messages.append({'role': 'user', 'content': self._get_user_prompt(prompt_input_for_context)})
-                messages.append({'role': 'assistant', 'content': 'Sure, please provide the unit text (e.g., sentence, line, chunk) of interest.'})
-                messages.append({'role': 'user', 'content': unit.text})
-            else: # No context
-                prompt_input_for_unit = unit.text
-                if isinstance(text_content, dict):
-                    unit_content_dict = text_content.copy()
-                    unit_content_dict[document_key] = unit.text
-                    prompt_input_for_unit = unit_content_dict
-                messages.append({'role': 'user', 'content': self._get_user_prompt(prompt_input_for_unit)})
 
             current_gen_text = ""
 
@@ -1018,32 +1207,7 @@ class DirectFrameExtractor(FrameExtractor):
         tasks_input = []
         for i, unit in enumerate(units):
             # construct chat messages
-            messages = []
-            if self.system_prompt:
-                messages.append({'role': 'system', 'content': self.system_prompt})
-
-            context = self.context_chunker.chunk(unit)
-
-            if context == "":
-                 # no context, just place unit in user prompt
-                if isinstance(text_content, str):
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(unit.text)})
-                else:
-                    unit_content = text_content.copy()
-                    unit_content[document_key] = unit.text
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(unit_content)})
-            else:
-                # insert context to user prompt
-                if isinstance(text_content, str):
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
-                else:
-                    context_content = text_content.copy()
-                    context_content[document_key] = context
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(context_content)})
-                # simulate conversation where assistant confirms
-                messages.append({'role': 'assistant', 'content': 'Sure, please provide the unit text (e.g., sentence, line, chunk) of interest.'})
-                # place unit of interest
-                messages.append({'role': 'user', 'content': unit.text})
+            messages, context = self._build_unit_messages(unit, text_content, document_key)
 
             # Store unit and messages together for the task
             tasks_input.append({"unit": unit, "messages": messages, "original_index": i})
@@ -1094,13 +1258,30 @@ class DirectFrameExtractor(FrameExtractor):
                 else:
                     warnings.warn(f'Extractor output "{entity}" does not have entity_key ("{ENTITY_KEY}"). This frame will be dropped.', RuntimeWarning)
 
-            spans = self._find_entity_spans(text=unit.text, 
-                                            entities=[e[ENTITY_KEY] for e in entity_json], 
-                                            case_sensitive=case_sensitive,
-                                            fuzzy_match=fuzzy_match,
-                                            fuzzy_buffer_size=fuzzy_buffer_size,
-                                            fuzzy_score_cutoff=fuzzy_score_cutoff,
-                                            allow_overlap_entities=allow_overlap_entities)
+            if self.input_mode == "tagged":
+                tag_ids = []
+                for e in entity_json:
+                    tag_id = self.text_tagger.parse_tag_id(e.get(self.TAG_KEY))
+                    if tag_id is None:
+                        warnings.warn(f'Extractor output "{e}" does not have a valid "{self.TAG_KEY}". This frame will be dropped.', RuntimeWarning)
+                    tag_ids.append(tag_id)
+
+                spans = self._find_entity_spans_tagged(text=unit.text,
+                                                       entities=[e[ENTITY_KEY] for e in entity_json],
+                                                       tag_ids=tag_ids,
+                                                       case_sensitive=case_sensitive,
+                                                       fuzzy_match=fuzzy_match,
+                                                       fuzzy_buffer_size=fuzzy_buffer_size,
+                                                       fuzzy_score_cutoff=fuzzy_score_cutoff,
+                                                       allow_overlap_entities=allow_overlap_entities)
+            else:
+                spans = self._find_entity_spans(text=unit.text,
+                                                entities=[e[ENTITY_KEY] for e in entity_json],
+                                                case_sensitive=case_sensitive,
+                                                fuzzy_match=fuzzy_match,
+                                                fuzzy_buffer_size=fuzzy_buffer_size,
+                                                fuzzy_score_cutoff=fuzzy_score_cutoff,
+                                                allow_overlap_entities=allow_overlap_entities)
             for ent, span in zip(entity_json, spans):
                 if span is not None:
                     start, end = span
@@ -1208,7 +1389,8 @@ class DirectFrameExtractor(FrameExtractor):
 
 class ReviewFrameExtractor(DirectFrameExtractor):
     def __init__(self, unit_chunker:UnitChunker, context_chunker:ContextChunker, inference_engine:InferenceEngine, 
-                 prompt_template:str, review_mode:str, review_prompt:str=None, system_prompt:str=None):
+                 prompt_template:str, review_mode:str, review_prompt:str=None, system_prompt:str=None,
+                 input_mode:str="plain_text", tag_level:str="sentence"):
         """
         This class add a review step after the DirectFrameExtractor.
         The Review process asks LLM to review its output and:
@@ -1234,12 +1416,19 @@ class ReviewFrameExtractor(DirectFrameExtractor):
             addition mode only ask LLM to add new frames, while revision mode ask LLM to regenerate.
         system_prompt : str, Optional
             system prompt.
+        input_mode : str, Optional
+            how the unit text is presented to the LLM. Must be one of {"plain_text", "tagged"}. Default is "plain_text".
+            See FrameExtractor for details.
+        tag_level : str, Optional
+            only used when input_mode is "tagged". Must be one of {"paragraph", "sentence", "line", "word"}. Default is "sentence".
         """
         super().__init__(inference_engine=inference_engine, 
                          unit_chunker=unit_chunker, 
                          prompt_template=prompt_template, 
                          system_prompt=system_prompt, 
-                         context_chunker=context_chunker)
+                         context_chunker=context_chunker,
+                         input_mode=input_mode,
+                         tag_level=tag_level)
         # check review mode
         if review_mode not in {"addition", "revision"}: 
             raise ValueError('review_mode must be one of {"addition", "revision"}.')
@@ -1323,32 +1512,7 @@ class ReviewFrameExtractor(DirectFrameExtractor):
         for i, unit in enumerate(units):
             # <--- Initial generation step --->
             # construct chat messages
-            messages = []
-            if self.system_prompt:
-                messages.append({'role': 'system', 'content': self.system_prompt})
-
-            context = self.context_chunker.chunk(unit)
-            
-            if context == "":
-                # no context, just place unit in user prompt
-                if isinstance(text_content, str):
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(unit.text)})
-                else:
-                    unit_content = text_content.copy()
-                    unit_content[document_key] = unit.text
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(unit_content)})
-            else:
-                # insert context to user prompt
-                if isinstance(text_content, str):
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
-                else:
-                    context_content = text_content.copy()
-                    context_content[document_key] = context
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(context_content)})
-                # simulate conversation where assistant confirms
-                messages.append({'role': 'assistant', 'content': 'Sure, please provide the unit text (e.g., sentence, line, chunk) of interest.'})
-                # place unit of interest
-                messages.append({'role': 'user', 'content': unit.text})
+            messages, context = self._build_unit_messages(unit, text_content, document_key)
 
             if verbose:
                 print(f"\n\n{Fore.GREEN}Unit {i + 1}/{len(units)}:{Style.RESET_ALL}\n{unit.text}\n")
@@ -1427,32 +1591,7 @@ class ReviewFrameExtractor(DirectFrameExtractor):
         for i, unit in enumerate(units):
             # <--- Initial generation step --->
             # construct chat messages
-            messages = []
-            if self.system_prompt:
-                messages.append({'role': 'system', 'content': self.system_prompt})
-
-            context = self.context_chunker.chunk(unit)
-            
-            if context == "":
-                # no context, just place unit in user prompt
-                if isinstance(text_content, str):
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(unit.text)})
-                else:
-                    unit_content = text_content.copy()
-                    unit_content[document_key] = unit.text
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(unit_content)})
-            else:
-                # insert context to user prompt
-                if isinstance(text_content, str):
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
-                else:
-                    context_content = text_content.copy()
-                    context_content[document_key] = context
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(context_content)})
-                # simulate conversation where assistant confirms
-                messages.append({'role': 'assistant', 'content': 'Sure, please provide the unit text (e.g., sentence, line, chunk) of interest.'})
-                # place unit of interest
-                messages.append({'role': 'user', 'content': unit.text})
+            messages, context = self._build_unit_messages(unit, text_content, document_key)
 
 
             yield f"\n\n{Fore.GREEN}Unit {i}:{Style.RESET_ALL}\n{unit.text}\n"
@@ -1529,32 +1668,7 @@ class ReviewFrameExtractor(DirectFrameExtractor):
         initial_tasks_input = []
         for i, unit in enumerate(units):
             # construct chat messages for initial generation
-            messages = []
-            if self.system_prompt:
-                messages.append({'role': 'system', 'content': self.system_prompt})
-
-            context = self.context_chunker.chunk(unit)
-
-            if context == "":
-                 # no context, just place unit in user prompt
-                if isinstance(text_content, str):
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(unit.text)})
-                else:
-                    unit_content = text_content.copy()
-                    unit_content[document_key] = unit.text
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(unit_content)})
-            else:
-                # insert context to user prompt
-                if isinstance(text_content, str):
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(context)})
-                else:
-                    context_content = text_content.copy()
-                    context_content[document_key] = context
-                    messages.append({'role': 'user', 'content': self._get_user_prompt(context_content)})
-                # simulate conversation where assistant confirms
-                messages.append({'role': 'assistant', 'content': 'Sure, please provide the unit text (e.g., sentence, line, chunk) of interest.'})
-                # place unit of interest
-                messages.append({'role': 'user', 'content': unit.text})
+            messages, context = self._build_unit_messages(unit, text_content, document_key)
 
             # Store unit and messages together for the initial task
             initial_tasks_input.append({"unit": unit, "messages": messages, "original_index": i})
@@ -1665,7 +1779,8 @@ class ReviewFrameExtractor(DirectFrameExtractor):
 
 
 class BasicFrameExtractor(DirectFrameExtractor):
-    def __init__(self, inference_engine:InferenceEngine, prompt_template:str, system_prompt:str=None):
+    def __init__(self, inference_engine:InferenceEngine, prompt_template:str, system_prompt:str=None,
+                 input_mode:str="plain_text", tag_level:str="sentence"):
         """
         This class diretly prompt LLM for frame extraction.
         Input system prompt (optional), prompt template (with instruction, few-shot examples), 
@@ -1679,15 +1794,23 @@ class BasicFrameExtractor(DirectFrameExtractor):
             prompt template with "{{<placeholder name>}}" placeholder.
         system_prompt : str, Optional
             system prompt.
+        input_mode : str, Optional
+            how the unit text is presented to the LLM. Must be one of {"plain_text", "tagged"}. Default is "plain_text".
+            See FrameExtractor for details.
+        tag_level : str, Optional
+            only used when input_mode is "tagged". Must be one of {"paragraph", "sentence", "line", "word"}. Default is "sentence".
         """
         super().__init__(inference_engine=inference_engine, 
                          unit_chunker=WholeDocumentUnitChunker(),
                          prompt_template=prompt_template, 
                          system_prompt=system_prompt, 
-                         context_chunker=NoContextChunker())
+                         context_chunker=NoContextChunker(),
+                         input_mode=input_mode,
+                         tag_level=tag_level)
         
 class BasicReviewFrameExtractor(ReviewFrameExtractor):
-    def __init__(self, inference_engine:InferenceEngine, prompt_template:str, review_mode:str, review_prompt:str=None, system_prompt:str=None):
+    def __init__(self, inference_engine:InferenceEngine, prompt_template:str, review_mode:str, review_prompt:str=None, system_prompt:str=None,
+                 input_mode:str="plain_text", tag_level:str="sentence"):
         """
         This class add a review step after the BasicFrameExtractor.
         The Review process asks LLM to review its output and:
@@ -1709,6 +1832,11 @@ class BasicReviewFrameExtractor(ReviewFrameExtractor):
             addition mode only ask LLM to add new frames, while revision mode ask LLM to regenerate.
         system_prompt : str, Optional
             system prompt.
+        input_mode : str, Optional
+            how the unit text is presented to the LLM. Must be one of {"plain_text", "tagged"}. Default is "plain_text".
+            See FrameExtractor for details.
+        tag_level : str, Optional
+            only used when input_mode is "tagged". Must be one of {"paragraph", "sentence", "line", "word"}. Default is "sentence".
         """
         super().__init__(inference_engine=inference_engine, 
                          unit_chunker=WholeDocumentUnitChunker(),
@@ -1716,12 +1844,15 @@ class BasicReviewFrameExtractor(ReviewFrameExtractor):
                          review_mode=review_mode,
                          review_prompt=review_prompt,
                          system_prompt=system_prompt, 
-                         context_chunker=NoContextChunker())
+                         context_chunker=NoContextChunker(),
+                         input_mode=input_mode,
+                         tag_level=tag_level)
         
 
 class SentenceFrameExtractor(DirectFrameExtractor):
     def __init__(self, inference_engine:InferenceEngine, prompt_template:str, system_prompt:str=None,
-                 context_sentences:Union[str, int]="all"):
+                 context_sentences:Union[str, int]="all",
+                 input_mode:str="plain_text", tag_level:str="sentence"):
         """
         This class performs sentence-by-sentence information extraction.
         The process is as follows:
@@ -1749,6 +1880,11 @@ class SentenceFrameExtractor(DirectFrameExtractor):
                 This is good for tasks that does not require context beyond the given sentence. 
             if > 0, the number of sentences before and after the given sentence to provide as context.
                 This is good for tasks that require context beyond the given sentence. 
+        input_mode : str, Optional
+            how the unit text is presented to the LLM. Must be one of {"plain_text", "tagged"}. Default is "plain_text".
+            See FrameExtractor for details.
+        tag_level : str, Optional
+            only used when input_mode is "tagged". Must be one of {"paragraph", "sentence", "line", "word"}. Default is "sentence".
         """
         if not isinstance(context_sentences, int) and context_sentences != "all":
             raise ValueError('context_sentences must be an integer (>= 0) or "all".')
@@ -1765,13 +1901,16 @@ class SentenceFrameExtractor(DirectFrameExtractor):
                          unit_chunker=SentenceUnitChunker(),
                          prompt_template=prompt_template, 
                          system_prompt=system_prompt, 
-                         context_chunker=context_chunker)
+                         context_chunker=context_chunker,
+                         input_mode=input_mode,
+                         tag_level=tag_level)
         
 
 class SentenceReviewFrameExtractor(ReviewFrameExtractor):
     def __init__(self, inference_engine:InferenceEngine, prompt_template:str,  
                  review_mode:str, review_prompt:str=None, system_prompt:str=None,
-                 context_sentences:Union[str, int]="all"):
+                 context_sentences:Union[str, int]="all",
+                 input_mode:str="plain_text", tag_level:str="sentence"):
         """
         This class adds a review step after the SentenceFrameExtractor.
         For each sentence, the review process asks LLM to review its output and:
@@ -1800,6 +1939,11 @@ class SentenceReviewFrameExtractor(ReviewFrameExtractor):
                 This is good for tasks that does not require context beyond the given sentence. 
             if > 0, the number of sentences before and after the given sentence to provide as context.
                 This is good for tasks that require context beyond the given sentence. 
+        input_mode : str, Optional
+            how the unit text is presented to the LLM. Must be one of {"plain_text", "tagged"}. Default is "plain_text".
+            See FrameExtractor for details.
+        tag_level : str, Optional
+            only used when input_mode is "tagged". Must be one of {"paragraph", "sentence", "line", "word"}. Default is "sentence".
         """
         if not isinstance(context_sentences, int) and context_sentences != "all":
             raise ValueError('context_sentences must be an integer (>= 0) or "all".')
@@ -1818,7 +1962,9 @@ class SentenceReviewFrameExtractor(ReviewFrameExtractor):
                          review_mode=review_mode,
                          review_prompt=review_prompt, 
                          system_prompt=system_prompt, 
-                         context_chunker=context_chunker)
+                         context_chunker=context_chunker,
+                         input_mode=input_mode,
+                         tag_level=tag_level)
     
 
 class AttributeExtractor(Extractor):

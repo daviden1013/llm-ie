@@ -1,0 +1,135 @@
+Prompt Template Design (tagged input mode):
+
+In the tagged input mode, the extractor inserts numbered tags into the input text before prompting, for example:
+    <sentence 1> Patient took aspirin daily. <sentence 2> Aspirin was stopped.
+The tag level can be "paragraph", "sentence", "line", or "word" (e.g., <paragraph 1>, <line 1>, <word 1>).
+A built-in system instruction already tells the LLM what the tags mean and requires a "tag_id" key (the number of the nearest tag before the entity) in every output entity.
+The prompt template therefore focuses on the task and schema. Do NOT re-explain the tagging rules in detail. Write examples with tagged input and "tag_id" in the output so that the LLM sees consistent demonstrations.
+
+1. Task Description:
+   Provide a detailed description of the task, including the background and the type of task (e.g., named entity recognition).
+
+2. Schema Definition:
+   List the key concepts that should be extracted, and provide clear definitions for each one. **Must define "entity_text"** which will be used to recognize the entity.
+
+3. Output Format Definition:
+   The output should be a JSON list, where each element is a dictionary representing a frame (an entity along with its attributes). **Each dictionary must include a key "entity_text", a key "tag_id", and a key "attr"**. The attributes are placed in the "attr" (e.g., {"entity_text": "<entity_text>", "tag_id": <tag number>, "attr": {"attr1": "<attr1>", "attr2": "<attr2>"}}).
+
+4. Optional: Hints:
+   Provide itemized hints for the information extractors to guide the extraction process. Remind the prompted agent to be truthful. Emphasize that the prompted agent is supposed to perform the task instead of writting code or instruct other agents to do it.
+
+5. Optional: Examples:
+   Include examples with tagged input in the format:
+    Input: <sentence 1> ... <sentence 2> ...
+    Output: [{"entity_text": "...", "tag_id": 1, "attr": {...}}, ...]
+   When an entity text appears more than once, show one output item per occurrence with its own "tag_id".
+
+6. Context:
+   The template must include a placeholder in the format {{<placeholder_name>}} for the context. The placeholder name can be customized as needed. The tags are inserted automatically. Do NOT add tags to the template.
+
+
+Example 1 (multiple entity types):
+
+    ### Task description
+    This is a named entity recognition task. Given a medical note, annotate the Drug, Form, Strength, Frequency, Route, Dosage, Reason, ADE, and Duration.
+
+    ### Schema definition
+    Your output should contain:
+        "entity_text": the exact wording as mentioned in the note.
+        "tag_id": the number of the tag where the entity text begins.
+        "entity_type": type of the entity. It should be one of the "Drug", "Form", "Strength", "Frequency", "Route", "Dosage", "Reason", "ADE", or "Duration".
+
+    ### Output format definition
+    Your output should follow JSON format,
+    if there are one of the entity mentions: Drug, Form, Strength, Frequency, Route, Dosage, Reason, ADE, or Duration:
+        [
+            {"entity_text": "<Exact entity mentions as in the note>", "tag_id": <tag number>, "attr": {"entity_type": "<entity type as listed above>"}},
+            {"entity_text": "<Exact entity mentions as in the note>", "tag_id": <tag number>, "attr": {"entity_type": "<entity type as listed above>"}}
+        ]
+    if there is no entity mentioned in the given note, just output an empty list:
+        []
+
+    I am only interested in the extracted contents in []. Do NOT explain your answer.
+
+    ### Examples
+    Below are some examples:
+
+    Input: <sentence 1> Acetaminophen 650 mg PO BID 5. <sentence 2> Mesalamine DR 1200 mg PO BID 2. <sentence 3> Continue acetaminophen as needed.
+    Output: [
+                {"entity_text": "Acetaminophen", "tag_id": 1, "attr": {"entity_type": "Drug"}},
+                {"entity_text": "650 mg", "tag_id": 1, "attr": {"entity_type": "Strength"}},
+                {"entity_text": "PO", "tag_id": 1, "attr": {"entity_type": "Route"}},
+                {"entity_text": "BID", "tag_id": 1, "attr": {"entity_type": "Frequency"}},
+                {"entity_text": "Mesalamine DR", "tag_id": 2, "attr": {"entity_type": "Drug"}},
+                {"entity_text": "1200 mg", "tag_id": 2, "attr": {"entity_type": "Strength"}},
+                {"entity_text": "PO", "tag_id": 2, "attr": {"entity_type": "Route"}},
+                {"entity_text": "BID", "tag_id": 2, "attr": {"entity_type": "Frequency"}},
+                {"entity_text": "acetaminophen", "tag_id": 3, "attr": {"entity_type": "Drug"}},
+                {"entity_text": "as needed", "tag_id": 3, "attr": {"entity_type": "Frequency"}}
+            ]
+
+    ### Context
+    The text below is from the medical note:
+    "{{input}}"
+
+
+Example 2 (multiple entity types with corresponding attributes):
+
+    ### Task description
+    This is a named entity recognition task. Given a medical note, annotate the events (EVENT) and time expressions (TIMEX3):
+
+    ### Schema definition
+    Your output should contain:
+        "entity_text": the exact wording as mentioned in the note.
+        "tag_id": the number of the tag where the entity text begins.
+        "entity_type": type of the entity. It should be one of the "EVENT" or "TIMEX3".
+        if entity_type is "EVENT",
+            "type": the event type as one of the "TEST", "PROBLEM", "TREATMENT", "CLINICAL_DEPT", "EVIDENTIAL", or "OCCURRENCE".
+            "polarity": whether an EVENT is positive ("POS") or negative ("NAG"). For example, in “the patient reports headache, and denies chills”, the EVENT [headache] is positive in its polarity, and the EVENT [chills] is negative in its polarity.
+            "modality": whether an EVENT actually occurred or not. Must be one of the "FACTUAL", "CONDITIONAL", "POSSIBLE", or "PROPOSED".
+
+        if entity_type is "TIMEX3",
+            "type": the type as one of the "DATE", "TIME", "DURATION", or "FREQUENCY".
+            "val": the numeric value 1) DATE: [YYYY]-[MM]-[DD], 2) TIME: [hh]:[mm]:[ss], 3) DURATION: P[n][Y/M/W/D]. So, “for eleven days” will be
+    represented as “P11D”, meaning a period of 11 days. 4)  R[n][duration], where n denotes the number of repeats. When the n is omitted, the expression denotes an unspecified amount of repeats. For example, “once a day for 3 days” is “R3P1D” (repeat the time interval of 1 day (P1D) for 3 times (R3)), twice every day is “RP12H” (repeat every 12 hours)
+            "mod": additional information regarding the temporal value of a time expression. Must be one of the:
+                “NA”: the default value, no relevant modifier is present;
+                “MORE”, means “more than”, e.g. over 2 days (val = P2D, mod = MORE);
+                “LESS”, means “less than”, e.g. almost 2 months (val = P2M, mod=LESS);
+                “APPROX”, means “approximate”, e.g. nearly a week (val = P1W, mod=APPROX);
+                “START”, describes the beginning of a period of time, e.g.  Christmas morning, 2005 (val= 2005-12-25, mod= START).
+                “END”, describes the end of a period of time, e.g. late last year, (val = 2010, mod = END)
+                “MIDDLE”, describes the middle of a period of time, e.g. mid-September 2001 (val = 2001-09, mod = MIDDLE)
+
+    ### Output format definition
+    Your output should follow JSON format. Each element in the list is a dictionary with an "entity_text" key, a "tag_id" key, and an "attr" key. The "attr" dictionary contains all other attributes, including "entity_type".
+
+    For example:
+    If there are EVENT or TIMEX3 entity mentions:
+        [
+            {"entity_text": "<Exact entity mentions as in the note>", "tag_id": <tag number>, "attr": {"entity_type": "EVENT", "type": "<event type>", "polarity": "<event polarity>", "modality": "<event modality>"}},
+            {"entity_text": "<Exact entity mentions as in the note>", "tag_id": <tag number>, "attr": {"entity_type": "TIMEX3", "type": "<TIMEX3 type>", "val": "<time value>", "mod": "<additional information>"}}
+            ...
+        ]
+    If there is no entity mentioned in the given note, just output an empty list:
+        []
+
+    I am only interested in the extracted contents in []. Do NOT explain your answer.
+
+    ### Examples
+    Below are some examples:
+
+    Input: <sentence 1> At 9/7/93 , 1:00 a.m. , intravenous fluids rate was decreased to 50 cc&apos;s per hour , total fluids given during the first 24 hours were 140 to 150 cc&apos;s per kilo per day . <sentence 2> At that time it appeared well adhered to the underlying skin .
+    Output: [
+            {"entity_text": "intravenous fluids", "tag_id": 1, "attr": {"entity_type": "EVENT", "type": "TREATMENT", "polarity": "POS", "modality": "FACTUAL"}},
+            {"entity_text": "decreased", "tag_id": 1, "attr": {"entity_type": "EVENT", "type": "OCCURRENCE", "polarity": "POS", "modality": "FACTUAL"}},
+            {"entity_text": "total fluids", "tag_id": 1, "attr": {"entity_type": "EVENT", "type": "TREATMENT", "polarity": "POS", "modality": "FACTUAL"}},
+            {"entity_text": "9/7/93 , 1:00 a.m.", "tag_id": 1, "attr": {"entity_type": "TIMEX3", "type": "TIME", "val": "1993-09-07T01:00", "mod": "NA"}},
+            {"entity_text": "24 hours", "tag_id": 1, "attr": {"entity_type": "TIMEX3", "type": "DURATION", "val": "PT24H", "mod": "NA"}},
+            {"entity_text": "it", "tag_id": 2, "attr": {"entity_type": "EVENT", "type": "TREATMENT", "polarity": "POS", "modality": "FACTUAL"}},
+            {"entity_text": "well adhered", "tag_id": 2, "attr": {"entity_type": "EVENT", "type": "OCCURRENCE", "polarity": "POS", "modality": "FACTUAL"}}
+        ]
+
+    ### Context
+    The text below is from the medical note:
+    "{{input}}"
